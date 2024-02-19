@@ -15,7 +15,7 @@ using Squared.Util.DeclarativeSort;
 
 namespace Squared.Render.TextLayout2 {
     public struct Line {
-        public uint FirstDrawCall, DrawCallCount;
+        public uint FirstDrawCall, DrawCallCount, WordCount;
         public uint FirstBoxIndex, BoxCount;
         public float Width, Height;
     }
@@ -225,15 +225,25 @@ namespace Squared.Render.TextLayout2 {
 
                 // FIXME: Kerning
 
-                var w = (glyph.WidthIncludingBearing * effectiveScale.X) + (glyph.CharacterSpacing * effectiveScale.X);
-                var h = glyph.LineSpacing * effectiveScale.Y;
-                var x2 = WordOffset.X + LineOffset.X + w;
+                bool suppressThisCharacter = false;
+                float w = (glyph.WidthIncludingBearing * effectiveScale.X) + (glyph.CharacterSpacing * effectiveScale.X),
+                    h = glyph.LineSpacing * effectiveScale.Y,
+                    x1 = CurrentWord.LeadingWhitespace + WordOffset.X + LineOffset.X,
+                    x2 = x1 + w;
 
-                if (x2 >= MaximumWidth)
-                    forcedWrap = true;
+                if (x2 >= MaximumWidth) {
+                    if (!isWhiteSpace)
+                        forcedWrap = true;
+                    else 
+                        // HACK: If word wrap is disabled and character wrap is enabled,
+                        //  without this our bounding box can extend beyond MaximumWidth.
+                        suppressThisCharacter = true;
+                }
 
                 if (forcedWrap)
-                    PerformForcedWrap();
+                    // HACK: Manually calculate the new width of the word so that we can decide
+                    //  whether it needs to be character wrapped
+                    PerformForcedWrap(CurrentWord.Width + w);
                 else if (lineBreak)
                     PerformLineBreak();
 
@@ -242,9 +252,16 @@ namespace Squared.Render.TextLayout2 {
 
                 if (!deadGlyph) {
                     ref var drawCall = ref AppendDrawCall(ref dead, isWhiteSpace);
+                    short wordIndex;
+                    unchecked {
+                        // It's fine for this to wrap around, we just != it later to find word boundaries
+                        wordIndex = (short)WordIndex;
+                    }
 
                     drawCall = new BitmapDrawCall {
-                        MultiplyColor = OverrideColor ? MultiplyColor : (glyph.DefaultColor ?? MultiplyColor),
+                        MultiplyColor = OverrideColor 
+                            ? MultiplyColor
+                            : (glyph.DefaultColor ?? MultiplyColor),
                         AddColor = AddColor,
                         Position = new Vector2(
                             WordOffset.X + (glyph.XOffset * effectiveScale.X) + (glyph.LeftSideBearing * effectiveScale.X),
@@ -252,11 +269,14 @@ namespace Squared.Render.TextLayout2 {
                         ),
                         Scale = effectiveScale * glyph.RenderScale,
                         Textures = new TextureSet(glyph.Texture),
-                        TextureRegion = glyph.BoundsInTexture,                    
+                        TextureRegion = glyph.BoundsInTexture,
+                        LocalData1 = wordIndex,
                     };
                 }
 
-                if (isWhiteSpace && (CurrentWord.DrawCallCount == 0)) {
+                if (suppressThisCharacter)
+                    ;
+                else if (isWhiteSpace && (CurrentWord.DrawCallCount == 0)) {
                     CurrentWord.LeadingWhitespace += w;
                 } else {
                     WordOffset.X += w;
@@ -264,14 +284,11 @@ namespace Squared.Render.TextLayout2 {
                 }
 
                 CurrentWord.Height = Math.Max(CurrentWord.Height, h);
-
-                if (isWordWrapPoint)
-                    FinishWord();
             }
         }
 
-        private void PerformForcedWrap () {
-            if (WordWrap && (CurrentWord.TotalWidth <= MaximumWidth)) {
+        private void PerformForcedWrap (float wordWidth) {
+            if (WordWrap && (wordWidth <= MaximumWidth)) {
                 FinishLine(true);
                 ;
             } else if (CharacterWrap) {
@@ -299,7 +316,10 @@ namespace Squared.Render.TextLayout2 {
             LineOffset.X += CurrentWord.TotalWidth;
             CurrentLine.Width += CurrentWord.TotalWidth;
             CurrentLine.Height = Math.Max(CurrentLine.Height, CurrentWord.Height);
+            if (CurrentLine.DrawCallCount == 0)
+                CurrentLine.FirstDrawCall = CurrentWord.FirstDrawCall;
             CurrentLine.DrawCallCount += CurrentWord.DrawCallCount;
+            CurrentLine.WordCount++;
             WordOffset = default;
 
             // FIXME
@@ -322,12 +342,50 @@ namespace Squared.Render.TextLayout2 {
 
             LineIndex++;
             CurrentLine = new Line {
-                FirstDrawCall = DrawCallIndex,
             };
         }
 
         private void AlignLines (float totalWidth) {
-            // FIXME
+            if (Alignment == HorizontalAlignment.Left)
+                return;
+
+            for (uint i = 0; i <= LineIndex; i++) {
+                ref var line = ref Buffers.Line(i);
+                if (line.DrawCallCount == 0)
+                    continue;
+
+                float whitespace = totalWidth - line.Width,
+                    wordWhitespace = 0f;
+                switch (Alignment) {
+                    case HorizontalAlignment.Center:
+                        whitespace *= 0.5f;
+                        break;
+                    case HorizontalAlignment.Right:
+                        break;
+                    case HorizontalAlignment.JustifyWords:
+                        wordWhitespace = whitespace / line.WordCount;
+                        whitespace = 0f;
+                        break;
+                    case HorizontalAlignment.JustifyWordsCentered:
+                        if (line.WordCount > 1) {
+                            wordWhitespace = whitespace / line.WordCount;
+                            whitespace = 0f;
+                        } else {
+                            whitespace *= 0.5f;
+                        }
+                        break;
+                }
+
+                short lastWordIndex = -1;
+                for (uint j = line.FirstDrawCall, j2 = j + line.DrawCallCount - 1; j <= j2; j++) {
+                    ref var drawCall = ref Buffers.DrawCall(j);
+                    if ((drawCall.LocalData1 != lastWordIndex) && (lastWordIndex >= 0))
+                        whitespace += wordWhitespace;
+                    lastWordIndex = drawCall.LocalData1;
+
+                    drawCall.Position.X += whitespace;
+                }
+            }
         }
 
         public unsafe void Finish (ArraySegment<BitmapDrawCall> buffer, out StringLayout result) {
@@ -340,7 +398,7 @@ namespace Squared.Render.TextLayout2 {
                 constrainedSize.Y += line.Height;
             }
 
-            AlignLines(constrainedSize.X);
+            AlignLines(Math.Min(Math.Max(constrainedSize.X, DesiredWidth), MaximumWidth));
 
             // HACK
             int bufferSize = Math.Max((int)DrawCallIndex, 8192);
