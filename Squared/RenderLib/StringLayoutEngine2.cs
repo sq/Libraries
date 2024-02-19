@@ -203,6 +203,8 @@ namespace Squared.Render.TextLayout2 {
             BitmapDrawCall dead = default;
             Buffers.EnsureCapacity((uint)(DrawCallIndex + text.Length));
 
+            var effectiveScale = Scale * (1.0f / glyphSource.DPIScaleFactor);
+
             for (int i = 0, l = text.Length; i < l; i++) {
                 if (LineLimit.HasValue && LineLimit.Value <= 0)
                     SuppressUntilEnd = true;
@@ -217,14 +219,17 @@ namespace Squared.Render.TextLayout2 {
                 // FIXME: Wrap point detection
 
                 BuildGlyphInformation(
-                    glyphSource, Scale, Spacing, ch1, codepoint,
+                    glyphSource, effectiveScale, Spacing, ch1, codepoint,
                     out deadGlyph, out Glyph glyph, out float glyphLineSpacing, out float glyphBaseline
                 );
 
+                if (lineBreak)
+                    PerformLineBreak();
+
                 // FIXME: Kerning
 
-                var w = (glyph.WidthIncludingBearing * Scale.X) + (glyph.CharacterSpacing * Scale.X);
-                var h = glyph.LineSpacing * Scale.Y;
+                var w = (glyph.WidthIncludingBearing * effectiveScale.X) + (glyph.CharacterSpacing * effectiveScale.X);
+                var h = glyph.LineSpacing * effectiveScale.Y;
 
                 if (!deadGlyph) {
                     ref var drawCall = ref AppendDrawCall(ref dead, isWhiteSpace);
@@ -233,10 +238,10 @@ namespace Squared.Render.TextLayout2 {
                         MultiplyColor = OverrideColor ? MultiplyColor : (glyph.DefaultColor ?? MultiplyColor),
                         AddColor = AddColor,
                         Position = new Vector2(
-                            WordOffset.X + (glyph.XOffset * Scale.X) + (glyph.LeftSideBearing * Scale.X),
-                            WordOffset.Y + (glyph.YOffset * Scale.Y)
+                            WordOffset.X + (glyph.XOffset * effectiveScale.X) + (glyph.LeftSideBearing * effectiveScale.X),
+                            WordOffset.Y + (glyph.YOffset * effectiveScale.Y)
                         ),
-                        Scale = Scale * glyph.RenderScale,
+                        Scale = effectiveScale * glyph.RenderScale,
                         Textures = new TextureSet(glyph.Texture),
                         TextureRegion = glyph.BoundsInTexture,                    
                     };
@@ -248,36 +253,47 @@ namespace Squared.Render.TextLayout2 {
             }
         }
 
-        private void FinishWord () {
-            if (CurrentWord.DrawCallCount <= 0)
-                return;
+        private void PerformLineBreak () {
+            FinishLine();
+        }
 
-            for (uint i = CurrentWord.FirstDrawCall, i2 = i + CurrentWord.DrawCallCount - 1; i <= i2; i++) {
-                ref var drawCall = ref Buffers.DrawCall(i);
-                drawCall.Position += LineOffset;
+        private void FinishWord () {
+            if (CurrentWord.DrawCallCount > 0) {
+                for (uint i = CurrentWord.FirstDrawCall, i2 = i + CurrentWord.DrawCallCount - 1; i <= i2; i++) {
+                    ref var drawCall = ref Buffers.DrawCall(i);
+                    drawCall.Position += Position + LineOffset;
+                }
             }
 
             LineOffset.X += CurrentWord.Width;
             CurrentLine.Width += CurrentWord.Width;
             CurrentLine.Height = Math.Max(CurrentLine.Height, CurrentWord.Height);
+            CurrentLine.DrawCallCount += CurrentWord.DrawCallCount;
             WordOffset = default;
 
             // FIXME
             WordIndex++;
-            CurrentWord = default;
+            CurrentWord = new Word {
+                FirstDrawCall = DrawCallIndex,
+            };
         }
 
-        private void FinishLine () {
-            FinishWord();
+        private void FinishLine (bool preserveWord = false) {
+            if (!preserveWord)
+                FinishWord();
             ref var line = ref CurrentLine;
             if (line.DrawCallCount <= 0)
                 return;
 
             UnconstrainedSize.X = Math.Max(CurrentLine.Width, UnconstrainedSize.X);
             UnconstrainedSize.Y += CurrentLine.Height;
-            // FIXME
+            LineOffset.X = 0;
+            LineOffset.Y += CurrentLine.Height;
+
             LineIndex++;
-            CurrentLine = default;
+            CurrentLine = new Line {
+                FirstDrawCall = DrawCallIndex,
+            };
         }
 
         private void AlignLines (float totalWidth) {
