@@ -15,7 +15,7 @@ using Squared.Util.DeclarativeSort;
 
 namespace Squared.Render.TextLayout2 {
     public struct Line {
-        public uint FirstDrawCall, DrawCallCount, WordCount;
+        public uint FirstDrawCall, DrawCallCount, VisibleWordCount;
         public uint FirstBoxIndex, BoxCount;
         public float Width, Height;
     }
@@ -318,8 +318,10 @@ namespace Squared.Render.TextLayout2 {
             CurrentLine.Height = Math.Max(CurrentLine.Height, CurrentWord.Height);
             if (CurrentLine.DrawCallCount == 0)
                 CurrentLine.FirstDrawCall = CurrentWord.FirstDrawCall;
-            CurrentLine.DrawCallCount += CurrentWord.DrawCallCount;
-            CurrentLine.WordCount++;
+            if (CurrentWord.DrawCallCount > 0) {
+                CurrentLine.DrawCallCount += CurrentWord.DrawCallCount;
+                CurrentLine.VisibleWordCount++;
+            }
             WordOffset = default;
 
             // FIXME
@@ -354,6 +356,9 @@ namespace Squared.Render.TextLayout2 {
                 if (line.DrawCallCount == 0)
                     continue;
 
+                int wordCountMinusOne = (line.VisibleWordCount > 1) 
+                    ? (int)line.VisibleWordCount - 1 
+                    : (int)line.VisibleWordCount;
                 float whitespace = totalWidth - line.Width,
                     wordWhitespace = 0f;
                 switch (Alignment) {
@@ -363,12 +368,12 @@ namespace Squared.Render.TextLayout2 {
                     case HorizontalAlignment.Right:
                         break;
                     case HorizontalAlignment.JustifyWords:
-                        wordWhitespace = whitespace / line.WordCount;
+                        wordWhitespace = whitespace / wordCountMinusOne;
                         whitespace = 0f;
                         break;
                     case HorizontalAlignment.JustifyWordsCentered:
-                        if (line.WordCount > 1) {
-                            wordWhitespace = whitespace / line.WordCount;
+                        if (line.VisibleWordCount > 1) {
+                            wordWhitespace = whitespace / wordCountMinusOne;
                             whitespace = 0f;
                         } else {
                             whitespace *= 0.5f;
@@ -398,7 +403,8 @@ namespace Squared.Render.TextLayout2 {
                 constrainedSize.Y += line.Height;
             }
 
-            AlignLines(Math.Min(Math.Max(constrainedSize.X, DesiredWidth), MaximumWidth));
+            constrainedSize.X = Math.Min(Math.Max(constrainedSize.X, DesiredWidth), MaximumWidth);
+            AlignLines(constrainedSize.X);
 
             // HACK
             int bufferSize = Math.Max((int)DrawCallIndex, 8192);
