@@ -13,7 +13,7 @@ using Squared.Util.Text;
 
 namespace Squared.Render.Text {
     public struct StringLayoutEngine : IDisposable {
-        private sealed class UintComparer : IComparer<uint> {
+        internal sealed class UintComparer : IComparer<uint> {
             public static readonly UintComparer Instance = new UintComparer();
 
             public int Compare (uint x, uint y) {
@@ -819,7 +819,7 @@ namespace Squared.Render.Text {
             return overrideSuppress ?? suppress;
         }
 
-        public ArraySegment<BitmapDrawCall> AppendText<TGlyphSource> (
+        public void AppendText<TGlyphSource> (
             TGlyphSource font, in AbstractString text,
             int? start = null, int? end = null, bool? overrideSuppress = null
         ) where TGlyphSource : IGlyphSource {
@@ -847,7 +847,6 @@ namespace Squared.Render.Text {
                 AddColor = addColor
             };
 
-            float x = 0;
             bool hasBoxes = boxes.Count > 0, hasKerningNow = false, hasKerningNext = false;
 
             for (int i = start ?? 0, l = Math.Min(end ?? text.Length, text.Length); i < l; i++) {
@@ -908,7 +907,7 @@ namespace Squared.Render.Text {
                 hasKerningNow = hasKerningNext;
                 hasKerningNext = false;
 
-                x =
+                float x =
                     characterOffset.X +
                     ((
                         glyph.WidthIncludingBearing + glyph.CharacterSpacing
@@ -1023,13 +1022,6 @@ namespace Squared.Render.Text {
                 _colIndex += 1;
             }
 
-            var segment = 
-                measureOnly
-                    ? default(ArraySegment<BitmapDrawCall>)
-                    : new ArraySegment<BitmapDrawCall>(
-                        buffer.Array, buffer.Offset, drawCallsWritten
-                    );
-
             maxXUnconstrained = Math.Max(maxXUnconstrained, currentLineMaxXUnconstrained);
             maxX = Math.Max(maxX, currentLineMaxX);
 
@@ -1041,8 +1033,6 @@ namespace Squared.Render.Text {
                 maxYUnconstrained += trailingSpace;
                 newLinePending = false;
             }
-
-            return segment;
         }
 
         private void AnalyzeWhitespace (char ch1, uint codepoint, out bool isWhiteSpace, out bool forcedWrap, out bool lineBreak, out bool deadGlyph, out bool isWordWrapPoint, out bool didWrapWord) {

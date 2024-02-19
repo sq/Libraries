@@ -137,7 +137,7 @@ namespace Squared.Render {
             var result = Comparer.Compare(x, y);
 
             if (result == 0)
-                result = x.Textures.CompareTo(in y.Textures);
+                result = x.Textures.CompareTo(ref y.Textures);
 
             return result;
         }
@@ -161,7 +161,7 @@ namespace Squared.Render {
                 var result = FastMath.CompareF(ref Buffer);
 #endif
                 if (result == 0)
-                    result = x.Textures.CompareTo(in y.Textures);
+                    result = x.Textures.CompareTo(ref y.Textures);
                 return result;
             }
         }
@@ -178,7 +178,7 @@ namespace Squared.Render {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe int Compare (ref BitmapDrawCall x, ref BitmapDrawCall y) {
             unchecked {
-                var result = x.Textures.CompareTo(in y.Textures);
+                var result = x.Textures.CompareTo(ref y.Textures);
                 if (result == 0) {
 #if !NOSPAN
                     result = FastMath.CompareF(ref Unsafe.As<float, FastMath.U32F32_X1>(ref y.SortOrder), ref Unsafe.As<float, FastMath.U32F32_X1>(ref x.SortOrder));
@@ -1214,7 +1214,7 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int CompareTo (in TextureSet rhs) {
+        public int CompareTo (ref TextureSet rhs) {
             unchecked {
                 return (int)(Data - rhs.Data);
             }

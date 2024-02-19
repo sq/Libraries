@@ -829,6 +829,7 @@ namespace Squared.PRGUI.Controls {
                 : (float?)null;
             Content.LineBreakAtX = newValue;
             // HACK: If justification/alignment modes are active, we may have a computed DesiredWidth that is now too big
+            // This will still glitch for one frame potentially but will at least not overflow the edge
             if (newValue.HasValue)
                 Content.DesiredWidth = Math.Min(Content.DesiredWidth, newValue.Value);
         }

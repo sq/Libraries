@@ -208,7 +208,7 @@ namespace Squared.Render {
             state.Initialize();
 
             using (state) {
-                var segment = state.AppendText(
+                state.AppendText(
                     gs, text
                 );
 
@@ -251,7 +251,7 @@ namespace Squared.Render {
             state.Initialize();
 
             using (state) {
-                var segment = state.AppendText(
+                state.AppendText(
                     glyphSource, text
                 );
 
