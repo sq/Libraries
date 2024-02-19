@@ -28,7 +28,10 @@ namespace Squared.Render.TextLayout2 {
     public struct Word {
         public uint FirstDrawCall, DrawCallCount;
         public float LeadingWhitespace, Width, Height;
-        public float TotalWidth => LeadingWhitespace + Width;
+        public float TotalWidth {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => LeadingWhitespace + Width;
+        }
     }
 
     public interface IStringLayoutListener {
@@ -45,28 +48,28 @@ namespace Squared.Render.TextLayout2 {
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ref BitmapDrawCall DrawCall (uint index) {
-                if ((DrawCalls == null) || (index >= DrawCallCapacity))
+                if (index >= DrawCallCapacity)
                     Reallocate(ref DrawCalls, ref DrawCallCapacity, index + 1);
                 return ref DrawCalls[index];
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ref Line Line (uint index) {
-                if ((Lines == null) || (index >= LineCapacity))
+                if (index >= LineCapacity)
                     Reallocate(ref Lines, ref LineCapacity, index + 1);
                 return ref Lines[index];
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ref Span Span (uint index) {
-                if ((Spans == null) || (index >= SpanCapacity))
+                if (index >= SpanCapacity)
                     Reallocate(ref Spans, ref SpanCapacity, index + 1);
                 return ref Spans[index];
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ref Bounds Box (uint index) {
-                if ((Boxes == null) || (index >= BoxCapacity))
+                if (index >= BoxCapacity)
                     Reallocate(ref Boxes, ref BoxCapacity, index + 1);
                 return ref Boxes[index];
             }
@@ -166,6 +169,7 @@ namespace Squared.Render.TextLayout2 {
             CurrentLine = default;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref BitmapDrawCall AppendDrawCall (ref BitmapDrawCall dead, bool isWhiteSpace) {
             if (isWhiteSpace || SuppressUntilEnd || SuppressUntilNextLine || MeasureOnly)
                 return ref dead;
@@ -176,8 +180,14 @@ namespace Squared.Render.TextLayout2 {
             return ref Buffers.DrawCall(DrawCallIndex++);
         }
 
-        private ref Line CurrentLine => ref Buffers.Line(LineIndex);
-        private ref Span CurrentSpan => ref Buffers.Span(SpanIndex);
+        private ref Line CurrentLine {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ref Buffers.Line(LineIndex);
+        }
+        private ref Span CurrentSpan {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => ref Buffers.Span(SpanIndex);
+        }
 
         public void AppendText<TGlyphSource> (
             TGlyphSource glyphSource, AbstractString text,
@@ -362,7 +372,8 @@ namespace Squared.Render.TextLayout2 {
                     ? (int)line.VisibleWordCount - 1 
                     : (int)line.VisibleWordCount;
                 float whitespace = totalWidth - line.Width,
-                    wordWhitespace = 0f;
+                    wordWhitespace = 0f,
+                    characterWhitespace = 0f;
                 switch (Alignment) {
                     case HorizontalAlignment.Center:
                         whitespace *= 0.5f;
@@ -375,8 +386,19 @@ namespace Squared.Render.TextLayout2 {
                         break;
                     case HorizontalAlignment.JustifyWordsCentered:
                         if (line.VisibleWordCount > 1) {
-                            wordWhitespace = whitespace / wordCountMinusOne;
+                            wordWhitespace = Math.Min(whitespace / wordCountMinusOne, MaxExpansionPerSpace);
                             whitespace -= (wordWhitespace * wordCountMinusOne);
+                        }
+                        whitespace *= 0.5f;
+                        break;
+                    case HorizontalAlignment.JustifyCharacters:
+                        characterWhitespace = Math.Min(whitespace / (line.DrawCallCount - 1), MaxExpansionPerSpace);
+                        whitespace = 0f;
+                        break;
+                    case HorizontalAlignment.JustifyCharactersCentered:
+                        if (line.DrawCallCount > 1) {
+                            characterWhitespace = Math.Min(whitespace / (line.DrawCallCount - 1), MaxExpansionPerSpace);
+                            whitespace -= (characterWhitespace * (line.DrawCallCount - 1));
                         }
                         whitespace *= 0.5f;
                         break;
@@ -390,6 +412,7 @@ namespace Squared.Render.TextLayout2 {
                     lastWordIndex = drawCall.LocalData1;
 
                     drawCall.Position.X += whitespace;
+                    whitespace += characterWhitespace;
                 }
             }
         }
@@ -404,7 +427,7 @@ namespace Squared.Render.TextLayout2 {
                 constrainedSize.Y += line.Height;
             }
 
-            constrainedSize.X = Math.Min(Math.Max(constrainedSize.X, DesiredWidth), MaximumWidth);
+            constrainedSize.X = Math.Max(constrainedSize.X, DesiredWidth);
             AlignLines(constrainedSize.X);
 
             // HACK
