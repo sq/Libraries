@@ -31,6 +31,10 @@ namespace Squared.Render.TextLayout2 {
         public float TotalWidth => LeadingWhitespace + Width;
     }
 
+    public interface IStringLayoutListener {
+        void RecordTexture (AbstractTextureReference texture);
+    }
+
     public struct StringLayoutEngine2 : IDisposable {
         private unsafe struct StagingBuffers : IDisposable {
             private bool OwnsDrawCalls, OwnsLines, OwnsSpans, OwnsBoxes;
@@ -157,7 +161,7 @@ namespace Squared.Render.TextLayout2 {
         public HorizontalAlignment Alignment;
         public uint? MaskCodepoint;
 
-        public float InitialIndentation, WrapIndentation, BreakIndentation;
+        public float InitialIndentation, BreakIndentation; // WrapIndentation
         public float AdditionalLineSpacing;
         public float MaximumWidth, DesiredWidth;
         public float MaxExpansionPerSpace;
@@ -191,7 +195,8 @@ namespace Squared.Render.TextLayout2 {
         private ref Span CurrentSpan => ref Buffers.Span(SpanIndex);
 
         public void AppendText<TGlyphSource> (
-            TGlyphSource glyphSource, AbstractString text
+            TGlyphSource glyphSource, AbstractString text,
+            IStringLayoutListener listener = null
         ) where TGlyphSource : IGlyphSource {
             if (!IsInitialized)
                 throw new InvalidOperationException("Call Initialize first");
@@ -278,6 +283,8 @@ namespace Squared.Render.TextLayout2 {
                         TextureRegion = glyph.BoundsInTexture,
                         LocalData1 = wordIndex,
                     };
+
+                    listener?.RecordTexture(glyph.Texture);
                 }
 
                 if (suppressThisCharacter)

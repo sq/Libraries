@@ -947,7 +947,7 @@ namespace Squared.Render.Text {
                 CharacterSkipCount = _CharacterSkipCount,
                 CharacterLimit = measureOnly.HasValue ? measureOnly.Value.CharacterLimit : _CharacterLimit,
                 InitialIndentation = _XOffsetOfFirstLine,
-                WrapIndentation = _WrapIndentation,
+                // WrapIndentation = _WrapIndentation,
                 BreakIndentation = _XOffsetOfNewLine,
                 // extraLineBreakSpacing = _ExtraLineBreakSpacing,
                 MaximumWidth = (measureOnly.HasValue ? measureOnly.Value.LineBreakAtX : _LineBreakAtX) ?? float.MaxValue,
