@@ -158,6 +158,7 @@ namespace Squared.Render.TextLayout2 {
         public uint? MaskCodepoint;
 
         public float InitialIndentation, WrapIndentation, BreakIndentation;
+        public float AdditionalLineSpacing;
         public float MaximumWidth, DesiredWidth;
         public float MaxExpansionPerSpace;
 
@@ -168,6 +169,7 @@ namespace Squared.Render.TextLayout2 {
 
             IsInitialized = true;
             CurrentWord.FirstDrawCall = uint.MaxValue;
+            CurrentWord.LeadingWhitespace = InitialIndentation;
             CurrentLine = default;
         }
 
@@ -247,7 +249,11 @@ namespace Squared.Render.TextLayout2 {
                 else if (lineBreak)
                     PerformLineBreak();
 
-                if (isWhiteSpace)
+                if (DisableDefaultWrapCharacters) {
+                    // FIXME
+                    if (isWordWrapPoint)
+                        FinishWord();
+                } else if (isWhiteSpace)
                     FinishWord();
 
                 if (!deadGlyph) {
@@ -302,8 +308,12 @@ namespace Squared.Render.TextLayout2 {
         }
 
         private void FinishWord () {
-            if (CurrentLine.Width <= 0)
-                CurrentWord.LeadingWhitespace = 0f;
+            if (CurrentLine.Width <= 0) {
+                // FIXME: WrapIndentation
+                CurrentWord.LeadingWhitespace = (LineIndex == 0)
+                    ? InitialIndentation
+                    : BreakIndentation;
+            }
 
             if (CurrentWord.DrawCallCount > 0) {
                 for (uint i = CurrentWord.FirstDrawCall, i2 = i + CurrentWord.DrawCallCount - 1; i <= i2; i++) {
@@ -368,16 +378,15 @@ namespace Squared.Render.TextLayout2 {
                     case HorizontalAlignment.Right:
                         break;
                     case HorizontalAlignment.JustifyWords:
-                        wordWhitespace = whitespace / wordCountMinusOne;
+                        wordWhitespace = Math.Min(whitespace / wordCountMinusOne, MaxExpansionPerSpace);
                         whitespace = 0f;
                         break;
                     case HorizontalAlignment.JustifyWordsCentered:
                         if (line.VisibleWordCount > 1) {
                             wordWhitespace = whitespace / wordCountMinusOne;
-                            whitespace = 0f;
-                        } else {
-                            whitespace *= 0.5f;
+                            whitespace -= (wordWhitespace * wordCountMinusOne);
                         }
+                        whitespace *= 0.5f;
                         break;
                 }
 
@@ -499,7 +508,7 @@ namespace Squared.Render.TextLayout2 {
             deadGlyph = !font.GetGlyph(codepoint, out glyph);
 
             glyphLineSpacing = glyph.LineSpacing * scale.Y;
-            // glyphLineSpacing += additionalLineSpacing;
+            glyphLineSpacing += AdditionalLineSpacing;
             glyphBaseline = glyph.Baseline * scale.Y;
             if (deadGlyph) {
                 /*
