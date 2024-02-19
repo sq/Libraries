@@ -37,88 +37,77 @@ namespace Squared.Render.TextLayout2 {
 
     public struct StringLayoutEngine2 : IDisposable {
         private unsafe struct StagingBuffers : IDisposable {
-            private bool OwnsDrawCalls, OwnsLines, OwnsSpans, OwnsBoxes;
             public BitmapDrawCall* DrawCalls;
-            public uint DrawCallCapacity;
             public Line* Lines;
-            public uint LineCapacity;
             public Span* Spans;
-            public uint SpanCapacity;
             public Bounds* Boxes;
-            public uint BoxCapacity;
+            public uint DrawCallCapacity, LineCapacity, SpanCapacity, BoxCapacity;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ref BitmapDrawCall DrawCall (uint index) {
                 if ((DrawCalls == null) || (index >= DrawCallCapacity))
-                    Reallocate(ref OwnsDrawCalls, ref DrawCalls, ref DrawCallCapacity, index + 1);
+                    Reallocate(ref DrawCalls, ref DrawCallCapacity, index + 1);
                 return ref DrawCalls[index];
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ref Line Line (uint index) {
                 if ((Lines == null) || (index >= LineCapacity))
-                    Reallocate(ref OwnsLines, ref Lines, ref LineCapacity, index + 1);
+                    Reallocate(ref Lines, ref LineCapacity, index + 1);
                 return ref Lines[index];
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ref Span Span (uint index) {
                 if ((Spans == null) || (index >= SpanCapacity))
-                    Reallocate(ref OwnsSpans, ref Spans, ref SpanCapacity, index + 1);
+                    Reallocate(ref Spans, ref SpanCapacity, index + 1);
                 return ref Spans[index];
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ref Bounds Box (uint index) {
                 if ((Boxes == null) || (index >= BoxCapacity))
-                    Reallocate(ref OwnsBoxes, ref Boxes, ref BoxCapacity, index + 1);
+                    Reallocate(ref Boxes, ref BoxCapacity, index + 1);
                 return ref Boxes[index];
             }
 
-            private static void Reallocate<T> (ref bool ownsPointer, ref T* ptr, ref uint currentCapacity, uint desiredCapacity)
+            private static void Reallocate<T> (ref T* ptr, ref uint currentCapacity, uint desiredCapacity)
                 where T : unmanaged {
+                // HACK: Detect underflow
                 if (desiredCapacity > 1024000)
                     throw new ArgumentOutOfRangeException(nameof(desiredCapacity));
                 if (desiredCapacity <= currentCapacity)
                     return;
 
-                var newCapacity = Math.Max(currentCapacity, 64);
+                var newCapacity = Math.Max(currentCapacity, 32);
                 while (newCapacity < desiredCapacity)
                     newCapacity = (newCapacity * 17 / 10);
 
-                if ((ptr != null) && ownsPointer)
+                if (ptr != null)
                     ptr = (T*)Marshal.ReAllocHGlobal((IntPtr)ptr, (IntPtr)(newCapacity * sizeof(T)));
                 else
                     ptr = (T*)Marshal.AllocHGlobal((IntPtr)(newCapacity * sizeof(T)));
-                ownsPointer = true;
                 currentCapacity = newCapacity;
             }
 
-            private static void Deallocate<T> (ref bool ownsPointer, ref T* ptr, ref uint size)
+            private static void Deallocate<T> (ref T* ptr, ref uint size)
                 where T : unmanaged
             {
-                if (ownsPointer && (ptr != null))
+                if (ptr != null)
                     Marshal.FreeHGlobal((IntPtr)ptr);
-                ownsPointer = false;
                 ptr = null;
                 size = 0;
             }
 
             public void Dispose () {
-                Deallocate(ref OwnsDrawCalls, ref DrawCalls, ref DrawCallCapacity);
-                Deallocate(ref OwnsLines, ref Lines, ref LineCapacity);
-                Deallocate(ref OwnsSpans, ref Spans, ref SpanCapacity);
-                Deallocate(ref OwnsBoxes, ref Boxes, ref BoxCapacity);
-            }
-
-            internal void SetDrawCalls (void* buffer, uint size) {
-                Deallocate(ref OwnsDrawCalls, ref DrawCalls, ref DrawCallCapacity);
-                DrawCalls = (BitmapDrawCall*)buffer;
-                DrawCallCapacity = (uint)(size / sizeof(BitmapDrawCall));
+                Deallocate(ref DrawCalls, ref DrawCallCapacity);
+                Deallocate(ref Lines, ref LineCapacity);
+                Deallocate(ref Spans, ref SpanCapacity);
+                Deallocate(ref Boxes, ref BoxCapacity);
             }
 
             internal void EnsureCapacity (uint drawCallCount) {
-                Reallocate(ref OwnsDrawCalls, ref DrawCalls, ref DrawCallCapacity, drawCallCount);
+                Reallocate(ref DrawCalls, ref DrawCallCapacity, drawCallCount);
             }
         }
 
@@ -175,10 +164,6 @@ namespace Squared.Render.TextLayout2 {
             CurrentWord.FirstDrawCall = uint.MaxValue;
             CurrentWord.LeadingWhitespace = InitialIndentation;
             CurrentLine = default;
-        }
-
-        public unsafe void SetScratchBuffer (void * buffer, uint size) {
-            Buffers.SetDrawCalls(buffer, size);
         }
 
         private ref BitmapDrawCall AppendDrawCall (ref BitmapDrawCall dead, bool isWhiteSpace) {
