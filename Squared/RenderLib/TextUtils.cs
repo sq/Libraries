@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Render.TextLayout2;
 using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Hash;
@@ -927,6 +928,48 @@ namespace Squared.Render.Text {
                     result.HitTests.Add(new LayoutHitTest { Position = kvp.Key });
         }
 
+        public void MakeLayoutEngine2 (out StringLayoutEngine2 result, MeasurementSettings? measureOnly = null) {
+            if (_GlyphSource == null)
+                throw new ArgumentNullException("GlyphSource");
+
+            _Satellite?.UsedTextures.Clear();
+
+            result = new StringLayoutEngine2 {
+                Position = _Position,
+                OverrideColor = _Color.HasValue,
+                MultiplyColor = _Color ?? _DefaultColor,
+                Scale = new Vector2(_Scale),
+                Spacing = new Vector2(_Spacing),
+                // AdditionalLineSpacing = _AdditionalLineSpacing,
+                SortKey = _SortKey,
+                DesiredWidth = measureOnly.HasValue ? measureOnly.Value.DesiredWidth : _DesiredWidth,
+                MaxExpansionPerSpace = _MaxExpansionPerSpace ?? float.MaxValue,
+                CharacterSkipCount = _CharacterSkipCount,
+                CharacterLimit = measureOnly.HasValue ? measureOnly.Value.CharacterLimit : _CharacterLimit,
+                // xOffsetOfFirstLine = _XOffsetOfFirstLine,
+                // xOffsetOfWrappedLine = _WrapIndentation,
+                // xOffsetOfNewLine = _XOffsetOfNewLine,
+                // extraLineBreakSpacing = _ExtraLineBreakSpacing,
+                MaximumWidth = (measureOnly.HasValue ? measureOnly.Value.LineBreakAtX : _LineBreakAtX) ?? float.MaxValue,
+                // stopAtY =    _StopAtY,
+                // alignToPixels = _AlignToPixels.Or(_GlyphSource.DefaultAlignment),
+                CharacterWrap = CharacterWrap,
+                WordWrap = WordWrap,
+                HideOverflow = HideOverflow,
+                Alignment = (HorizontalAlignment)_Alignment,
+                LineLimit = measureOnly.HasValue ? measureOnly.Value.LineLimit : _LineLimit,
+                BreakLimit = measureOnly.HasValue ? measureOnly.Value.LineBreakLimit : _LineBreakLimit,
+                MeasureOnly = measureOnly.HasValue || MeasureOnly,
+                // disableMarkers = DisableMarkers,
+                MaskCodepoint = _ReplacementCharacter,
+                // recordUsedTextures = RecordUsedTextures,
+                // usedTextures = _Satellite?.UsedTextures ?? default,
+                DisableDefaultWrapCharacters = SplitAtWrapCharactersOnly,
+                IncludeTrailingWhitespace = IncludeTrailingWhitespace,
+                WrapCharacters = _WordWrapCharacterTable,
+            };
+        }
+
         /// <summary>
         /// Copies all of source's configuration
         /// </summary>
@@ -1029,9 +1072,9 @@ namespace Squared.Render.Text {
                     }
                 }
 
-                StringLayoutEngine le;
                 var rls = default(RichTextLayoutState);
-                MakeLayoutEngine(out le, measureOnly);
+                MakeLayoutEngine(out var le, measureOnly);
+                MakeLayoutEngine2(out var le2, measureOnly);
                 if (!measureOnly.HasValue) {
                     _Satellite?.RichMarkers.Clear();
                     _Satellite?.Boxes.Clear();
@@ -1042,6 +1085,7 @@ namespace Squared.Render.Text {
 
                 try {
                     le.Initialize();
+                    le2.Initialize();
                     if (RichText) {
                         rls = new RichTextLayoutState(ref le, glyphSource);
                         rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
@@ -1058,18 +1102,24 @@ namespace Squared.Render.Text {
                         } else
                             SetFlag(InternalFlags.AwaitingDependencies, false);
 
+                        // HACK
+                        le2.AppendText(glyphSource, _Text);
+
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
                             _RichTextConfiguration.Append(ref le, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
                     } else {
                         SetFlag(InternalFlags.AwaitingDependencies, false);
                         le.AppendText(glyphSource, _Text);
+                        le2.AppendText(glyphSource, _Text);
+                        // FIXME: le2 truncation
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
                             le.AppendText(glyphSource, TruncatedIndicator, overrideSuppress: false);
                     }
 
                     if (!measureOnly.HasValue) {
                         _CachedGlyphVersion = glyphSource.Version;
-                        _CachedStringLayout = le.Finish();
+                        le2.Finish(_Buffer, out _CachedStringLayout);
+                        // _CachedStringLayout = le.Finish();
 
                         // Copy the storage back in case it grew.
                         // This ensures we don't allocate more temporary backing storage every time we layout our text.
@@ -1092,10 +1142,11 @@ namespace Squared.Render.Text {
                                 ht[kvp.Position] = kvp;
                         }
 
+                        // FIXME
                         le.GetBuffer(out _Buffer);
                         SetFlag(InternalFlags.HasCachedStringLayout, true);
                     } else {
-                        result = le.Finish();
+                        le2.Finish(_Buffer, out result);
                         return true;
                     }
                 } finally {

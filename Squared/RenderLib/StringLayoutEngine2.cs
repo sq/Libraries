@@ -15,24 +15,26 @@ using Squared.Util.DeclarativeSort;
 
 namespace Squared.Render.TextLayout2 {
     public struct Line {
-        public uint FirstChar, CharCount;
+        public uint FirstDrawCall, DrawCallCount;
         public uint FirstBoxIndex, BoxCount;
+        public float Width, Height;
     }
 
     public struct Span {
-        public uint FirstChar, CharCount;
+        public uint FirstDrawCall, DrawCallCount;
         public uint FirstBoxIndex, BoxCount;
     }
 
     public struct Word {
-        public uint FirstChar, CharCount;
+        public uint FirstDrawCall, DrawCallCount;
+        public float Width, Height;
     }
 
     public struct StringLayoutEngine2 : IDisposable {
         private unsafe struct StagingBuffers : IDisposable {
-            private bool OwnsChars, OwnsLines, OwnsSpans, OwnsBoxes;
-            public BitmapDrawCall* Chars;
-            public uint CharCapacity;
+            private bool OwnsDrawCalls, OwnsLines, OwnsSpans, OwnsBoxes;
+            public BitmapDrawCall* DrawCalls;
+            public uint DrawCallCapacity;
             public Line* Lines;
             public uint LineCapacity;
             public Span* Spans;
@@ -41,36 +43,41 @@ namespace Squared.Render.TextLayout2 {
             public uint BoxCapacity;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public ref BitmapDrawCall Char (uint index) {
-                if (index >= CharCapacity)
-                    Reallocate(ref OwnsChars, ref Chars, ref CharCapacity, index);
-                return ref Chars[index];
+            public ref BitmapDrawCall DrawCall (uint index) {
+                if ((DrawCalls == null) || (index >= DrawCallCapacity))
+                    Reallocate(ref OwnsDrawCalls, ref DrawCalls, ref DrawCallCapacity, index + 1);
+                return ref DrawCalls[index];
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ref Line Line (uint index) {
-                if (index >= LineCapacity)
-                    Reallocate(ref OwnsLines, ref Lines, ref LineCapacity, index);
+                if ((Lines == null) || (index >= LineCapacity))
+                    Reallocate(ref OwnsLines, ref Lines, ref LineCapacity, index + 1);
                 return ref Lines[index];
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ref Span Span (uint index) {
-                if (index >= SpanCapacity)
-                    Reallocate(ref OwnsSpans, ref Spans, ref SpanCapacity, index);
+                if ((Spans == null) || (index >= SpanCapacity))
+                    Reallocate(ref OwnsSpans, ref Spans, ref SpanCapacity, index + 1);
                 return ref Spans[index];
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public ref Bounds Box (uint index) {
-                if (index >= BoxCapacity)
-                    Reallocate(ref OwnsBoxes, ref Boxes, ref BoxCapacity, index);
+                if ((Boxes == null) || (index >= BoxCapacity))
+                    Reallocate(ref OwnsBoxes, ref Boxes, ref BoxCapacity, index + 1);
                 return ref Boxes[index];
             }
 
             private static void Reallocate<T> (ref bool ownsPointer, ref T* ptr, ref uint currentCapacity, uint desiredCapacity)
                 where T : unmanaged {
-                var newCapacity = Math.Max(currentCapacity, 32);
+                if (desiredCapacity > 1024000)
+                    throw new ArgumentOutOfRangeException(nameof(desiredCapacity));
+                if (desiredCapacity <= currentCapacity)
+                    return;
+
+                var newCapacity = Math.Max(currentCapacity, 64);
                 while (newCapacity < desiredCapacity)
                     newCapacity = (newCapacity * 17 / 10);
 
@@ -93,30 +100,30 @@ namespace Squared.Render.TextLayout2 {
             }
 
             public void Dispose () {
-                Deallocate(ref OwnsChars, ref Chars, ref CharCapacity);
+                Deallocate(ref OwnsDrawCalls, ref DrawCalls, ref DrawCallCapacity);
                 Deallocate(ref OwnsLines, ref Lines, ref LineCapacity);
                 Deallocate(ref OwnsSpans, ref Spans, ref SpanCapacity);
                 Deallocate(ref OwnsBoxes, ref Boxes, ref BoxCapacity);
             }
 
-            internal void SetChars (void* buffer, uint size) {
-                Deallocate(ref OwnsChars, ref Chars, ref CharCapacity);
-                Chars = (BitmapDrawCall*)buffer;
-                CharCapacity = size;
+            internal void SetDrawCalls (void* buffer, uint size) {
+                Deallocate(ref OwnsDrawCalls, ref DrawCalls, ref DrawCallCapacity);
+                DrawCalls = (BitmapDrawCall*)buffer;
+                DrawCallCapacity = (uint)(size / sizeof(BitmapDrawCall));
+            }
+
+            internal void EnsureCapacity (uint drawCallCount) {
+                Reallocate(ref OwnsDrawCalls, ref DrawCalls, ref DrawCallCapacity, drawCallCount);
             }
         }
 
-        private struct Location {
-            public float X, Y, Baseline;
-        }
-
-        Location Unconstrained, Constrained;
-        uint RowIndex, ColIndex, LineIndex, CharIndex;
+        Vector2 WordOffset, LineOffset;
+        Vector2 UnconstrainedSize;
+        uint RowIndex, ColIndex, LineIndex, CharIndex, DrawCallIndex, SpanIndex, WordIndex;
         bool SuppressUntilNextLine, SuppressUntilEnd;
 
         bool ExternalBuffers;
         StagingBuffers Buffers;
-        uint CharsInBuffer, LinesInBuffer, SpansInBuffer, BoxesInBuffer;
 
         bool NewLinePending;
         Word CurrentWord;
@@ -159,11 +166,25 @@ namespace Squared.Render.TextLayout2 {
             WrapCharacters.SortNonRef(StringLayoutEngine.UintComparer.Instance);
 
             IsInitialized = true;
+            CurrentWord.FirstDrawCall = uint.MaxValue;
         }
 
         public unsafe void SetScratchBuffer (void * buffer, uint size) {
-            Buffers.SetChars(buffer, size);
+            Buffers.SetDrawCalls(buffer, size);
         }
+
+        private ref BitmapDrawCall AppendDrawCall (ref BitmapDrawCall dead, bool isWhiteSpace) {
+            if (isWhiteSpace || SuppressUntilEnd || SuppressUntilNextLine || MeasureOnly)
+                return ref dead;
+
+            if (CurrentWord.FirstDrawCall == uint.MaxValue)
+                CurrentWord.FirstDrawCall = DrawCallIndex;
+            CurrentWord.DrawCallCount++;
+            return ref Buffers.DrawCall(DrawCallIndex++);
+        }
+
+        private ref Line CurrentLine => ref Buffers.Line(LineIndex);
+        private ref Span CurrentSpan => ref Buffers.Span(SpanIndex);
 
         public void AppendText<TGlyphSource> (
             TGlyphSource glyphSource, AbstractString text
@@ -179,12 +200,8 @@ namespace Squared.Render.TextLayout2 {
             if (text.IsNull)
                 throw new ArgumentNullException(nameof(text));
 
-            var drawCall = new BitmapDrawCall {
-                MultiplyColor = MultiplyColor,
-                SortKey = SortKey,
-                AddColor = AddColor,
-                Scale = Scale,
-            };
+            BitmapDrawCall dead = default;
+            Buffers.EnsureCapacity((uint)(DrawCallIndex + text.Length));
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 if (LineLimit.HasValue && LineLimit.Value <= 0)
@@ -205,7 +222,97 @@ namespace Squared.Render.TextLayout2 {
                 );
 
                 // FIXME: Kerning
+
+                var w = (glyph.WidthIncludingBearing * Scale.X) + (glyph.CharacterSpacing * Scale.X);
+                var h = glyph.LineSpacing * Scale.Y;
+
+                if (!deadGlyph) {
+                    ref var drawCall = ref AppendDrawCall(ref dead, isWhiteSpace);
+
+                    drawCall = new BitmapDrawCall {
+                        MultiplyColor = OverrideColor ? MultiplyColor : (glyph.DefaultColor ?? MultiplyColor),
+                        AddColor = AddColor,
+                        Position = new Vector2(
+                            WordOffset.X + (glyph.XOffset * Scale.X) + (glyph.LeftSideBearing * Scale.X),
+                            WordOffset.Y + (glyph.YOffset * Scale.Y)
+                        ),
+                        Scale = Scale * glyph.RenderScale,
+                        Textures = new TextureSet(glyph.Texture),
+                        TextureRegion = glyph.BoundsInTexture,                    
+                    };
+                }
+
+                WordOffset.X += w;
+                CurrentWord.Width += w;
+                CurrentWord.Height = Math.Max(CurrentWord.Height, h);
             }
+        }
+
+        private void FinishWord () {
+            if (CurrentWord.DrawCallCount <= 0)
+                return;
+
+            for (uint i = CurrentWord.FirstDrawCall, i2 = i + CurrentWord.DrawCallCount - 1; i <= i2; i++) {
+                ref var drawCall = ref Buffers.DrawCall(i);
+                drawCall.Position += LineOffset;
+            }
+
+            LineOffset.X += CurrentWord.Width;
+            CurrentLine.Width += CurrentWord.Width;
+            CurrentLine.Height = Math.Max(CurrentLine.Height, CurrentWord.Height);
+            WordOffset = default;
+
+            // FIXME
+            WordIndex++;
+            CurrentWord = default;
+        }
+
+        private void FinishLine () {
+            FinishWord();
+            ref var line = ref CurrentLine;
+            if (line.DrawCallCount <= 0)
+                return;
+
+            UnconstrainedSize.X = Math.Max(CurrentLine.Width, UnconstrainedSize.X);
+            UnconstrainedSize.Y += CurrentLine.Height;
+            // FIXME
+            LineIndex++;
+            CurrentLine = default;
+        }
+
+        private void AlignLines (float totalWidth) {
+            // FIXME
+        }
+
+        public unsafe void Finish (ArraySegment<BitmapDrawCall> buffer, out StringLayout result) {
+            FinishLine();
+
+            var constrainedSize = Vector2.Zero;
+            for (uint i = 0; i <= LineIndex; i++) {
+                ref var line = ref Buffers.Line(i);
+                constrainedSize.X = Math.Max(constrainedSize.X, line.Width);
+                constrainedSize.Y += line.Height;
+            }
+
+            AlignLines(constrainedSize.X);
+
+            // HACK
+            int bufferSize = Math.Max((int)DrawCallIndex, 8192);
+            if ((buffer.Array == null) || (buffer.Count < bufferSize))
+                buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[bufferSize]);
+            else
+                buffer = new ArraySegment<BitmapDrawCall>(buffer.Array, buffer.Offset, bufferSize);
+
+            var lastDrawCallIndex = DrawCallIndex > 0 ? DrawCallIndex - 1 : 0;
+            fixed (BitmapDrawCall* dest = buffer.Array)
+                Buffer.MemoryCopy(Buffers.DrawCalls, dest, buffer.Count * sizeof(BitmapDrawCall), DrawCallIndex * sizeof(BitmapDrawCall));
+
+            result = new StringLayout(
+                Vector2.Zero, constrainedSize, UnconstrainedSize, 0f,
+                Buffers.DrawCall(0).EstimateDrawBounds(),
+                Buffers.DrawCall(lastDrawCallIndex).EstimateDrawBounds(),
+                buffer, false, (int)WordIndex, (int)LineIndex
+            );
         }
 
         private void AnalyzeWhitespace (char ch1, uint codepoint, out bool isWhiteSpace, out bool forcedWrap, out bool lineBreak, out bool deadGlyph, out bool isWordWrapPoint, out bool didWrapWord) {
