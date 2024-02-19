@@ -27,7 +27,8 @@ namespace Squared.Render.TextLayout2 {
 
     public struct Word {
         public uint FirstDrawCall, DrawCallCount;
-        public float Width, Height;
+        public float LeadingWhitespace, Width, Height;
+        public float TotalWidth => LeadingWhitespace + Width;
     }
 
     public struct StringLayoutEngine2 : IDisposable {
@@ -167,6 +168,7 @@ namespace Squared.Render.TextLayout2 {
 
             IsInitialized = true;
             CurrentWord.FirstDrawCall = uint.MaxValue;
+            CurrentLine = default;
         }
 
         public unsafe void SetScratchBuffer (void * buffer, uint size) {
@@ -216,20 +218,27 @@ namespace Squared.Render.TextLayout2 {
                     out bool deadGlyph, out bool isWordWrapPoint, out bool didWrapWord
                 );
 
-                // FIXME: Wrap point detection
-
                 BuildGlyphInformation(
                     glyphSource, effectiveScale, Spacing, ch1, codepoint,
                     out deadGlyph, out Glyph glyph, out float glyphLineSpacing, out float glyphBaseline
                 );
 
-                if (lineBreak)
-                    PerformLineBreak();
-
                 // FIXME: Kerning
 
                 var w = (glyph.WidthIncludingBearing * effectiveScale.X) + (glyph.CharacterSpacing * effectiveScale.X);
                 var h = glyph.LineSpacing * effectiveScale.Y;
+                var x2 = WordOffset.X + LineOffset.X + w;
+
+                if (x2 >= MaximumWidth)
+                    forcedWrap = true;
+
+                if (forcedWrap)
+                    PerformForcedWrap();
+                else if (lineBreak)
+                    PerformLineBreak();
+
+                if (isWhiteSpace)
+                    FinishWord();
 
                 if (!deadGlyph) {
                     ref var drawCall = ref AppendDrawCall(ref dead, isWhiteSpace);
@@ -247,10 +256,28 @@ namespace Squared.Render.TextLayout2 {
                     };
                 }
 
-                WordOffset.X += w;
-                CurrentWord.Width += w;
+                if (isWhiteSpace && (CurrentWord.DrawCallCount == 0)) {
+                    CurrentWord.LeadingWhitespace += w;
+                } else {
+                    WordOffset.X += w;
+                    CurrentWord.Width += w;
+                }
+
                 CurrentWord.Height = Math.Max(CurrentWord.Height, h);
+
+                if (isWordWrapPoint)
+                    FinishWord();
             }
+        }
+
+        private void PerformForcedWrap () {
+            if (WordWrap && (CurrentWord.TotalWidth <= MaximumWidth)) {
+                FinishLine(true);
+                ;
+            } else if (CharacterWrap) {
+                FinishLine();
+            } else
+                ;
         }
 
         private void PerformLineBreak () {
@@ -258,15 +285,19 @@ namespace Squared.Render.TextLayout2 {
         }
 
         private void FinishWord () {
+            if (CurrentLine.Width <= 0)
+                CurrentWord.LeadingWhitespace = 0f;
+
             if (CurrentWord.DrawCallCount > 0) {
                 for (uint i = CurrentWord.FirstDrawCall, i2 = i + CurrentWord.DrawCallCount - 1; i <= i2; i++) {
                     ref var drawCall = ref Buffers.DrawCall(i);
                     drawCall.Position += Position + LineOffset;
+                    drawCall.Position.X += CurrentWord.LeadingWhitespace;
                 }
             }
 
-            LineOffset.X += CurrentWord.Width;
-            CurrentLine.Width += CurrentWord.Width;
+            LineOffset.X += CurrentWord.TotalWidth;
+            CurrentLine.Width += CurrentWord.TotalWidth;
             CurrentLine.Height = Math.Max(CurrentLine.Height, CurrentWord.Height);
             CurrentLine.DrawCallCount += CurrentWord.DrawCallCount;
             WordOffset = default;
@@ -281,9 +312,8 @@ namespace Squared.Render.TextLayout2 {
         private void FinishLine (bool preserveWord = false) {
             if (!preserveWord)
                 FinishWord();
+
             ref var line = ref CurrentLine;
-            if (line.DrawCallCount <= 0)
-                return;
 
             UnconstrainedSize.X = Math.Max(CurrentLine.Width, UnconstrainedSize.X);
             UnconstrainedSize.Y += CurrentLine.Height;
