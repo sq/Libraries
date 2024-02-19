@@ -828,6 +828,9 @@ namespace Squared.PRGUI.Controls {
                 ? (float)Math.Ceiling(textWidthLimit.Value + LineBreakRightPadding)
                 : (float?)null;
             Content.LineBreakAtX = newValue;
+            // HACK: If justification/alignment modes are active, we may have a computed DesiredWidth that is now too big
+            if (newValue.HasValue)
+                Content.DesiredWidth = Math.Min(Content.DesiredWidth, newValue.Value);
         }
 
         private bool SyncWithCurrentFont (IGlyphSource font) {
