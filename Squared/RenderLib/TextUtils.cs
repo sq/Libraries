@@ -1119,6 +1119,9 @@ namespace Squared.Render.Text {
                     if (!measureOnly.HasValue) {
                         _CachedGlyphVersion = glyphSource.Version;
                         le2.Finish(_Buffer, out _CachedStringLayout);
+                        // HACK: Detect that the layout engine allocated a new bigger buffer and store it.
+                        if (_CachedStringLayout.DrawCalls.Array != _Buffer.Array)
+                            _Buffer = new ArraySegment<BitmapDrawCall>(_CachedStringLayout.DrawCalls.Array);
                         // _CachedStringLayout = le.Finish();
 
                         // Copy the storage back in case it grew.
@@ -1143,7 +1146,7 @@ namespace Squared.Render.Text {
                         }
 
                         // FIXME
-                        le.GetBuffer(out _Buffer);
+                        // le.GetBuffer(out _Buffer);
                         SetFlag(InternalFlags.HasCachedStringLayout, true);
                     } else {
                         le2.Finish(_Buffer, out result);
@@ -1157,6 +1160,7 @@ namespace Squared.Render.Text {
 
                     rls.Dispose();
                     le.Dispose();
+                    le2.Dispose();
                 }
             }
 

@@ -407,11 +407,11 @@ namespace Squared.Render.TextLayout2 {
             AlignLines(constrainedSize.X);
 
             // HACK
-            int bufferSize = Math.Max((int)DrawCallIndex, 8192);
+            int bufferSize = Math.Max((int)DrawCallIndex, 512);
             if ((buffer.Array == null) || (buffer.Count < bufferSize))
                 buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[bufferSize]);
             else
-                buffer = new ArraySegment<BitmapDrawCall>(buffer.Array, buffer.Offset, bufferSize);
+                buffer = new ArraySegment<BitmapDrawCall>(buffer.Array, buffer.Offset, (int)DrawCallIndex);
 
             var lastDrawCallIndex = DrawCallIndex > 0 ? DrawCallIndex - 1 : 0;
             fixed (BitmapDrawCall* dest = buffer.Array)

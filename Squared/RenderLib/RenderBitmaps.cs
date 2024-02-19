@@ -1515,11 +1515,14 @@ namespace Squared.Render {
         public void AdjustOrigin (Vector2 newOrigin) {
             if (Origin == newOrigin)
                 return;
+            var texture = Texture;
+            if (texture == null)
+                return;
 
             // FIXME: Rotation
             var newPosition = Position;
 
-            var textureSize = new Vector2(Texture.Width, Texture.Height) * TextureRegion.Size;
+            var textureSize = new Vector2(texture.Width, texture.Height) * TextureRegion.Size;
             newPosition += ((newOrigin - Origin) * textureSize * Scale);
 
             Position = newPosition;
