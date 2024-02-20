@@ -21,6 +21,7 @@ using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.RasterShape;
 using Squared.Render.Text;
+using Squared.Render.TextLayout2;
 using Squared.Task;
 using Squared.Util;
 using Squared.Util.Event;
@@ -288,8 +289,9 @@ namespace PRGUI.Demo {
             UseSavedTree = false;
         }
 
-        private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
-            layoutEngine.overrideColor = Color.Teal;
+        private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine) {
+            layoutEngine.OverrideColor = true;
+            layoutEngine.MultiplyColor = Color.Teal;
             return default;
         }
 

@@ -1095,9 +1095,9 @@ namespace Squared.Render.Text {
                     le.Initialize();
                     le2.Initialize();
                     if (RichText) {
-                        rls = new RichTextLayoutState(ref le, glyphSource);
+                        rls = new RichTextLayoutState(ref le2, glyphSource);
                         rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
-                        var dependencies = _RichTextConfiguration.Append(ref le, ref rls, _Text, _StyleName);
+                        var dependencies = _RichTextConfiguration.Append(ref le2, ref rls, _Text, _StyleName);
                         if (dependencies.Count > 0) {
                             SetFlag(InternalFlags.AwaitingDependencies, false);
 
@@ -1110,11 +1110,8 @@ namespace Squared.Render.Text {
                         } else
                             SetFlag(InternalFlags.AwaitingDependencies, false);
 
-                        // HACK
-                        le2.AppendText(glyphSource, _Text);
-
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
-                            _RichTextConfiguration.Append(ref le, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
+                            _RichTextConfiguration.Append(ref le2, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
                     } else {
                         SetFlag(InternalFlags.AwaitingDependencies, false);
                         le.AppendText(glyphSource, _Text);

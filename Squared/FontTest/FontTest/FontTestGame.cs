@@ -233,9 +233,13 @@ namespace FontTest {
             return new AsyncRichImage(ref ri);
         }
 
-        private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine) {
+        private MarkedStringAction ProcessMarkedString (
+            ref AbstractString text, ref AbstractString id, 
+            ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine
+        ) {
             if (text.TextEquals("quick")) {
-                layoutEngine.overrideColor = Color.GreenYellow;
+                layoutEngine.OverrideColor = true;
+                layoutEngine.MultiplyColor = Color.GreenYellow;
                 text = "slow";
             } else if (text.TextEquals("rich substring")) {
                 text = "<$[scale:2.0]b$[scale:1.66]i$[scale:1.33]g$[scale:1.0] rich substring>";

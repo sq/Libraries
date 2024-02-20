@@ -13,7 +13,7 @@ using Squared.Game;
 using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Text;
-using TLayoutEngine = Squared.Render.Text.StringLayoutEngine;
+using TLayoutEngine = Squared.Render.TextLayout2.StringLayoutEngine2;
 
 namespace Squared.Render.Text {
     public static class RichText {
@@ -368,19 +368,21 @@ namespace Squared.Render.Text {
             new ThreadLocal<List<AbstractString>>();
 
         public IGlyphSource DefaultGlyphSource, GlyphSource;
-        public readonly Color? InitialColor;
-        public readonly float InitialScale;
-        public readonly float InitialSpacing;
+        public readonly Color InitialColor;
+        public readonly Vector2 InitialScale;
+        public readonly Vector2 InitialSpacing;
         public readonly float InitialLineSpacing;
+        public readonly bool InitialOverrideColor;
         public DenseList<string> Tags;
         public List<AbstractString> MarkedStrings;
         private DenseList<StringBuilder> StringBuildersToReturn;
 
         public RichTextLayoutState (ref TLayoutEngine engine, IGlyphSource defaultGlyphSource) {
-            InitialColor = engine.overrideColor;
-            InitialScale = engine.scale;
-            InitialSpacing = engine.spacing;
-            InitialLineSpacing = engine.additionalLineSpacing;
+            InitialOverrideColor = engine.OverrideColor;
+            InitialColor = engine.MultiplyColor;
+            InitialScale = engine.Scale;
+            InitialSpacing = engine.Spacing;
+            InitialLineSpacing = engine.AdditionalLineSpacing;
             DefaultGlyphSource = defaultGlyphSource;
             GlyphSource = null;
             MarkedStrings = MarkedStringLists.Value;
@@ -441,10 +443,11 @@ namespace Squared.Render.Text {
 
         public void Reset (ref TLayoutEngine engine) {
             GlyphSource = null;
-            engine.overrideColor = InitialColor;
-            engine.scale = InitialScale;
-            engine.spacing = InitialSpacing;
-            engine.additionalLineSpacing = InitialLineSpacing;
+            engine.OverrideColor = InitialOverrideColor;
+            engine.MultiplyColor = InitialColor;
+            engine.Scale = InitialScale;
+            engine.Spacing = InitialSpacing;
+            engine.AdditionalLineSpacing = InitialLineSpacing;
         }
 
         public void Dispose () {
@@ -718,6 +721,8 @@ namespace Squared.Render.Text {
                         commandMode && (ImageProvider != null) && 
                         (ai = ImageProvider(bracketed.Value, this)).IsInitialized
                     ) {
+                        // FIXME
+                        /*
                         var currentX1 = 0f;
                         var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX);
                         if (ai.Dead) {
@@ -760,31 +765,33 @@ namespace Squared.Render.Text {
                         } else {
                             referencedImages.Add(ref ai);
                         }
+                        */
                     } else if (commandMode && bracketed.Value.Contains(":")) {
                         foreach (var rule in RichText.ParseRules(bracketed.Value, ref parseErrors)) {
                             var value = rule.Value;
                             RuleNameTable.TryGetValue(rule.Key, out var ruleId);
                             switch (ruleId) {
                                 case RichRuleId.Color:
-                                    layoutEngine.overrideColor = ParseColor(value) ?? state.InitialColor;
+                                    layoutEngine.OverrideColor = true;
+                                    layoutEngine.MultiplyColor = ParseColor(value) ?? state.InitialColor;
                                     break;
                                 case RichRuleId.Scale:
                                     if (!value.TryParse(out float newScale))
-                                        layoutEngine.scale = state.InitialScale;
+                                        layoutEngine.Scale = state.InitialScale;
                                     else
-                                        layoutEngine.scale = state.InitialScale * newScale;
+                                        layoutEngine.Scale = state.InitialScale * newScale;
                                     break;
                                 case RichRuleId.Spacing:
                                     if (!value.TryParse(out float newSpacing))
-                                        layoutEngine.spacing = state.InitialSpacing;
+                                        layoutEngine.Spacing = state.InitialSpacing;
                                     else
-                                        layoutEngine.spacing = state.InitialSpacing * newSpacing;
+                                        layoutEngine.Spacing = state.InitialSpacing * newSpacing;
                                     break;
                                 case RichRuleId.LineSpacing:
                                     if (!value.TryParse(out float newLineSpacing))
-                                        layoutEngine.additionalLineSpacing = state.InitialLineSpacing;
+                                        layoutEngine.AdditionalLineSpacing = state.InitialLineSpacing;
                                     else
-                                        layoutEngine.additionalLineSpacing = newLineSpacing;
+                                        layoutEngine.AdditionalLineSpacing = newLineSpacing;
                                     break;
                                 case RichRuleId.Font:
                                     if ((GlyphSources != null) && GlyphSources.TryGetValue(value, out var gse))
@@ -837,6 +844,8 @@ namespace Squared.Render.Text {
                                 if (action == MarkedStringAction.RichText)
                                     AppendRichRange(ref layoutEngine, ref state, astr, overrideSuppress, ref referencedImages, ref parseErrors);
                                 else if (action != MarkedStringAction.PlainText) {
+                                    // FIXME
+                                    /*
                                     var initialIndex = layoutEngine.currentCharacterIndex;
                                     var m = new LayoutMarker(initialIndex, initialIndex + l - 1) {
                                         MarkedString = bracketed.Value,
@@ -844,6 +853,7 @@ namespace Squared.Render.Text {
                                         MarkedStringActualText = astr
                                     };
                                     layoutEngine.Markers.Add(m);
+                                    */
 
                                     AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
                                 } else {
@@ -895,15 +905,20 @@ namespace Squared.Render.Text {
             ref TLayoutEngine layoutEngine, ref RichTextLayoutState state, in RichStyle style
         ) {
             state.GlyphSource = style.GlyphSource ?? state.GlyphSource;
-            layoutEngine.overrideColor = style.Color ?? layoutEngine.overrideColor;
-            layoutEngine.scale = style.Scale * state.InitialScale ?? state.InitialScale;
-            layoutEngine.spacing = style.Spacing ?? state.InitialSpacing;
-            layoutEngine.additionalLineSpacing = style.AdditionalLineSpacing ?? state.InitialLineSpacing;
+            layoutEngine.OverrideColor = style.Color.HasValue;
+            layoutEngine.MultiplyColor = style.Color ?? layoutEngine.MultiplyColor;
+            layoutEngine.Scale = style.Scale * state.InitialScale ?? state.InitialScale;
+            layoutEngine.Spacing = style.Spacing.HasValue
+                ? new Vector2(style.Spacing.Value) 
+                : state.InitialSpacing;
+            layoutEngine.AdditionalLineSpacing = style.AdditionalLineSpacing ?? state.InitialLineSpacing;
             if (style.Apply != null)
                 style.Apply(in style, ref layoutEngine, ref state);
         }
 
         private void AppendImage (ref TLayoutEngine layoutEngine, RichImage image) {
+            // FIXME
+            /*
             layoutEngine.AppendImage(
                 image.Texture.Instance, scale: image.Scale, 
                 verticalAlignment: image.VerticalAlignment,
@@ -914,6 +929,7 @@ namespace Squared.Render.Text {
                 overrideWidth: image.OverrideWidth, overrideHeight: image.OverrideHeight,
                 maxWidthPercent: image.MaxWidthPercent, clear: image.Clear
             );
+            */
         }
 
         private void AppendPlainRange (
@@ -923,7 +939,8 @@ namespace Squared.Render.Text {
             if (rangeEnd <= rangeStart)
                 return;
             var range = text.Substring(rangeStart, rangeEnd - rangeStart);
-            layoutEngine.AppendText(glyphSource, range, overrideSuppress: overrideSuppress);
+            // FIXME: overrideSuppress
+            layoutEngine.AppendText(glyphSource, range);
         }
 
         private ImmutableAbstractString ParseBracketedText (AbstractString text, ref int i, ref int currentRangeStart, HashSet<char> terminators, char close) {
