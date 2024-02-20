@@ -524,7 +524,8 @@ namespace Squared.Render.TextLayout2 {
             // HACK: It's possible a span will start in the middle of a word, then the word gets
             //  wrapped immediately. So we fill in FirstLineIndex lazily to compensate for that,
             //  setting it the first time a word is actually finished.
-            foreach (var spanIndex in SpanStack) {
+            for (int i = 0, c = SpanStack.Count; i < c; i++) {
+                var spanIndex = SpanStack[i];
                 ref var span = ref Buffers.Span(spanIndex);
                 if (span.FirstLineIndex == uint.MaxValue)
                     span.FirstLineIndex = LineIndex;
@@ -692,7 +693,7 @@ namespace Squared.Render.TextLayout2 {
             AlignLines(constrainedSize.X);
 
             // HACK
-            int bufferSize = Math.Max((int)DrawCallIndex, 512);
+            int bufferSize = (int)DrawCallIndex;
             if ((buffer.Array == null) || (buffer.Count < bufferSize))
                 buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[bufferSize]);
             else

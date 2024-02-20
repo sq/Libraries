@@ -1083,7 +1083,6 @@ namespace Squared.Render.Text {
                 }
 
                 var rls = default(RichTextLayoutState);
-                MakeLayoutEngine(out var le, measureOnly);
                 MakeLayoutEngine2(out var le2, measureOnly);
                 if (!measureOnly.HasValue) {
                     _Satellite?.RichMarkers.Clear();
@@ -1094,7 +1093,6 @@ namespace Squared.Render.Text {
                 _Satellite?.Dependencies.Clear();
 
                 try {
-                    le.Initialize();
                     le2.Initialize();
                     if (RichText) {
                         rls = new RichTextLayoutState(ref le2, glyphSource);
@@ -1112,15 +1110,20 @@ namespace Squared.Render.Text {
                         } else
                             SetFlag(InternalFlags.AwaitingDependencies, false);
 
+                        // FIXME
+                        /*
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
                             _RichTextConfiguration.Append(ref le2, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
+                        */
                     } else {
                         SetFlag(InternalFlags.AwaitingDependencies, false);
-                        le.AppendText(glyphSource, _Text);
+                        // le.AppendText(glyphSource, _Text);
                         le2.AppendText(glyphSource, _Text);
                         // FIXME: le2 truncation
+                        /*
                         if (le.IsTruncated && !TruncatedIndicator.IsNull)
                             le.AppendText(glyphSource, TruncatedIndicator, overrideSuppress: false);
+                        */
                     }
 
                     if (!measureOnly.HasValue) {
@@ -1133,6 +1136,7 @@ namespace Squared.Render.Text {
 
                         // Copy the storage back in case it grew.
                         // This ensures we don't allocate more temporary backing storage every time we layout our text.
+                        /*
                         if (le.usedTextures.HasList)
                             AutoAllocateSatellite().UsedTextures = le.usedTextures;
 
@@ -1151,22 +1155,23 @@ namespace Squared.Render.Text {
                             foreach (var kvp in le.HitTests) 
                                 ht[kvp.Position] = kvp;
                         }
+                        */
 
                         // FIXME
-                        // le.GetBuffer(out _Buffer);
                         SetFlag(InternalFlags.HasCachedStringLayout, true);
                     } else {
                         le2.Finish(_Buffer, out result);
                         return true;
                     }
                 } finally {
+                    /*
                     if (!measureOnly.HasValue) {
                         if (le.Markers.HasList)
                             AutoAllocateSatellite().LayoutEngineMarkerStorage = le.Markers.GetStorage(false);
                     }
+                    */
 
                     rls.Dispose();
-                    le.Dispose();
                     le2.Dispose();
                 }
             }
