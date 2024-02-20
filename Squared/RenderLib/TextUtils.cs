@@ -343,7 +343,7 @@ namespace Squared.Render.Text {
                 destination = newValue;
                 Invalidate();
             }
-        }
+        }   
 
         public ArraySegment<BitmapDrawCall> Buffer {
             get {
@@ -381,7 +381,9 @@ namespace Squared.Render.Text {
             }
 
             _Text = newText;
-            _TextVersion++;
+            unchecked {
+                _TextVersion++;
+            }
             Invalidate();
             return true;
         }
@@ -956,7 +958,7 @@ namespace Squared.Render.Text {
                 InitialIndentation = _XOffsetOfFirstLine,
                 // WrapIndentation = _WrapIndentation,
                 BreakIndentation = _XOffsetOfNewLine,
-                // extraLineBreakSpacing = _ExtraLineBreakSpacing,
+                ExtraBreakSpacing = _ExtraLineBreakSpacing,
                 MaximumWidth = (measureOnly.HasValue ? measureOnly.Value.LineBreakAtX : _LineBreakAtX) ?? float.MaxValue,
                 // stopAtY =    _StopAtY,
                 // alignToPixels = _AlignToPixels.Or(_GlyphSource.DefaultAlignment),

@@ -175,7 +175,7 @@ namespace Squared.Render.TextLayout2 {
         public uint? MaskCodepoint;
 
         public float InitialIndentation, BreakIndentation; // FIXME: WrapIndentation
-        public float AdditionalLineSpacing;
+        public float AdditionalLineSpacing, ExtraBreakSpacing;
         public float MaximumWidth, DesiredWidth;
         public float MaxExpansionPerSpace;
 
@@ -488,10 +488,10 @@ namespace Squared.Render.TextLayout2 {
 
         private void PerformForcedWrap (float wordWidth) {
             if (WordWrap && (wordWidth <= MaximumWidth)) {
-                FinishLine(true);
-                ;
+                FinishLine(false);
             } else if (CharacterWrap) {
-                FinishLine();
+                FinishWord();
+                FinishLine(false);
             } else if (HideOverflow)
                 SuppressUntilNextLine = true;
             else
@@ -500,9 +500,10 @@ namespace Squared.Render.TextLayout2 {
 
         private void PerformLineBreak () {
             UnconstrainedSize.X = Math.Max(UnconstrainedSize.X, UnconstrainedLineSize.X);
-            UnconstrainedSize.Y += UnconstrainedLineSize.Y;
+            UnconstrainedSize.Y += UnconstrainedLineSize.Y + ExtraBreakSpacing;
             UnconstrainedLineSize = default;
-            FinishLine();
+            FinishWord();
+            FinishLine(true);
         }
 
         private void FinishWord () {
@@ -556,14 +557,11 @@ namespace Squared.Render.TextLayout2 {
             };
         }
 
-        private void FinishLine (bool preserveWord = false) {
-            if (!preserveWord)
-                FinishWord();
-
+        private void FinishLine (bool forLineBreak) {
             ref var line = ref CurrentLine;
 
             LineOffset.X = 0;
-            LineOffset.Y += CurrentLine.Height;
+            LineOffset.Y += CurrentLine.Height + (forLineBreak ? ExtraBreakSpacing : 0f);
 
             SuppressUntilNextLine = false;
             var index = LineIndex++;
@@ -679,9 +677,10 @@ namespace Squared.Render.TextLayout2 {
         }
 
         public unsafe void Finish (ArraySegment<BitmapDrawCall> buffer, out StringLayout result) {
+            FinishWord();
             UnconstrainedSize.X = Math.Max(UnconstrainedSize.X, UnconstrainedLineSize.X);
             UnconstrainedSize.Y += UnconstrainedLineSize.Y;
-            FinishLine();
+            FinishLine(false);
 
             Listener?.Finishing(ref this);
 
