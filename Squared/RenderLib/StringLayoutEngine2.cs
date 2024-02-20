@@ -383,8 +383,8 @@ namespace Squared.Render.TextLayout2 {
 
                 bool suppressThisCharacter = false;
                 float w = (glyph.WidthIncludingBearing * effectiveScale.X) + (glyph.CharacterSpacing * effectiveScale.X),
-                    h = glyph.LineSpacing * effectiveScale.Y,
-                    baseline = glyph.Baseline * effectiveScale.Y,
+                    h = glyphLineSpacing,
+                    baseline = glyphBaseline,
                     xBasis = CurrentWord.LeadingWhitespace + LineOffset.X,
                     x1 = xBasis + WordOffset.X,
                     x2 = x1 + w;
@@ -676,7 +676,9 @@ namespace Squared.Render.TextLayout2 {
             for (uint i = 0; i <= LineIndex; i++) {
                 ref var line = ref Buffers.Line(i);
                 constrainedSize.X = Math.Max(constrainedSize.X, line.Width);
-                constrainedSize.Y += line.Height;
+                // We have to use Max here because of things like ExtraBreakSpacing that don't
+                //  alter the line's height. If we were to just sum heights it would be too small
+                constrainedSize.Y = Math.Max(constrainedSize.Y, line.Location.Y + line.Height);
             }
             constrainedSize.X = Math.Max(constrainedSize.X, DesiredWidth);
         }
