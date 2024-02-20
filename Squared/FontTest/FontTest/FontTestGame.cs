@@ -20,8 +20,8 @@ namespace FontTest {
 
         public string[] TestStrings = new[] {
             // FIXME: The bounding box for 'dogs' is wrong unless there's a trailing space inside the marked region
-            "$[img:topright]$[img:bottomright]The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs )" +
-            "\r\n$[img:bottomleft]$[img:left]この体は、無限のチェイサーで出来ていた $(marked)" +
+            "$<img:topright>$<img:bottomright>The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs )" +
+            "\r\n$<img:bottomleft>$<img:left>この体は、無限のチェイサーで出来ていた $(marked)" +
             "\r\n\r\nEmpty line before this one $(marked)\r\n$(rich substring)",
 
             "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z" +

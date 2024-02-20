@@ -473,7 +473,7 @@ namespace PRGUI.Demo {
             };
 
             var hideButton = new Button {
-                Text = "$[ghost] Hide",
+                Text = "$<ghost> Hide",
                 Margins = default(Margins),
                 Layout = {
                     ForceBreak = true

@@ -40,8 +40,14 @@ namespace Squared.Render.Text {
                     }
                     continue;
                 } else if (ch == '$') {
-                    if ((next == '(') || (next == '[')) {
-                        closer = (next == '(') ? ')' : ']';
+                    if ((next == '(') || (next == '[') || (next == '<')) {
+                        closer = (next == '(') 
+                            ? ')' 
+                            : (
+                                (next == '<')
+                                    ? '>'
+                                    : ']'
+                            );
                         i++;
                         rangeStarted = i + 1;
                         continue;
@@ -79,8 +85,14 @@ namespace Squared.Render.Text {
                     }
                     continue;
                 } else if (ch == '$') {
-                    if ((next == '(') || (next == '[')) {
-                        closer = (next == '(') ? ')' : ']';
+                    if ((next == '(') || (next == '[') || (next == '<')) {
+                        closer = (next == '(') 
+                            ? ')' 
+                            : (
+                                (next == '<')
+                                    ? '>'
+                                    : ']'
+                            );
                         i++;
                         rangeStarted = i + 1;
                         continue;
@@ -99,7 +111,13 @@ namespace Squared.Render.Text {
 
             for (int i = 0, l = richText.Length; i < l - 1; i++) {
                 var c = richText[i];
-                if ((c == '$') && (richText[i + 1] == '[') || (richText[i + 1] == '('))
+                if (
+                    (c == '$') && (
+                        (richText[i + 1] == '[') || 
+                        (richText[i + 1] == '(') ||
+                        (richText[i + 1] == '<')
+                    )
+                )
                     return ToPlainText_Slow(richText, i);
             }
 
@@ -115,7 +133,13 @@ namespace Squared.Render.Text {
 
             for (int i = 0, l = richText.Length; i < l - 1; i++) {
                 var c = richText[i];
-                if ((c == '$') && (richText[i + 1] == '[') || (richText[i + 1] == '('))
+                if (
+                    (c == '$') && (
+                        (richText[i + 1] == '[') || 
+                        (richText[i + 1] == '(') ||
+                        (richText[i + 1] == '<')
+                    )
+                )
                     return PlainTextLength_Slow(richText, i, true);
             }
 
@@ -646,8 +670,10 @@ namespace Squared.Render.Text {
             }
         }
 
+        // FIXME: These all seem wrong
         private static readonly HashSet<char>
             CommandTerminators = new HashSet<char> { '\"', '\'', '$', '[' },
+            InsertionTerminators = new HashSet<char> { '\"', '\'', '$', '<' },
             StringTerminators = new HashSet<char> { '$', '(' };
 
         private enum RichRuleId : int {
@@ -690,13 +716,26 @@ namespace Squared.Render.Text {
             for (int i = 0; i < count; i++) {
                 var ch = text[i];
                 var next = (i < count - 2) ? text[i + 1] : '\0';
-                if ((ch == '$') && ((next == '[') || (next == '('))) {
+                if ((ch == '$') && ((next == '[') || (next == '(') || (next == '<'))) {
                     AppendPlainRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, i, overrideSuppress);
-                    var commandMode = next == '[';
+                    bool commandMode = next == '[',
+                        insertionMode = next == '<';
+                    var closer = (next == '(') 
+                        ? ')' 
+                        : (
+                            (next == '<')
+                                ? '>'
+                                : ']'
+                        );
                     var bracketed = ParseBracketedText(
                         text, ref i, ref currentRangeStart, 
-                        commandMode ? CommandTerminators : StringTerminators, 
-                        commandMode ? ']' : ')'
+                        commandMode 
+                            ? CommandTerminators 
+                            : (insertionMode
+                                ? InsertionTerminators
+                                : StringTerminators
+                            ), 
+                        closer
                     );
                     if (commandMode && bracketed.Value.IsNullOrEmpty) {
                         state.Reset(ref layoutEngine);
@@ -706,7 +745,7 @@ namespace Squared.Render.Text {
                         Styles.TryGetValue(bracketed.Value.Substring(1).AsImmutable(true), out style)
                     ) {
                         ApplyStyle(ref layoutEngine, ref state, in style);
-                    } else if (commandMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
+                    } else if (insertionMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
                         if (!DisableImages)
                             AppendImage(ref layoutEngine, image);
                         else
@@ -718,7 +757,7 @@ namespace Squared.Render.Text {
                         ai = new AsyncRichImage(ref image);
                         referencedImages.Add(ref ai);
                     } else if (
-                        commandMode && (ImageProvider != null) && 
+                        insertionMode && (ImageProvider != null) && 
                         (ai = ImageProvider(bracketed.Value, this)).IsInitialized
                     ) {
                         layoutEngine.ComputeConstrainedSize(out var constrainedSize);
@@ -869,8 +908,7 @@ namespace Squared.Render.Text {
                             markedState.Dispose();
                         }
                     } else {
-                        var close = (next == '[') ? ']' : ')';
-                        layoutEngine.AppendText(state.GlyphSource ?? state.DefaultGlyphSource, "<invalid: $" + next + bracketed + close + ">");
+                        layoutEngine.AppendText(state.GlyphSource ?? state.DefaultGlyphSource, "<invalid: $" + next + bracketed + closer + ">");
                     }
                 }
             }
