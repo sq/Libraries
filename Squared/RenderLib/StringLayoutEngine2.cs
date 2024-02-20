@@ -38,7 +38,7 @@ namespace Squared.Render.TextLayout2 {
 
     public interface IStringLayoutListener {
         void Initializing (ref StringLayoutEngine2 engine);
-        void RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture);
+        void RecordTexture (ref StringLayoutEngine2 engine, TextureSet textures);
         void Finishing (ref StringLayoutEngine2 engine);
         void Finished (ref StringLayoutEngine2 engine, uint spanCount, uint lineCount, ref StringLayout result);
     }
@@ -242,17 +242,20 @@ namespace Squared.Render.TextLayout2 {
                     continue;
                 ref var line = ref Buffers.Line(l);
 
-                // FIXME: If the font atlas has padding/margins (for shadows and outlines) these bounding boxes
-                //  will also have padding/margins on the left and right sides, which looks wrong.
+                // HACK: Earlier when constructing draw calls, we used UserData.X/Y to store X offsets for
+                //  the left and right edges of the character bounding box. We now recover them for the
+                //  first and last line(s) in the span in order to trim the line's bounding box.
                 if (l == span.FirstLineIndex) {
                     ref var dc1 = ref Buffers.DrawCall(span.FirstDrawCall);
-                    var dc1b = dc1.EstimateDrawBounds();
-                    lineBounds.TopLeft.X = Math.Max(lineBounds.TopLeft.X, dc1b.TopLeft.X);
+                    // The draw call's position probably changed due to things like alignment, so we
+                    //  instead stored an offset in the UserData, which allows us to construct the
+                    //  correct left edge for this draw call based on its new position.
+                    lineBounds.TopLeft.X = dc1.Position.X - dc1.UserData.X;
                 }
                 if (l == l2) {
                     ref var dc2 = ref Buffers.DrawCall(span.FirstDrawCall + span.DrawCallCount - 1);
-                    var dc2b = dc2.EstimateDrawBounds();
-                    lineBounds.BottomRight.X = Math.Min(lineBounds.BottomRight.X, dc2b.BottomRight.X);
+                    // Similarly we construct the correct right edge from this draw call's position.
+                    lineBounds.BottomRight.X = dc2.Position.X + dc2.UserData.Y;
                 }
 
                 output.Add(ref lineBounds);
@@ -300,7 +303,8 @@ namespace Squared.Render.TextLayout2 {
                 result.FirstLineIndex = LineIndex;
             result.LineCount = (LineIndex - result.FirstLineIndex) + 1;
             result.DrawCallCount = DrawCallIndex - result.FirstDrawCall;
-            // Listener?.RecordSpan(ref this, ref result);
+            // FIXME: If we ended a span in the middle of a word, our bounding box will become
+            //  incorrect in the event that the word later gets wrapped.
             return ref result;
         }
 
@@ -369,7 +373,8 @@ namespace Squared.Render.TextLayout2 {
                 bool suppressThisCharacter = false;
                 float w = (glyph.WidthIncludingBearing * effectiveScale.X) + (glyph.CharacterSpacing * effectiveScale.X),
                     h = glyph.LineSpacing * effectiveScale.Y,
-                    x1 = CurrentWord.LeadingWhitespace + WordOffset.X + LineOffset.X,
+                    xBasis = CurrentWord.LeadingWhitespace + LineOffset.X,
+                    x1 = xBasis + WordOffset.X,
                     x2 = x1 + w;
 
                 if (x2 >= MaximumWidth) {
@@ -405,22 +410,24 @@ namespace Squared.Render.TextLayout2 {
                         wordIndex = (short)WordIndex;
                     }
 
+                    float x = WordOffset.X + (glyph.XOffset * effectiveScale.X) + (glyph.LeftSideBearing * effectiveScale.X),
+                        // Used to compute bounding box offsets
+                        wx = xBasis + x;
                     drawCall = new BitmapDrawCall {
                         MultiplyColor = OverrideColor 
                             ? MultiplyColor
                             : (glyph.DefaultColor ?? MultiplyColor),
                         AddColor = AddColor,
                         Position = new Vector2(
-                            WordOffset.X + (glyph.XOffset * effectiveScale.X) + (glyph.LeftSideBearing * effectiveScale.X),
-                            WordOffset.Y + (glyph.YOffset * effectiveScale.Y)
+                            x, WordOffset.Y + (glyph.YOffset * effectiveScale.Y)
                         ),
                         Scale = effectiveScale * glyph.RenderScale,
                         Textures = new TextureSet(glyph.Texture),
                         TextureRegion = glyph.BoundsInTexture,
                         LocalData1 = wordIndex,
+                        // HACK: Used when computing bounding boxes later
+                        UserData = new Vector4(wx - x1, x2 - wx, 0, 0),
                     };
-
-                    Listener?.RecordTexture(ref this, glyph.Texture);
                 }
 
                 if (suppressThisCharacter)
@@ -511,8 +518,6 @@ namespace Squared.Render.TextLayout2 {
 
             LineOffset.X = 0;
             LineOffset.Y += CurrentLine.Height;
-
-            // Listener?.RecordLine(ref this, ref line);
 
             SuppressUntilNextLine = false;
             var index = LineIndex++;
@@ -616,8 +621,23 @@ namespace Squared.Render.TextLayout2 {
                 buffer = new ArraySegment<BitmapDrawCall>(buffer.Array, buffer.Offset, (int)DrawCallIndex);
 
             var lastDrawCallIndex = DrawCallIndex > 0 ? DrawCallIndex - 1 : 0;
-            fixed (BitmapDrawCall* dest = buffer.Array)
+            fixed (BitmapDrawCall* dest = buffer.Array) {
                 Buffer.MemoryCopy(Buffers.DrawCalls, dest, buffer.Count * sizeof(BitmapDrawCall), DrawCallIndex * sizeof(BitmapDrawCall));
+                // HACK: Zero the UserData. We used it to store offsets for bounding box computation.
+                // The draw calls in our internal buffers will still have the UserData.
+                // While we're doing this scan, notify the listener of used textures too.
+                var lastTextures = TextureSet.Invalid;
+                for (uint i = 0; i < DrawCallIndex; i++) {
+                    ref var dc = ref dest[i];
+                    dc.UserData = default;
+                    // We attempt to reduce the number of virtual function calls by only calling
+                    //  RecordTexture if the current texture has changed.
+                    if (!dc.Textures.Equals(lastTextures)) {
+                        Listener?.RecordTexture(ref this, dc.Textures);
+                        lastTextures = dc.Textures;
+                    }
+                }
+            }
 
             result = new StringLayout(
                 Vector2.Zero, constrainedSize, UnconstrainedSize, 0f,

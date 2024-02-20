@@ -389,7 +389,7 @@ namespace FontTest {
         }
         */
 
-        void IStringLayoutListener.RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture) {
+        void IStringLayoutListener.RecordTexture (ref StringLayoutEngine2 engine, TextureSet textures) {
         }
 
         void IStringLayoutListener.Finishing (ref StringLayoutEngine2 engine) {
