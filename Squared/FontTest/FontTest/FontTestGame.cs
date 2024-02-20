@@ -9,12 +9,13 @@ using Squared.Game;
 using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Render.Text;
+using Squared.Render.TextLayout2;
 using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Text;
 
 namespace FontTest {
-    public class FontTestGame : MultithreadedGame {
+    public class FontTestGame : MultithreadedGame, IStringLayoutListener {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         public string[] TestStrings = new[] {
@@ -69,8 +70,12 @@ namespace FontTest {
         PressableKey Monochrome = new PressableKey(Keys.R);
         PressableKey Expand = new PressableKey(Keys.E);
         PressableKey LimitExpansion = new PressableKey(Keys.X);
+        PressableKey Kerning = new PressableKey(Keys.K);
 
         Texture2D[] Images = new Texture2D[4];
+
+        UnorderedList<Bounds> SL2Lines = new UnorderedList<Bounds>();
+        UnorderedList<DenseList<Bounds>> SL2Spans = new UnorderedList<DenseList<Bounds>>();
 
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
@@ -128,6 +133,15 @@ namespace FontTest {
                 Text.GlyphSource = ActiveFont;
                 Text.Scale = TextScale;
             };
+            Kerning.Pressed += (s, e) => {
+                var ftf = (FreeTypeFont)LatinFont;
+                ftf.EnableKerning = !ftf.EnableKerning;
+                ftf.Invalidate();
+                ftf = (FreeTypeFont)UniFont;
+                ftf.EnableKerning = !ftf.EnableKerning;
+                ftf.Invalidate();
+                Text.Invalidate();
+            };
         }
 
         protected override void OnLoadContent (bool isReloading) {
@@ -176,6 +190,7 @@ namespace FontTest {
                 WordWrapCharacters = new uint[] {
                     '\\', '/', ':', ','
                 },
+                Listener = this,
             };
 
             for (int i = 0; i < Images.Length; i++)
@@ -265,6 +280,7 @@ namespace FontTest {
             Monochrome.Update(ref ks);
             Expand.Update(ref ks);
             LimitExpansion.Update(ref ks);
+            Kerning.Update(ref ks);
 
             if (!Text.Text.TextEquals(SelectedString)) {
                 Text.Text = SelectedString;
@@ -320,20 +336,78 @@ namespace FontTest {
             m.Parameters.ShadowOffset.SetValue(new Vector2(1f, 1f));
 
             ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.Size), Color.Yellow * 0.75f);
+            ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.UnconstrainedSize), Color.Blue * 0.75f);
             ir.DrawMultiple(layout, material: m, blendState: BlendState.NonPremultiplied, samplerState: RenderStates.Text, userData: new Vector4(0, 0, 0, 0.66f));
 
-            foreach (var b in Text.Boxes) {
-                ir.OutlineRectangle(b, Color.Orange);
+            if (false) {
+                foreach (var b in Text.Boxes) {
+                    ir.OutlineRectangle(b, Color.Orange);
+                }
+
+                foreach (var rm in Text.RichMarkers) {
+                    foreach (var b in rm.Bounds)
+                        ir.OutlineRectangle(b, Color.Green);
+                }
+            } else {
+                foreach (var l in SL2Lines)
+                    ir.OutlineRectangle(l, Color.Orange);
+
+                foreach (var s in SL2Spans)
+                    foreach (var b in s)
+                        ir.OutlineRectangle(b, Color.Green);
             }
 
-            foreach (var rm in Text.RichMarkers) {
-                foreach (var b in rm.Bounds)
-                    ir.OutlineRectangle(b, Color.Green);
-            }
-
-            var state = $"align {Text.Alignment} char-wrap {Text.CharacterWrap} word-wrap {Text.WordWrap} expand {Expand.Value}";
+            var state = $"align {Text.Alignment} char-wrap {Text.CharacterWrap} word-wrap {Text.WordWrap} expand {Expand.Value} kern {Kerning.Value}";
             var stateLayout = Text.GlyphSource.LayoutString(state);
             ir.DrawMultiple(stateLayout, new Vector2(0, 1024 - stateLayout.UnconstrainedSize.Y));
+        }
+
+        void IStringLayoutListener.Initializing (ref StringLayoutEngine2 engine) {
+            SL2Lines.Clear();
+            SL2Spans.Clear();
+        }
+
+        /*
+        void IStringLayoutListener.RecordSpan (ref StringLayoutEngine2 engine, ref Span span) {
+            if (span.LineCount == 0)
+                return;
+
+            var s = new DenseList<Bounds>();
+            for (uint l = span.FirstLineIndex, l2 = l + span.LineCount - 1; l <= l2; l++) {
+                if (engine.TryGetLineBounds(l, out var lb))
+                    s.Add(ref lb);
+            }
+            SL2Spans.Add(ref s);
+        }
+
+        void IStringLayoutListener.RecordLine (ref StringLayoutEngine2 engine, ref Line line) {
+        }
+        */
+
+        void IStringLayoutListener.RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture) {
+        }
+
+        void IStringLayoutListener.Finishing (ref StringLayoutEngine2 engine) {
+        }
+
+        void IStringLayoutListener.Finished (ref StringLayoutEngine2 engine, uint spanCount, uint lineCount, ref StringLayout result) {
+            for (uint s = 0; s < spanCount; s++) {
+                ref var span = ref engine.GetSpan(s);
+                if (span.LineCount == 0)
+                    continue;
+
+                var dl = new DenseList<Bounds>();
+                for (uint l = span.FirstLineIndex, l2 = l + span.LineCount - 1; l <= l2; l++) {
+                    if (engine.TryGetLineBounds(l, out var lb))
+                        dl.Add(ref lb);
+                }
+                SL2Spans.Add(ref dl);
+            }
+
+            for (uint l = 0; l < lineCount; l++) {
+                if (engine.TryGetLineBounds(l, out var lb))
+                    SL2Lines.Add(ref lb);
+            }
         }
     }
 

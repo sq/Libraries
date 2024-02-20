@@ -101,6 +101,7 @@ namespace Squared.Render.Text {
         private DenseList<uint> _WordWrapCharacterTable;
         private Vector4? _UserData;
         private Vector4? _ImageUserData;
+        private IStringLayoutListener _Listener;
 
         private Satellite _Satellite;
 
@@ -184,6 +185,7 @@ namespace Squared.Render.Text {
             _Satellite?.Dependencies.Clear();
             _Satellite?.RichMarkers.Clear();
             _Satellite?.Boxes.Clear();
+            // FIXME: Clear listener?
         }
 
         public void ResetMarkersAndHitTests () {
@@ -400,6 +402,11 @@ namespace Squared.Render.Text {
             set {
                 InvalidatingValueAssignment(ref _TruncatedIndicator, value);
             }
+        }
+
+        public IStringLayoutListener Listener {
+            get => _Listener;
+            set => InvalidatingReferenceAssignment(ref _Listener, value);
         }
 
         public SpriteFont Font {
@@ -967,6 +974,7 @@ namespace Squared.Render.Text {
                 DisableDefaultWrapCharacters = SplitAtWrapCharactersOnly,
                 IncludeTrailingWhitespace = IncludeTrailingWhitespace,
                 WrapCharacters = _WordWrapCharacterTable,
+                Listener = _Listener,
             };
         }
 

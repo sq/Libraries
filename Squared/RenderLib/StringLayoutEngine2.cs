@@ -15,14 +15,16 @@ using Squared.Util.DeclarativeSort;
 
 namespace Squared.Render.TextLayout2 {
     public struct Line {
-        public uint FirstDrawCall, DrawCallCount, VisibleWordCount;
-        public uint FirstBoxIndex, BoxCount;
+        public uint Index, VisibleWordCount;
+        public uint FirstDrawCall, DrawCallCount;
+        public Vector2 Location;
         public float Width, Height;
     }
 
     public struct Span {
+        public uint Index;
         public uint FirstDrawCall, DrawCallCount;
-        public uint FirstBoxIndex, BoxCount;
+        public uint FirstLineIndex, LineCount;
     }
 
     public struct Word {
@@ -35,7 +37,10 @@ namespace Squared.Render.TextLayout2 {
     }
 
     public interface IStringLayoutListener {
-        void RecordTexture (AbstractTextureReference texture);
+        void Initializing (ref StringLayoutEngine2 engine);
+        void RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture);
+        void Finishing (ref StringLayoutEngine2 engine);
+        void Finished (ref StringLayoutEngine2 engine, uint spanCount, uint lineCount, ref StringLayout result);
     }
 
     public struct StringLayoutEngine2 : IDisposable {
@@ -114,8 +119,10 @@ namespace Squared.Render.TextLayout2 {
             }
         }
 
+        // Internal state
+
         Vector2 WordOffset, LineOffset;
-        Vector2 UnconstrainedSize;
+        Vector2 UnconstrainedSize, UnconstrainedLineSize;
         uint RowIndex, ColIndex, LineIndex, CharIndex, DrawCallIndex, SpanIndex, WordIndex;
         bool SuppressUntilNextLine, SuppressUntilEnd;
 
@@ -124,7 +131,11 @@ namespace Squared.Render.TextLayout2 {
 
         bool NewLinePending;
         Word CurrentWord;
+        DenseList<uint> SpanStack;
 
+        // Configuration
+
+        public IStringLayoutListener Listener;
 
         public DenseList<uint> WrapCharacters;
 
@@ -161,12 +172,18 @@ namespace Squared.Render.TextLayout2 {
         bool IsInitialized;
 
         public void Initialize () {
+            IsInitialized = false;
+
             WrapCharacters.SortNonRef(StringLayoutEngine.UintComparer.Instance);
 
+            Listener?.Initializing(ref this);
+
             IsInitialized = true;
-            CurrentWord.FirstDrawCall = uint.MaxValue;
-            CurrentWord.LeadingWhitespace = InitialIndentation;
             CurrentLine = default;
+            CurrentWord = new Word {
+                FirstDrawCall = uint.MaxValue,
+                LeadingWhitespace = InitialIndentation
+            };
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -184,14 +201,59 @@ namespace Squared.Render.TextLayout2 {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => ref Buffers.Line(LineIndex);
         }
-        private ref Span CurrentSpan {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => ref Buffers.Span(SpanIndex);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref BitmapDrawCall GetDrawCall (uint index) {
+            if (index > DrawCallIndex)
+                index = DrawCallIndex;
+            return ref Buffers.DrawCall(index);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref Span GetSpan (uint index) {
+            if (index > SpanIndex)
+                index = SpanIndex;
+            return ref Buffers.Span(index);
+        }
+
+        public bool TryGetLineBounds (uint index, out Bounds bounds) {
+            if (index > LineIndex) {
+                bounds = default;
+                return false;
+            }
+
+            ref var line = ref Buffers.Line(index);
+            bounds = Bounds.FromPositionAndSize(line.Location.X + Position.X, line.Location.Y + Position.Y, line.Width, line.Height);
+            return true;
+        }
+        
+        public ref Span BeginSpan (bool push) {
+            var index = SpanIndex++;
+            if (push || SpanStack.Count == 0)
+                SpanStack.Add(index);
+            else
+                SpanStack.Last() = index;
+
+            ref var result = ref Buffers.Span(index);
+            result.Index = SpanIndex;
+            result.FirstLineIndex = LineIndex;
+            result.FirstDrawCall = DrawCallIndex;
+            return ref result;
+        }
+
+        public ref Span EndSpan () {
+            if (!SpanStack.TryRemoveLast(out var index))
+                return ref Buffers.Span(0);
+
+            ref var result = ref Buffers.Span(index);
+            result.LineCount = LineIndex - result.FirstLineIndex;
+            result.DrawCallCount = DrawCallIndex - result.FirstDrawCall;
+            // Listener?.RecordSpan(ref this, ref result);
+            return ref result;
         }
 
         public void AppendText<TGlyphSource> (
-            TGlyphSource glyphSource, AbstractString text,
-            IStringLayoutListener listener = null
+            TGlyphSource glyphSource, AbstractString text            
         ) where TGlyphSource : IGlyphSource {
             if (!IsInitialized)
                 throw new InvalidOperationException("Call Initialize first");
@@ -205,6 +267,8 @@ namespace Squared.Render.TextLayout2 {
                 throw new ArgumentNullException(nameof(text));
 
             BitmapDrawCall dead = default;
+            KerningData thisKerning = default, nextKerning = default;
+            bool hasKerningNow = false, hasKerningNext = false;
             Buffers.EnsureCapacity((uint)(DrawCallIndex + text.Length));
 
             var effectiveScale = Scale * (1.0f / glyphSource.DPIScaleFactor);
@@ -225,7 +289,30 @@ namespace Squared.Render.TextLayout2 {
                     out deadGlyph, out Glyph glyph, out float glyphLineSpacing, out float glyphBaseline
                 );
 
-                // FIXME: Kerning
+                // FIXME: Kerning across multiple AppendText calls
+                if ((glyph.KerningProvider != null) && (i < l - 2)) {
+                    var temp = i + 1;
+                    DecodeCodepoint(text, ref temp, l, out _, out _, out var codepoint2);
+                    // FIXME: Also do adjustment for next glyph!
+                    // FIXME: Cache the result of this GetGlyph call and use it next iteration to reduce CPU usage
+                    if (
+                        glyphSource.GetGlyph(codepoint2, out var glyph2) &&
+                        (glyph2.KerningProvider == glyph.KerningProvider)
+                    ) {
+                        hasKerningNow = hasKerningNext = glyph.KerningProvider.TryGetKerning(glyph.GlyphId, glyph2.GlyphId, ref thisKerning, ref nextKerning);
+                    }
+                }
+
+                if (hasKerningNow) {
+                    glyph.XOffset += thisKerning.XOffset;
+                    glyph.YOffset += thisKerning.YOffset;
+                    glyph.RightSideBearing += thisKerning.RightSideBearing;
+                }
+
+                if (hasKerningNext)
+                    thisKerning = nextKerning;
+                hasKerningNow = hasKerningNext;
+                hasKerningNext = false;
 
                 bool suppressThisCharacter = false;
                 float w = (glyph.WidthIncludingBearing * effectiveScale.X) + (glyph.CharacterSpacing * effectiveScale.X),
@@ -236,7 +323,7 @@ namespace Squared.Render.TextLayout2 {
                 if (x2 >= MaximumWidth) {
                     if (!isWhiteSpace)
                         forcedWrap = true;
-                    else 
+                    else if (CharacterWrap)
                         // HACK: If word wrap is disabled and character wrap is enabled,
                         //  without this our bounding box can extend beyond MaximumWidth.
                         suppressThisCharacter = true;
@@ -279,7 +366,7 @@ namespace Squared.Render.TextLayout2 {
                         LocalData1 = wordIndex,
                     };
 
-                    listener?.RecordTexture(glyph.Texture);
+                    Listener?.RecordTexture(ref this, glyph.Texture);
                 }
 
                 if (suppressThisCharacter)
@@ -291,7 +378,9 @@ namespace Squared.Render.TextLayout2 {
                     CurrentWord.Width += w;
                 }
 
+                UnconstrainedLineSize.X += w;
                 CurrentWord.Height = Math.Max(CurrentWord.Height, h);
+                UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, h);
             }
         }
 
@@ -306,6 +395,9 @@ namespace Squared.Render.TextLayout2 {
         }
 
         private void PerformLineBreak () {
+            UnconstrainedSize.X = Math.Max(UnconstrainedSize.X, UnconstrainedLineSize.X);
+            UnconstrainedSize.Y += UnconstrainedLineSize.Y;
+            UnconstrainedLineSize = default;
             FinishLine();
         }
 
@@ -349,13 +441,15 @@ namespace Squared.Render.TextLayout2 {
 
             ref var line = ref CurrentLine;
 
-            UnconstrainedSize.X = Math.Max(CurrentLine.Width, UnconstrainedSize.X);
-            UnconstrainedSize.Y += CurrentLine.Height;
             LineOffset.X = 0;
             LineOffset.Y += CurrentLine.Height;
 
+            // Listener?.RecordLine(ref this, ref line);
+
             LineIndex++;
             CurrentLine = new Line {
+                Index = LineIndex,
+                Location = LineOffset,
             };
         }
 
@@ -404,6 +498,9 @@ namespace Squared.Render.TextLayout2 {
                         break;
                 }
 
+                line.Location.X += whitespace;
+                line.Width += (wordWhitespace * wordCountMinusOne) + (characterWhitespace * (line.DrawCallCount - 1));
+
                 short lastWordIndex = -1;
                 for (uint j = line.FirstDrawCall, j2 = j + line.DrawCallCount - 1; j <= j2; j++) {
                     ref var drawCall = ref Buffers.DrawCall(j);
@@ -418,7 +515,11 @@ namespace Squared.Render.TextLayout2 {
         }
 
         public unsafe void Finish (ArraySegment<BitmapDrawCall> buffer, out StringLayout result) {
+            UnconstrainedSize.X = Math.Max(UnconstrainedSize.X, UnconstrainedLineSize.X);
+            UnconstrainedSize.Y += UnconstrainedLineSize.Y;
             FinishLine();
+
+            Listener?.Finishing(ref this);
 
             var constrainedSize = Vector2.Zero;
             for (uint i = 0; i <= LineIndex; i++) {
@@ -447,6 +548,8 @@ namespace Squared.Render.TextLayout2 {
                 Buffers.DrawCall(lastDrawCallIndex).EstimateDrawBounds(),
                 buffer, false, (int)WordIndex, (int)LineIndex
             );
+
+            Listener?.Finished(ref this, SpanIndex, LineIndex, ref result);
         }
 
         private void AnalyzeWhitespace (char ch1, uint codepoint, out bool isWhiteSpace, out bool forcedWrap, out bool lineBreak, out bool deadGlyph, out bool isWordWrapPoint, out bool didWrapWord) {

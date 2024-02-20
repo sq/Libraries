@@ -883,6 +883,7 @@ namespace Squared.Render.Text {
                     out deadGlyph, out Glyph glyph, out float glyphLineSpacing, out float glyphBaseline
                 );
 
+                // FIXME: Kerning across multiple AppendText calls
                 if ((glyph.KerningProvider != null) && (i < l - 2)) {
                     var temp = i + 1;
                     DecodeCodepoint(text, ref temp, l, out _, out _, out var codepoint2);
