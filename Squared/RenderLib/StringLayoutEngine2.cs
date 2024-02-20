@@ -485,23 +485,31 @@ namespace Squared.Render.TextLayout2 {
                     case HorizontalAlignment.Right:
                         break;
                     case HorizontalAlignment.JustifyWords:
-                        wordWhitespace = Math.Min(whitespace / wordCountMinusOne, MaxExpansionPerSpace);
+                        wordWhitespace = whitespace / wordCountMinusOne;
+                        if (wordWhitespace > MaxExpansionPerSpace)
+                            wordWhitespace = 0f;
                         whitespace = 0f;
                         break;
                     case HorizontalAlignment.JustifyWordsCentered:
                         if (line.VisibleWordCount > 1) {
-                            wordWhitespace = Math.Min(whitespace / wordCountMinusOne, MaxExpansionPerSpace);
+                            wordWhitespace = whitespace / wordCountMinusOne;
+                            if (wordWhitespace > MaxExpansionPerSpace)
+                                wordWhitespace = 0f;
                             whitespace -= (wordWhitespace * wordCountMinusOne);
                         }
                         whitespace *= 0.5f;
                         break;
                     case HorizontalAlignment.JustifyCharacters:
-                        characterWhitespace = Math.Min(whitespace / (line.DrawCallCount - 1), MaxExpansionPerSpace);
+                        characterWhitespace = whitespace / (line.DrawCallCount - 1);
+                        if (characterWhitespace > MaxExpansionPerSpace)
+                            characterWhitespace = 0f;
                         whitespace = 0f;
                         break;
                     case HorizontalAlignment.JustifyCharactersCentered:
                         if (line.DrawCallCount > 1) {
-                            characterWhitespace = Math.Min(whitespace / (line.DrawCallCount - 1), MaxExpansionPerSpace);
+                            characterWhitespace = whitespace / (line.DrawCallCount - 1);
+                            if (characterWhitespace > MaxExpansionPerSpace)
+                                characterWhitespace = 0f;
                             whitespace -= (characterWhitespace * (line.DrawCallCount - 1));
                         }
                         whitespace *= 0.5f;
