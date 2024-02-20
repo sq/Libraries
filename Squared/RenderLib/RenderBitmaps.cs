@@ -1534,8 +1534,8 @@ namespace Squared.Render {
             if (tex1 == null)
                 return Bounds.FromPositionAndSize(Position, Vector2.Zero);
 
-            var texSize = new Vector2(tex1.Width, tex1.Height);
-            var texRgn = (TextureRegion.BottomRight - TextureRegion.TopLeft) * texSize * Scale;
+            var texSize = new Vector2(tex1.Width * Scale.X, tex1.Height * Scale.Y);
+            var texRgn = (TextureRegion.BottomRight - TextureRegion.TopLeft) * texSize;
             var offset = Origin * texRgn;
 
             return new Bounds(

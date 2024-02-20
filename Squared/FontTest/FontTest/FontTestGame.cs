@@ -355,11 +355,11 @@ namespace FontTest {
             } else {
                 if (false)
                     foreach (var l in SL2Lines)
-                        ir.OutlineRectangle(l, Color.Orange);
+                        ir.RasterizeRectangle(l.TopLeft, l.BottomRight, 0f, 1f, Color.Transparent, Color.Transparent, Color.Orange);
 
                 foreach (var s in SL2Spans)
                     foreach (var b in s)
-                        ir.OutlineRectangle(b, Color.Green);
+                        ir.RasterizeRectangle(b.TopLeft, b.BottomRight, 0f, 1f, Color.Transparent, Color.Transparent, Color.Green);
             }
 
             var state = $"align {Text.Alignment} char-wrap {Text.CharacterWrap} word-wrap {Text.WordWrap} expand {Expand.Value} kern {Kerning.Value}";
