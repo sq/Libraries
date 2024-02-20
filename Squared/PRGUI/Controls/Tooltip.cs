@@ -122,6 +122,7 @@ namespace Squared.PRGUI.Controls {
             content.AlignToPixels = StaticTextBase.DefaultGlyphPixelAlignment;
             content.WordWrap = true;
             content.CharacterWrap = false;
+            content.HideOverflow = true;
             content.Alignment = HorizontalAlignment.Left;
         }
 

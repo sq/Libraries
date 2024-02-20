@@ -326,12 +326,14 @@ namespace Squared.Render.TextLayout2 {
                     x2 = x1 + w;
 
                 if (x2 >= MaximumWidth) {
-                    if (!isWhiteSpace)
+                    if (!isWhiteSpace) {
                         forcedWrap = true;
-                    else if (CharacterWrap)
+                    } else if (CharacterWrap)
                         // HACK: If word wrap is disabled and character wrap is enabled,
                         //  without this our bounding box can extend beyond MaximumWidth.
                         suppressThisCharacter = true;
+                    else if (HideOverflow)
+                        SuppressUntilNextLine = true;
                 }
 
                 if (forcedWrap)
@@ -395,7 +397,9 @@ namespace Squared.Render.TextLayout2 {
                 ;
             } else if (CharacterWrap) {
                 FinishLine();
-            } else
+            } else if (HideOverflow)
+                SuppressUntilNextLine = true;
+            else
                 ;
         }
 
@@ -451,6 +455,7 @@ namespace Squared.Render.TextLayout2 {
 
             // Listener?.RecordLine(ref this, ref line);
 
+            SuppressUntilNextLine = false;
             LineIndex++;
             CurrentLine = new Line {
                 Index = LineIndex,
