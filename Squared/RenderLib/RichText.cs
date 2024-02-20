@@ -721,10 +721,7 @@ namespace Squared.Render.Text {
                         commandMode && (ImageProvider != null) && 
                         (ai = ImageProvider(bracketed.Value, this)).IsInitialized
                     ) {
-                        // FIXME
-                        /*
-                        var currentX1 = 0f;
-                        var currentX2 = Math.Max(layoutEngine.currentLineBreakAtX ?? 0, layoutEngine.currentLineMaxX);
+                        layoutEngine.ComputeConstrainedSize(out var constrainedSize);
                         if (ai.Dead) {
                             referencedImages.Add(ai);
                         } else if (DisableImages) {
@@ -738,11 +735,13 @@ namespace Squared.Render.Text {
                             AppendImage(ref layoutEngine, ri);
                             referencedImages.Add(ref ai);
                         } else if (ai.Width.HasValue) {
+                            // Missing image of explicit size
                             var m = ai.Margin ?? Vector2.Zero;
-                            var halfM = m / 2f;
                             var w = ai.Width.Value;
                             var h = (ai.Height ?? 0);
                             if (ai.CreateBox) {
+                                // FIXME
+                                /*
                                 Bounds box;
                                 float boxX = layoutEngine.characterOffset.X,
                                     boxY = layoutEngine.characterOffset.Y;
@@ -754,6 +753,8 @@ namespace Squared.Render.Text {
                                     boxY = Arithmetic.Lerp(layoutEngine.actualPosition.Y, layoutEngine.actualPosition.Y + layoutEngine.stopAtY - h ?? 0f, ai.HardVerticalAlignment.Value);
                                 box = Bounds.FromPositionAndSize(boxX - halfM.X, boxY - halfM.Y, w + m.X, h + m.Y);
                                 layoutEngine.CreateBox(ref box);
+                                */
+                                layoutEngine.CreateEmptyBox(w, h, m);
                                 if (ai.HardHorizontalAlignment.HasValue || ai.HardVerticalAlignment.HasValue)
                                     ;
                                 else
@@ -765,7 +766,6 @@ namespace Squared.Render.Text {
                         } else {
                             referencedImages.Add(ref ai);
                         }
-                        */
                     } else if (commandMode && bracketed.Value.Contains(":")) {
                         foreach (var rule in RichText.ParseRules(bracketed.Value, ref parseErrors)) {
                             var value = rule.Value;
@@ -919,6 +919,7 @@ namespace Squared.Render.Text {
         }
 
         private void AppendImage (ref TLayoutEngine layoutEngine, RichImage image) {
+            layoutEngine.AppendImage(ref image);
             // FIXME
             /*
             layoutEngine.AppendImage(

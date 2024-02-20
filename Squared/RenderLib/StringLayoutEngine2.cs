@@ -12,6 +12,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Globalization;
 using Squared.Util.DeclarativeSort;
+using Microsoft.Xna.Framework.Graphics;
+using Squared.Threading;
 
 namespace Squared.Render.TextLayout2 {
     public struct Line {
@@ -36,6 +38,14 @@ namespace Squared.Render.TextLayout2 {
         }
     }
 
+    public struct Box {
+        public Vector2 Size, Margin;
+        public float? HardHorizontalAlignment;
+        public float BaselineAlignment;
+        // Optional
+        public uint DrawCallIndex;
+    }
+
     public interface IStringLayoutListener {
         void Initializing (ref StringLayoutEngine2 engine);
         void RecordTexture (ref StringLayoutEngine2 engine, TextureSet textures);
@@ -48,7 +58,7 @@ namespace Squared.Render.TextLayout2 {
             public BitmapDrawCall* DrawCalls;
             public Line* Lines;
             public Span* Spans;
-            public Bounds* Boxes;
+            public Box* Boxes;
             public uint DrawCallCapacity, LineCapacity, SpanCapacity, BoxCapacity;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -73,7 +83,7 @@ namespace Squared.Render.TextLayout2 {
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public ref Bounds Box (uint index) {
+            public ref Box Box (uint index) {
                 if (index >= BoxCapacity)
                     Reallocate(ref Boxes, ref BoxCapacity, index + 1);
                 return ref Boxes[index];
@@ -527,6 +537,27 @@ namespace Squared.Render.TextLayout2 {
             };
         }
 
+        public void CreateEmptyBox (float width, float height, Vector2 margins) {
+            // FIXME
+        }
+
+        public void Advance (
+            float width, float height, 
+            // FIXME
+            bool doNotAdjustLineSpacing = false, bool considerBoxes = true
+        ) {
+            ref var line = ref CurrentLine;
+            LineOffset.X += width;
+            line.Width += width;
+            line.Height = Math.Max(CurrentLine.Height, height);
+            UnconstrainedLineSize.X += width;
+            UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, height);
+        }
+
+        public void AppendImage (ref RichImage image) {
+            // FIXME
+        }
+
         private void AlignLines (float totalWidth) {
             if (Alignment == HorizontalAlignment.Left)
                 return;
@@ -586,6 +617,11 @@ namespace Squared.Render.TextLayout2 {
                 short lastWordIndex = -1;
                 for (uint j = line.FirstDrawCall, j2 = j + line.DrawCallCount - 1; j <= j2; j++) {
                     ref var drawCall = ref Buffers.DrawCall(j);
+                    // LocalData2 being set means that this draw call is absolutely positioned.
+                    // FIXME: Should this ever happen?
+                    if (drawCall.LocalData2 != 0)
+                        continue;
+
                     if ((drawCall.LocalData1 != lastWordIndex) && (lastWordIndex >= 0))
                         whitespace += wordWhitespace;
                     lastWordIndex = drawCall.LocalData1;
@@ -596,6 +632,16 @@ namespace Squared.Render.TextLayout2 {
             }
         }
 
+        public void ComputeConstrainedSize (out Vector2 constrainedSize) {
+            constrainedSize = Vector2.Zero;
+            for (uint i = 0; i <= LineIndex; i++) {
+                ref var line = ref Buffers.Line(i);
+                constrainedSize.X = Math.Max(constrainedSize.X, line.Width);
+                constrainedSize.Y += line.Height;
+            }
+            constrainedSize.X = Math.Max(constrainedSize.X, DesiredWidth);
+        }
+
         public unsafe void Finish (ArraySegment<BitmapDrawCall> buffer, out StringLayout result) {
             UnconstrainedSize.X = Math.Max(UnconstrainedSize.X, UnconstrainedLineSize.X);
             UnconstrainedSize.Y += UnconstrainedLineSize.Y;
@@ -603,14 +649,7 @@ namespace Squared.Render.TextLayout2 {
 
             Listener?.Finishing(ref this);
 
-            var constrainedSize = Vector2.Zero;
-            for (uint i = 0; i <= LineIndex; i++) {
-                ref var line = ref Buffers.Line(i);
-                constrainedSize.X = Math.Max(constrainedSize.X, line.Width);
-                constrainedSize.Y += line.Height;
-            }
-
-            constrainedSize.X = Math.Max(constrainedSize.X, DesiredWidth);
+            ComputeConstrainedSize(out var constrainedSize);
             AlignLines(constrainedSize.X);
 
             // HACK
