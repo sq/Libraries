@@ -20,7 +20,7 @@ namespace Squared.Render.TextLayout2 {
         public uint Index, VisibleWordCount;
         public uint FirstDrawCall, DrawCallCount;
         public Vector2 Location;
-        public float Width, Height;
+        public float Width, Height, Baseline;
     }
 
     public struct Span {
@@ -31,7 +31,7 @@ namespace Squared.Render.TextLayout2 {
 
     public struct Word {
         public uint FirstDrawCall, DrawCallCount;
-        public float LeadingWhitespace, Width, Height;
+        public float LeadingWhitespace, Width, Height, Baseline;
         public float TotalWidth {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => LeadingWhitespace + Width;
@@ -383,6 +383,7 @@ namespace Squared.Render.TextLayout2 {
                 bool suppressThisCharacter = false;
                 float w = (glyph.WidthIncludingBearing * effectiveScale.X) + (glyph.CharacterSpacing * effectiveScale.X),
                     h = glyph.LineSpacing * effectiveScale.Y,
+                    baseline = glyph.Baseline * effectiveScale.Y,
                     xBasis = CurrentWord.LeadingWhitespace + LineOffset.X,
                     x1 = xBasis + WordOffset.X,
                     x2 = x1 + w;
@@ -412,6 +413,11 @@ namespace Squared.Render.TextLayout2 {
                 } else if (isWhiteSpace)
                     FinishWord();
 
+                if (baseline > CurrentWord.Baseline)
+                    IncreaseBaseline(ref CurrentWord, baseline);
+
+                float alignmentToBaseline = CurrentWord.Baseline - baseline;
+
                 if (!deadGlyph && !isWhiteSpace) {
                     ref var drawCall = ref AppendDrawCall(ref dead);
                     short wordIndex;
@@ -422,14 +428,15 @@ namespace Squared.Render.TextLayout2 {
 
                     float x = WordOffset.X + (glyph.XOffset * effectiveScale.X) + (glyph.LeftSideBearing * effectiveScale.X),
                         // Used to compute bounding box offsets
-                        wx = xBasis + x;
+                        wx = xBasis + x,
+                        y = WordOffset.Y + (glyph.YOffset * effectiveScale.Y) + alignmentToBaseline;
                     drawCall = new BitmapDrawCall {
                         MultiplyColor = OverrideColor 
                             ? MultiplyColor
                             : (glyph.DefaultColor ?? MultiplyColor),
                         AddColor = AddColor,
                         Position = new Vector2(
-                            x, WordOffset.Y + (glyph.YOffset * effectiveScale.Y)
+                            x, y
                         ),
                         Scale = effectiveScale * glyph.RenderScale,
                         Textures = new TextureSet(glyph.Texture),
@@ -452,6 +459,30 @@ namespace Squared.Render.TextLayout2 {
                 UnconstrainedLineSize.X += w;
                 CurrentWord.Height = Math.Max(CurrentWord.Height, h);
                 UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, h);
+            }
+        }
+
+        private void IncreaseBaseline (ref Word word, float newBaseline) {
+            float adjustment = newBaseline - word.Baseline;
+            word.Baseline = newBaseline;
+            if (word.DrawCallCount == 0)
+                return;
+
+            for (uint d = word.FirstDrawCall, d2 = d + word.DrawCallCount - 1; d <= d2; d++) {
+                ref var dc = ref Buffers.DrawCall(d);
+                dc.Position.Y += adjustment;
+            }
+        }
+
+        private void IncreaseBaseline (ref Line line, float newBaseline) {
+            float adjustment = newBaseline - line.Baseline;
+            line.Baseline = newBaseline;
+            if (line.DrawCallCount == 0)
+                return;
+
+            for (uint d = line.FirstDrawCall, d2 = d + line.DrawCallCount - 1; d <= d2; d++) {
+                ref var dc = ref Buffers.DrawCall(d);
+                dc.Position.Y += adjustment;
             }
         }
 
@@ -494,11 +525,16 @@ namespace Squared.Render.TextLayout2 {
                     span.FirstLineIndex = LineIndex;
             }
 
+            if (word.Baseline > line.Baseline)
+                IncreaseBaseline(ref line, word.Baseline);
+
+            float baselineAdjustment = line.Baseline - word.Baseline;
+
             if (word.DrawCallCount > 0) {
                 for (uint i = word.FirstDrawCall, i2 = i + word.DrawCallCount - 1; i <= i2; i++) {
                     ref var drawCall = ref Buffers.DrawCall(i);
-                    drawCall.Position += Position + LineOffset;
-                    drawCall.Position.X += word.LeadingWhitespace;
+                    drawCall.Position.X += Position.X + LineOffset.X + word.LeadingWhitespace;
+                    drawCall.Position.Y += Position.Y + LineOffset.Y + baselineAdjustment;
                 }
             }
 
