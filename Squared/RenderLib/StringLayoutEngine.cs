@@ -217,9 +217,6 @@ namespace Squared.Render.Text {
                     m.CurrentSplitGlyphCount++;
                 }
 
-                m.FirstWordIndex = m.FirstWordIndex ?? wordIndex;
-                m.FirstLineIndex = m.FirstLineIndex ?? (ushort)_rowIndex;
-                m.LineCount = (ushort)(_rowIndex - m.FirstLineIndex.Value);
                 m.FirstDrawCallIndex = m.FirstDrawCallIndex ?? drawCallIndex;
                 m.LastDrawCallIndex = (drawCallIndex ?? m.LastDrawCallIndex);
                 Markers[i] = m;
@@ -582,6 +579,7 @@ namespace Squared.Render.Text {
                 accumulatedSpacing += characterSpacing;
             }
 
+            /*
             for (int j = 0, c = Markers.Count; j < c; j++) {
                 ref var marker = ref Markers.Item(j);
                 // HACK: If word justification is enabled, do approximate justification of the boxes too
@@ -598,6 +596,7 @@ namespace Squared.Render.Text {
                     b.BottomRight.X += whitespace + wordSpace;
                 }
             }
+            */
         }
 
         private void AlignLines (

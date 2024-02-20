@@ -40,7 +40,10 @@ namespace Squared.Render.Text {
             public DenseList<AbstractTextureReference> UsedTextures;
             public DenseList<AsyncRichImage> Dependencies;
             public Dictionary<Pair<int>, LayoutMarker> Markers = null;
-            public Dictionary<Vector2, LayoutHitTest> HitTests = null;
+            public Vector2? HitTest;
+            public LayoutHitTest HitTestResult;
+            public Pair<int>? MarkedRange;
+            public LayoutMarker MarkedRangeResult;
             public DenseList<LayoutMarker> RichMarkers;
             public DenseList<Bounds> Boxes;
 
@@ -189,12 +192,16 @@ namespace Squared.Render.Text {
         }
 
         public void ResetMarkersAndHitTests () {
+            if (_Satellite?.MarkedRange != null) {
+                _Satellite.MarkedRange = null;
+                Invalidate();
+            }
             if ((_Satellite?.Markers != null) && (_Satellite.Markers.Count > 0)) {
                 _Satellite.Markers.Clear();
                 Invalidate();
             }
-            if ((_Satellite?.HitTests != null) && (_Satellite.HitTests.Count > 0)) {
-                _Satellite.HitTests.Clear();
+            if (_Satellite?.HitTest != null) {
+                _Satellite.HitTest = null;
                 Invalidate();
             }
         }
@@ -208,55 +215,29 @@ namespace Squared.Render.Text {
         private Dictionary<Pair<int>, LayoutMarker> GetMarkers () {
             var satellite = AutoAllocateSatellite();
             if (satellite.Markers == null)
-                satellite.Markers = new Dictionary<Pair<int>, LayoutMarker>();
+                satellite.Markers = new Dictionary<Pair<int>, LayoutMarker>(Pair<int>.Comparer.Instance);
             return satellite.Markers;
         }
 
-        private Dictionary<Vector2, LayoutHitTest> GetHitTests () {
+        public LayoutMarker MarkRange (int characterIndex) => MarkRange(characterIndex, characterIndex);
+
+        public LayoutMarker MarkRange (int firstCharacterIndex, int lastCharacterIndex) {
+            if (DisableMarkers)
+                return default;
+
+            var key = new Pair<int>(Math.Min(firstCharacterIndex, lastCharacterIndex), Math.Max(firstCharacterIndex, lastCharacterIndex));
             var satellite = AutoAllocateSatellite();
-            if (satellite.HitTests == null)
-                satellite.HitTests = new Dictionary<Vector2, LayoutHitTest>();
-            return satellite.HitTests;
-        }
-
-        public LayoutMarker? Mark (int characterIndex) {
-            if (DisableMarkers)
-                return null;
+            satellite.MarkedRange = key;
 
             var m = GetMarkers();
-            var key = new Pair<int>(characterIndex, characterIndex);
-
-            LayoutMarker result;
-            if (!m.TryGetValue(key, out result)) {
-                m[key] = new LayoutMarker(characterIndex, characterIndex);
-                Invalidate();
-                return null;
-            }
-
-            if (result.Bounds.Count > 0)
-                return result;
-            else
-                return null;
-        }
-
-        public LayoutMarker? Mark (int firstCharacterIndex, int lastCharacterIndex) {
-            if (DisableMarkers)
-                return null;
-
-            var m = GetMarkers();
-            var key = new Pair<int>(firstCharacterIndex, lastCharacterIndex);
-
             LayoutMarker result;
             if (!m.TryGetValue(key, out result)) {
                 m[key] = new LayoutMarker(firstCharacterIndex, lastCharacterIndex);
                 Invalidate();
-                return null;
+                return default;
             }
 
-            if (result.Bounds.Count > 0)
-                return result;
-            else
-                return null;
+            return satellite.MarkedRangeResult;
         }
 
         /// <summary>
@@ -284,27 +265,29 @@ namespace Squared.Render.Text {
         }
 
         private static readonly Dictionary<Pair<int>, LayoutMarker> EmptyMarkers = new Dictionary<Pair<int>, LayoutMarker>();
-        private static readonly Dictionary<Vector2, LayoutHitTest> EmptyHitTests = new Dictionary<Vector2, LayoutHitTest>();
 
         // Unfortunately enumerating over ReadOnlyDictionary boxes their enumerators :(
         public IReadOnlyDictionary<Pair<int>, LayoutMarker> Markers => _Satellite?.Markers ?? EmptyMarkers;
-        public IReadOnlyDictionary<Vector2, LayoutHitTest> HitTests => _Satellite?.HitTests ?? EmptyHitTests;
+        public Vector2? HitTestLocation {
+            get => _Satellite?.HitTest;
+            set {
+                if (value == null) {
+                    if (_Satellite == null)
+                        return;
+                } else
+                    AutoAllocateSatellite();
+
+                if (_Satellite.HitTest == value)
+                    return;
+                _Satellite.HitTest = value;
+                _Satellite.HitTestResult = default;
+                Invalidate();
+            }
+        }
+        public LayoutHitTest HitTestResult => _Satellite?.HitTestResult ?? default;
         public DenseList<LayoutMarker> RichMarkers => _Satellite?.RichMarkers ?? default;
         public DenseList<Bounds> Boxes => _Satellite?.Boxes ?? default;
         public DenseList<AsyncRichImage> Dependencies => _Satellite?.Dependencies ?? default;
-
-        public LayoutHitTest? HitTest (Vector2 position) {
-            var ht = GetHitTests();
-            LayoutHitTest result;
-            if (!ht.TryGetValue(position, out result)) {
-                ht[position] = new LayoutHitTest {
-                    Position = position
-                };
-                Invalidate();
-                return null;
-            }
-            return result;
-        }
 
         private void InvalidatingNullableAssignment<T> (ref T? destination, T? newValue)
             where T : struct, IEquatable<T> {
@@ -932,9 +915,8 @@ namespace Squared.Render.Text {
                 foreach (var kvp in _Satellite.Markers)
                     result.Markers.Add(kvp.Value);
 
-            if ((_Satellite?.HitTests?.Count ?? 0) > 0)
-                foreach (var kvp in _Satellite.HitTests)
-                    result.HitTests.Add(new LayoutHitTest { Position = kvp.Key });
+            if (_Satellite?.HitTest != null)
+                result.HitTests.Add(new LayoutHitTest { Position = _Satellite.HitTest.Value });
         }
 
         public void MakeLayoutEngine2 (out StringLayoutEngine2 result, MeasurementSettings? measureOnly = null) {
@@ -977,6 +959,7 @@ namespace Squared.Render.Text {
                 IncludeTrailingWhitespace = IncludeTrailingWhitespace,
                 WrapCharacters = _WordWrapCharacterTable,
                 Listener = _Listener,
+                MarkedRange = _Satellite?.MarkedRange
             };
         }
 
@@ -1134,8 +1117,25 @@ namespace Squared.Render.Text {
                             _Buffer = new ArraySegment<BitmapDrawCall>(_CachedStringLayout.DrawCalls.Array);
                         // _CachedStringLayout = le.Finish();
 
-                        // Copy the storage back in case it grew.
-                        // This ensures we don't allocate more temporary backing storage every time we layout our text.
+                        if (_Satellite?.MarkedRange != null) {
+                            _Satellite.MarkedRangeResult.FirstCharacterIndex = _Satellite.MarkedRange.Value.First;
+                            _Satellite.MarkedRangeResult.LastCharacterIndex = _Satellite.MarkedRange.Value.Second;
+                            _Satellite.MarkedRangeResult.Bounds.Clear();
+                            if (le2.MarkedRangeSpanIndex != uint.MaxValue) {
+                                ref var span = ref le2.GetSpan(le2.MarkedRangeSpanIndex);
+                                le2.TryGetSpanBoundingBoxes(le2.MarkedRangeSpanIndex, ref _Satellite.MarkedRangeResult.Bounds);
+                                unchecked {
+                                    _Satellite.MarkedRangeResult.FirstDrawCallIndex = (int)span.FirstDrawCall;
+                                    _Satellite.MarkedRangeResult.LastDrawCallIndex = (int)(span.FirstDrawCall + span.DrawCallCount - 1);
+                                    _Satellite.MarkedRangeResult.GlyphCount = (ushort)span.DrawCallCount;
+                                }
+                            } else {
+                                _Satellite.MarkedRangeResult.FirstDrawCallIndex =
+                                    _Satellite.MarkedRangeResult.LastDrawCallIndex = null;
+                                _Satellite.MarkedRangeResult.GlyphCount = 0;
+                            }
+                        }
+
                         /*
                         if (le.usedTextures.HasList)
                             AutoAllocateSatellite().UsedTextures = le.usedTextures;

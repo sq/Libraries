@@ -130,10 +130,10 @@ namespace Squared.Render.TextLayout2 {
         }
 
         // Internal state
-
         Vector2 WordOffset, LineOffset;
         Vector2 UnconstrainedSize, UnconstrainedLineSize;
-        uint RowIndex, ColIndex, LineIndex, CharIndex, DrawCallIndex, SpanIndex, WordIndex;
+        uint ColIndex, LineIndex, CharIndex, 
+            DrawCallIndex, SpanIndex, WordIndex;
         bool SuppressUntilNextLine, SuppressUntilEnd;
 
         bool ExternalBuffers;
@@ -144,7 +144,6 @@ namespace Squared.Render.TextLayout2 {
         DenseList<uint> SpanStack;
 
         // Configuration
-
         public IStringLayoutListener Listener;
 
         public DenseList<uint> WrapCharacters;
@@ -179,6 +178,11 @@ namespace Squared.Render.TextLayout2 {
         public float MaximumWidth, DesiredWidth;
         public float MaxExpansionPerSpace;
 
+        public Pair<int>? MarkedRange;
+
+        // Output
+        public uint MarkedRangeSpanIndex;
+
         bool IsInitialized;
 
         public void Initialize () {
@@ -199,6 +203,7 @@ namespace Squared.Render.TextLayout2 {
                 FirstDrawCall = uint.MaxValue,
                 LeadingWhitespace = InitialIndentation
             };
+            MarkedRangeSpanIndex = uint.MaxValue;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -244,7 +249,7 @@ namespace Squared.Render.TextLayout2 {
                 throw new Exception("Corrupt internal state");
 
             uint l = span.FirstLineIndex, l2 = l + span.LineCount - 1;
-            if ((l2 >= LineIndex) || (l2 < l))
+            if ((l2 > LineIndex) || (l2 < l))
                 throw new Exception("Corrupt internal state");
 
             for (; l <= l2; l++) {
@@ -301,10 +306,14 @@ namespace Squared.Render.TextLayout2 {
             return ref result;
         }
 
-        public ref Span EndSpan () {
+        public ref Span EndCurrentSpan () {
             if (!SpanStack.TryRemoveLast(out var index))
                 return ref Buffers.Span(0);
 
+            return ref EndSpan(index);
+        }
+
+        private ref Span EndSpan (uint index) {
             ref var result = ref Buffers.Span(index);
             // It's possible EndSpan will be called in the middle of a word, in which
             //  case FirstLineIndex will never get filled in by FinishWord. So fill it
@@ -343,6 +352,11 @@ namespace Squared.Render.TextLayout2 {
             for (int i = 0, l = text.Length; i < l; i++) {
                 if (LineLimit.HasValue && LineLimit.Value <= 0)
                     SuppressUntilEnd = true;
+
+                if (MarkedRange?.First == CharIndex) {
+                    if (MarkedRangeSpanIndex == uint.MaxValue)
+                        MarkedRangeSpanIndex = BeginSpan(true).Index;
+                }
 
                 DecodeCodepoint(text, ref i, l, out char ch1, out int currentCodepointSize, out uint codepoint);
 
@@ -446,6 +460,8 @@ namespace Squared.Render.TextLayout2 {
                         // HACK: Used when computing bounding boxes later
                         UserData = new Vector4(wx - x1, x2 - wx, 0, 0),
                     };
+
+                    ColIndex++;
                 }
 
                 if (suppressThisCharacter)
@@ -457,9 +473,15 @@ namespace Squared.Render.TextLayout2 {
                     CurrentWord.Width += w;
                 }
 
+                if (MarkedRange?.Second == CharIndex) {
+                    if (MarkedRangeSpanIndex != uint.MaxValue)
+                        EndSpan(MarkedRangeSpanIndex);
+                }
+
                 UnconstrainedLineSize.X += w;
                 CurrentWord.Height = Math.Max(CurrentWord.Height, h);
                 UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, h);
+                CharIndex++;
             }
         }
 
@@ -574,6 +596,7 @@ namespace Squared.Render.TextLayout2 {
                 Index = index,
                 Location = LineOffset,
             };
+            ColIndex = 0;
         }
 
         public void CreateEmptyBox (float width, float height, Vector2 margins) {

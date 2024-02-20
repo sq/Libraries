@@ -113,7 +113,8 @@ namespace Squared.PRGUI.Controls {
             AlignToPixels = StaticTextBase.DefaultGlyphPixelAlignment
         };
         protected DynamicStringLayout DynamicLayout = new DynamicStringLayout {
-            AlignToPixels = StaticTextBase.DefaultGlyphPixelAlignment
+            AlignToPixels = StaticTextBase.DefaultGlyphPixelAlignment,
+            HideOverflow = false,
         };
         protected StringBuilder Builder = new StringBuilder();
         protected Margins CachedPadding;
@@ -488,11 +489,6 @@ namespace Squared.PRGUI.Controls {
         protected StringLayout UpdateLayout (
             ref UIOperationContext context, ref DecorationSettings settings, IDecorator decorations, out Material material
         ) {
-            // HACK: Avoid accumulating too many extra hit tests from previous mouse positions
-            // This will invalidate the layout periodically as the mouse moves, but whatever
-            if (DynamicLayout.HitTests.Count > 8)
-                DynamicLayout.ResetMarkersAndHitTests();
-
             UpdateLayoutSettings();
 
             Color? color = null;
@@ -545,16 +541,14 @@ namespace Squared.PRGUI.Controls {
             var esel = ExpandedSelection;
             var a = esel.First;
             var b = Math.Max(esel.Second - 1, a);
-            return DynamicLayout.Mark(a, b);
+            return DynamicLayout.MarkRange(a, b);
         }
 
         private LayoutHitTest? ImmediateHitTest (Vector2 virtualPosition) {
-            var result = DynamicLayout.HitTest(virtualPosition);
-            if (result.HasValue)
-                return result;
-
+            DynamicLayout.HitTestLocation = virtualPosition;
+            // FIXME: Use MeasureOnly somehow to make this cheaper?
             DynamicLayout.Get();
-            return DynamicLayout.HitTest(virtualPosition);
+            return DynamicLayout.HitTestResult;
         }
 
         /// <param name="virtualPosition">Local position ignoring scroll offset.</param>

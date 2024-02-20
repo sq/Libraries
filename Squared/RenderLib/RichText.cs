@@ -903,7 +903,7 @@ namespace Squared.Render.Text {
 
                             if (MarkedStringProcessor != null)
                                 markedState.Reset(ref layoutEngine);
-                            layoutEngine.EndSpan();
+                            layoutEngine.EndCurrentSpan();
                         } finally {
                             markedState.Dispose();
                         }
