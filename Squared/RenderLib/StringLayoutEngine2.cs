@@ -338,6 +338,7 @@ namespace Squared.Render.TextLayout2 {
             Buffers.EnsureCapacity((uint)(DrawCallIndex + text.Length));
 
             var effectiveScale = Scale * (1.0f / glyphSource.DPIScaleFactor);
+            float defaultLineSpacing = glyphSource.LineSpacing * effectiveScale.Y;
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 if (LineLimit.HasValue && LineLimit.Value <= 0)
@@ -404,7 +405,7 @@ namespace Squared.Render.TextLayout2 {
                     //  whether it needs to be character wrapped
                     PerformForcedWrap(CurrentWord.Width + w);
                 else if (lineBreak)
-                    PerformLineBreak();
+                    PerformLineBreak(defaultLineSpacing);
 
                 if (DisableDefaultWrapCharacters) {
                     // FIXME
@@ -498,11 +499,14 @@ namespace Squared.Render.TextLayout2 {
                 ;
         }
 
-        private void PerformLineBreak () {
+        private void PerformLineBreak (float defaultLineSpacing) {
+            var height = UnconstrainedLineSize.Y == 0f ? defaultLineSpacing : UnconstrainedLineSize.Y;
             UnconstrainedSize.X = Math.Max(UnconstrainedSize.X, UnconstrainedLineSize.X);
-            UnconstrainedSize.Y += UnconstrainedLineSize.Y + ExtraBreakSpacing;
+            UnconstrainedSize.Y += height + ExtraBreakSpacing;
             UnconstrainedLineSize = default;
             FinishWord();
+            if (CurrentLine.Height == 0f)
+                CurrentLine.Height = defaultLineSpacing;
             FinishLine(true);
         }
 
