@@ -13,6 +13,7 @@ using Squared.Game;
 using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Text;
+using TLayoutEngine = Squared.Render.Text.StringLayoutEngine;
 
 namespace Squared.Render.Text {
     public static class RichText {
@@ -165,7 +166,7 @@ namespace Squared.Render.Text {
         }
     }
 
-    public delegate void RichStyleApplier (in RichStyle style, ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state);
+    public delegate void RichStyleApplier (in RichStyle style, ref TLayoutEngine layoutEngine, ref RichTextLayoutState state);
 
     public struct RichParseError {
         public AbstractString Text;
@@ -375,7 +376,7 @@ namespace Squared.Render.Text {
         public List<AbstractString> MarkedStrings;
         private DenseList<StringBuilder> StringBuildersToReturn;
 
-        public RichTextLayoutState (ref StringLayoutEngine engine, IGlyphSource defaultGlyphSource) {
+        public RichTextLayoutState (ref TLayoutEngine engine, IGlyphSource defaultGlyphSource) {
             InitialColor = engine.overrideColor;
             InitialScale = engine.scale;
             InitialSpacing = engine.spacing;
@@ -438,7 +439,7 @@ namespace Squared.Render.Text {
             return result;
         }
 
-        public void Reset (ref StringLayoutEngine engine) {
+        public void Reset (ref TLayoutEngine engine) {
             GlyphSource = null;
             engine.overrideColor = InitialColor;
             engine.scale = InitialScale;
@@ -460,7 +461,7 @@ namespace Squared.Render.Text {
             StringBuildersToReturn.Clear();
         }
 
-        public void AppendPlainText (ref StringLayoutEngine layoutEngine, AbstractString text) {
+        public void AppendPlainText (ref TLayoutEngine layoutEngine, AbstractString text) {
             layoutEngine.AppendText(GlyphSource ?? DefaultGlyphSource, text);
         }
     }
@@ -496,7 +497,7 @@ namespace Squared.Render.Text {
     /// <param name="state">A state snapshot that can be used to examine or restore the current state of the layout engine.</param>
     /// <param name="layoutEngine">The layout engine that will be used to append the text (after this method returns).</param>
     /// <returns>true if the string should be laid out, false if it should be omitted from the output entirely.</returns>
-    public delegate MarkedStringAction MarkedStringProcessor (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref StringLayoutEngine layoutEngine);
+    public delegate MarkedStringAction MarkedStringProcessor (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine);
 
     public sealed class RichTextConfiguration : IEquatable<RichTextConfiguration> {
         public class GlyphSourceCollection : ImmutableAbstractStringLookup<GlyphSourceEntry> {
@@ -630,7 +631,7 @@ namespace Squared.Render.Text {
 
         /// <returns>a list of rich images that were referenced</returns>
         public DenseList<AsyncRichImage> Append (
-            ref StringLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, AbstractString text, 
+            ref TLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, AbstractString text, 
             string styleName, bool? overrideSuppress = null
         ) {
             var state = new RichTextLayoutState(ref layoutEngine, defaultGlyphSource);
@@ -674,7 +675,7 @@ namespace Squared.Render.Text {
             };
 
         private void AppendRichRange (
-            ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
+            ref TLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
             bool? overrideSuppress, ref DenseList<AsyncRichImage> referencedImages, ref DenseList<RichParseError> parseErrors
         ) {
             int currentRangeStart = 0;
@@ -867,7 +868,7 @@ namespace Squared.Render.Text {
 
         /// <returns>a list of rich images that were referenced</returns>
         public DenseList<AsyncRichImage> Append (
-            ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
+            ref TLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
             string styleName, bool? overrideSuppress = null
         ) {
             var referencedImages = new DenseList<AsyncRichImage>();
@@ -891,7 +892,7 @@ namespace Squared.Render.Text {
         }
 
         private static void ApplyStyle (
-            ref StringLayoutEngine layoutEngine, ref RichTextLayoutState state, in RichStyle style
+            ref TLayoutEngine layoutEngine, ref RichTextLayoutState state, in RichStyle style
         ) {
             state.GlyphSource = style.GlyphSource ?? state.GlyphSource;
             layoutEngine.overrideColor = style.Color ?? layoutEngine.overrideColor;
@@ -902,7 +903,7 @@ namespace Squared.Render.Text {
                 style.Apply(in style, ref layoutEngine, ref state);
         }
 
-        private void AppendImage (ref StringLayoutEngine layoutEngine, RichImage image) {
+        private void AppendImage (ref TLayoutEngine layoutEngine, RichImage image) {
             layoutEngine.AppendImage(
                 image.Texture.Instance, scale: image.Scale, 
                 verticalAlignment: image.VerticalAlignment,
@@ -916,12 +917,13 @@ namespace Squared.Render.Text {
         }
 
         private void AppendPlainRange (
-            ref StringLayoutEngine layoutEngine, IGlyphSource glyphSource, AbstractString text,
+            ref TLayoutEngine layoutEngine, IGlyphSource glyphSource, AbstractString text,
             int rangeStart, int rangeEnd, bool? overrideSuppress
         ) {
             if (rangeEnd <= rangeStart)
                 return;
-            layoutEngine.AppendText(glyphSource, text, start: rangeStart, end: rangeEnd, overrideSuppress: overrideSuppress);
+            var range = text.Substring(rangeStart, rangeEnd - rangeStart);
+            layoutEngine.AppendText(glyphSource, range, overrideSuppress: overrideSuppress);
         }
 
         private ImmutableAbstractString ParseBracketedText (AbstractString text, ref int i, ref int currentRangeStart, HashSet<char> terminators, char close) {

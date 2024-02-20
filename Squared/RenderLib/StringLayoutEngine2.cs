@@ -164,7 +164,7 @@ namespace Squared.Render.TextLayout2 {
         public HorizontalAlignment Alignment;
         public uint? MaskCodepoint;
 
-        public float InitialIndentation, BreakIndentation; // WrapIndentation
+        public float InitialIndentation, BreakIndentation; // FIXME: WrapIndentation
         public float AdditionalLineSpacing;
         public float MaximumWidth, DesiredWidth;
         public float MaxExpansionPerSpace;
@@ -172,6 +172,10 @@ namespace Squared.Render.TextLayout2 {
         bool IsInitialized;
 
         public void Initialize () {
+            // FIXME
+            if (IsInitialized)
+                throw new InvalidOperationException("A StringLayoutEngine2 instance cannot be used more than once");
+
             IsInitialized = false;
 
             WrapCharacters.SortNonRef(StringLayoutEngine.UintComparer.Instance);
@@ -179,6 +183,7 @@ namespace Squared.Render.TextLayout2 {
             Listener?.Initializing(ref this);
 
             IsInitialized = true;
+            Buffers.Span(0) = default;
             CurrentLine = default;
             CurrentWord = new Word {
                 FirstDrawCall = uint.MaxValue,
@@ -629,6 +634,7 @@ namespace Squared.Render.TextLayout2 {
             glyphLineSpacing += AdditionalLineSpacing;
             glyphBaseline = glyph.Baseline * scale.Y;
             if (deadGlyph) {
+                // FIXME
                 /*
                 if (currentLineSpacing > 0) {
                     glyphLineSpacing = currentLineSpacing;
