@@ -353,8 +353,9 @@ namespace FontTest {
                         ir.OutlineRectangle(b, Color.Green);
                 }
             } else {
-                foreach (var l in SL2Lines)
-                    ir.OutlineRectangle(l, Color.Orange);
+                if (false)
+                    foreach (var l in SL2Lines)
+                        ir.OutlineRectangle(l, Color.Orange);
 
                 foreach (var s in SL2Spans)
                     foreach (var b in s)
@@ -401,10 +402,7 @@ namespace FontTest {
                     continue;
 
                 var dl = new DenseList<Bounds>();
-                for (uint l = span.FirstLineIndex, l2 = l + span.LineCount - 1; l <= l2; l++) {
-                    if (engine.TryGetLineBounds(l, out var lb))
-                        dl.Add(ref lb);
-                }
+                engine.TryGetSpanBoundingBoxes(span.Index, ref dl);
                 SL2Spans.Add(ref dl);
             }
 

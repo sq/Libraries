@@ -825,6 +825,7 @@ namespace Squared.Render.Text {
                         };
                         markedState.Tags.AddRange(ref Tags);
                         try {
+                            var spanIndex = layoutEngine.BeginSpan(true);
                             if (MarkedStringProcessor != null)
                                 action = MarkedStringProcessor(ref astr, ref id, ref markedState, ref layoutEngine);
 
@@ -863,6 +864,7 @@ namespace Squared.Render.Text {
 
                             if (MarkedStringProcessor != null)
                                 markedState.Reset(ref layoutEngine);
+                            layoutEngine.EndSpan();
                         } finally {
                             markedState.Dispose();
                         }

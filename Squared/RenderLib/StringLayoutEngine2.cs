@@ -221,6 +221,40 @@ namespace Squared.Render.TextLayout2 {
             return ref Buffers.Span(index);
         }
 
+        public bool TryGetSpanBoundingBoxes (uint index, ref DenseList<Bounds> output) {
+            if (index > SpanIndex)
+                return false;
+
+            ref var span = ref Buffers.Span(index);
+            if (span.LineCount == 0)
+                return true;
+            if (span.DrawCallCount == 0)
+                return true;
+
+            uint l = span.FirstLineIndex, l2 = l + span.LineCount - 1;
+            if (l2 >= LineIndex)
+                throw new Exception("Corrupt internal state");
+            for (; l <= l2; l++) {
+                if (!TryGetLineBounds(l, out var lineBounds))
+                    continue;
+
+                if (l == span.FirstLineIndex) {
+                    ref var dc1 = ref Buffers.DrawCall(span.FirstDrawCall);
+                    var dc1b = dc1.EstimateDrawBounds();
+                    lineBounds.TopLeft.X = Math.Max(lineBounds.TopLeft.X, dc1b.TopLeft.X);
+                }
+                if (l == l2) {
+                    ref var dc2 = ref Buffers.DrawCall(span.FirstDrawCall + span.DrawCallCount - 1);
+                    var dc2b = dc2.EstimateDrawBounds();
+                    lineBounds.BottomRight.X = Math.Min(lineBounds.BottomRight.X, dc2b.BottomRight.X);
+                }
+
+                output.Add(ref lineBounds);
+            }
+
+            return true;
+        }
+
         public bool TryGetLineBounds (uint index, out Bounds bounds) {
             if (index > LineIndex) {
                 bounds = default;
@@ -240,7 +274,7 @@ namespace Squared.Render.TextLayout2 {
                 SpanStack.Last() = index;
 
             ref var result = ref Buffers.Span(index);
-            result.Index = SpanIndex;
+            result.Index = index;
             result.FirstLineIndex = LineIndex;
             result.FirstDrawCall = DrawCallIndex;
             return ref result;
@@ -251,7 +285,7 @@ namespace Squared.Render.TextLayout2 {
                 return ref Buffers.Span(0);
 
             ref var result = ref Buffers.Span(index);
-            result.LineCount = LineIndex - result.FirstLineIndex;
+            result.LineCount = (LineIndex - result.FirstLineIndex) + 1;
             result.DrawCallCount = DrawCallIndex - result.FirstDrawCall;
             // Listener?.RecordSpan(ref this, ref result);
             return ref result;
@@ -456,9 +490,9 @@ namespace Squared.Render.TextLayout2 {
             // Listener?.RecordLine(ref this, ref line);
 
             SuppressUntilNextLine = false;
-            LineIndex++;
+            var index = LineIndex++;
             CurrentLine = new Line {
-                Index = LineIndex,
+                Index = index,
                 Location = LineOffset,
             };
         }
