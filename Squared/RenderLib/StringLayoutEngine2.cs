@@ -151,7 +151,7 @@ namespace Squared.Render.TextLayout2 {
         // List of spans affected by this word, which may include spans that were popped earlier
             WordSpanList;
 
-#if DEBUG
+#if TRACK_WORD_CODEPOINTS
         DenseList<uint> CurrentWordCodepoints;
         string CurrentWordText => string.Join("", CurrentWordCodepoints.Select(c => (char)c));
 #endif
@@ -192,9 +192,11 @@ namespace Squared.Render.TextLayout2 {
         public float MaxExpansionPerSpace;
 
         public Pair<int>? MarkedRange;
+        public Vector2? HitTestLocation;
 
         // Output
         public uint MarkedRangeSpanIndex;
+        public LayoutHitTest HitTestResult;
 
         bool IsInitialized;
 
@@ -217,6 +219,7 @@ namespace Squared.Render.TextLayout2 {
                 LeadingWhitespace = InitialIndentation
             };
             MarkedRangeSpanIndex = uint.MaxValue;
+            HitTestResult.Position = HitTestLocation ?? default;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -481,7 +484,7 @@ namespace Squared.Render.TextLayout2 {
 
                 float alignmentToBaseline = CurrentWord.Baseline - baseline;
 
-#if DEBUG
+#if TRACK_WORD_CODEPOINTS
                 CurrentWordCodepoints.Add(codepoint);
 #endif
 
@@ -523,6 +526,13 @@ namespace Squared.Render.TextLayout2 {
                 } else {
                     WordOffset.X += w;
                     CurrentWord.Width += w;
+                }
+
+                if (HitTestLocation.HasValue && (HitTestLocation.Value.X >= x1) && (HitTestLocation.Value.X <= x2)) {
+                    if (!HitTestResult.FirstCharacterIndex.HasValue)
+                        HitTestResult.FirstCharacterIndex = (int)CharIndex;
+                    HitTestResult.LastCharacterIndex = (int)CharIndex;
+                    HitTestResult.LeaningRight = HitTestLocation.Value.X >= ((x1 + x2) * 0.5f);
                 }
 
                 UnconstrainedLineSize.X += w;
@@ -641,7 +651,7 @@ namespace Squared.Render.TextLayout2 {
                 FirstDrawCall = DrawCallIndex,
             };
 
-#if DEBUG
+#if TRACK_WORD_CODEPOINTS
             CurrentWordCodepoints.Clear();
 #endif
 

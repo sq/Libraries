@@ -959,7 +959,8 @@ namespace Squared.Render.Text {
                 IncludeTrailingWhitespace = IncludeTrailingWhitespace,
                 WrapCharacters = _WordWrapCharacterTable,
                 Listener = _Listener,
-                MarkedRange = _Satellite?.MarkedRange
+                MarkedRange = _Satellite?.MarkedRange,
+                HitTestLocation = _Satellite?.HitTest
             };
         }
 
@@ -1135,6 +1136,9 @@ namespace Squared.Render.Text {
                                 _Satellite.MarkedRangeResult.GlyphCount = 0;
                             }
                         }
+
+                        if (_Satellite?.HitTest != null)
+                            _Satellite.HitTestResult = le2.HitTestResult;
 
                         /*
                         if (le.usedTextures.HasList)

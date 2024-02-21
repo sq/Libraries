@@ -152,20 +152,18 @@ namespace Squared.Render.Text {
             }
         }
 
-        public object Tag;
         public Vector2 Position;
         public int? FirstCharacterIndex, LastCharacterIndex;
         public bool LeaningRight;
 
-        public LayoutHitTest (Vector2 position, object tag = null) {
+        public LayoutHitTest (Vector2 position) {
             Position = position;
-            Tag = tag;
             FirstCharacterIndex = LastCharacterIndex = null;
             LeaningRight = false;
         }
 
         public override string ToString () {
-            return $"{Tag ?? "hitTest"} {Position} -> {FirstCharacterIndex} leaning {(LeaningRight ? "right" : "left")}";
+            return $"hitTest {Position} -> {FirstCharacterIndex} leaning {(LeaningRight ? "right" : "left")}";
         }
     }
 }
