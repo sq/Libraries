@@ -53,9 +53,6 @@ namespace FontTest {
 
         Texture2D[] Images = new Texture2D[4];
 
-        UnorderedList<Bounds> SL2Lines = new UnorderedList<Bounds>();
-        UnorderedList<DenseList<Bounds>> SL2Spans = new UnorderedList<DenseList<Bounds>>();
-
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
             Graphics.PreferredBackBufferWidth = 1024;
@@ -327,73 +324,32 @@ namespace FontTest {
             ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.UnconstrainedSize), Color.Blue * 0.75f);
             ir.DrawMultiple(layout, material: m, blendState: BlendState.NonPremultiplied, samplerState: RenderStates.Text, userData: new Vector4(0, 0, 0, 0.66f));
 
-            if (false) {
+            if (true) {
                 foreach (var b in Text.Boxes) {
-                    ir.OutlineRectangle(b, Color.Orange);
+                    ir.RasterizeRectangle(b.TopLeft, b.BottomRight, 0f, 1f, Color.Transparent, Color.Transparent, Color.Orange);
                 }
 
                 foreach (var rm in Text.RichMarkers) {
                     foreach (var b in rm.Bounds)
-                        ir.OutlineRectangle(b, Color.Green);
-                }
-            } else {
-                if (false)
-                    foreach (var l in SL2Lines)
-                        ir.RasterizeRectangle(l.TopLeft, l.BottomRight, 0f, 1f, Color.Transparent, Color.Transparent, Color.Orange);
-
-                foreach (var s in SL2Spans)
-                    foreach (var b in s)
                         ir.RasterizeRectangle(b.TopLeft, b.BottomRight, 0f, 1f, Color.Transparent, Color.Transparent, Color.Green);
+                }
             }
 
-            var state = $"align {Text.Alignment} char-wrap {Text.CharacterWrap} word-wrap {Text.WordWrap} expand {Expand.Value} kern {Kerning.Value}";
+            var state = $"align {Text.Alignment} char-wrap {Text.CharacterWrap} word-wrap {Text.WordWrap} expand {Expand.Value} hint {Hinting.Value} kern {Kerning.Value}";
             var stateLayout = Text.GlyphSource.LayoutString(state);
             ir.DrawMultiple(stateLayout, new Vector2(0, 1024 - stateLayout.UnconstrainedSize.Y));
         }
 
         void IStringLayoutListener.Initializing (ref StringLayoutEngine2 engine) {
-            SL2Lines.Clear();
-            SL2Spans.Clear();
         }
 
-        /*
-        void IStringLayoutListener.RecordSpan (ref StringLayoutEngine2 engine, ref Span span) {
-            if (span.LineCount == 0)
-                return;
-
-            var s = new DenseList<Bounds>();
-            for (uint l = span.FirstLineIndex, l2 = l + span.LineCount - 1; l <= l2; l++) {
-                if (engine.TryGetLineBounds(l, out var lb))
-                    s.Add(ref lb);
-            }
-            SL2Spans.Add(ref s);
-        }
-
-        void IStringLayoutListener.RecordLine (ref StringLayoutEngine2 engine, ref Line line) {
-        }
-        */
-
-        void IStringLayoutListener.RecordTexture (ref StringLayoutEngine2 engine, TextureSet textures) {
+        void IStringLayoutListener.RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture) {
         }
 
         void IStringLayoutListener.Finishing (ref StringLayoutEngine2 engine) {
         }
 
         void IStringLayoutListener.Finished (ref StringLayoutEngine2 engine, uint spanCount, uint lineCount, ref StringLayout result) {
-            for (uint s = 0; s < spanCount; s++) {
-                ref var span = ref engine.GetSpan(s);
-                if (span.LineCount == 0)
-                    continue;
-
-                var dl = new DenseList<Bounds>();
-                engine.TryGetSpanBoundingBoxes(span.Index, ref dl);
-                SL2Spans.Add(ref dl);
-            }
-
-            for (uint l = 0; l < lineCount; l++) {
-                if (engine.TryGetLineBounds(l, out var lb))
-                    SL2Lines.Add(ref lb);
-            }
         }
 
         public string[] TestStrings = new[] {

@@ -17,7 +17,7 @@ using Squared.Util.Hash;
 using Squared.Util.Text;
 
 namespace Squared.Render.Text {
-    public sealed class DynamicStringLayout {
+    public sealed class DynamicStringLayout : IStringLayoutListener {
         public struct MeasurementSettings {
             public float DesiredWidth;
             public float? LineBreakAtX,
@@ -942,7 +942,7 @@ namespace Squared.Render.Text {
                 BreakIndentation = _XOffsetOfNewLine,
                 ExtraBreakSpacing = _ExtraLineBreakSpacing,
                 MaximumWidth = (measureOnly.HasValue ? measureOnly.Value.LineBreakAtX : _LineBreakAtX) ?? float.MaxValue,
-                // stopAtY =    _StopAtY,
+                MaximumHeight = _StopAtY ?? float.MaxValue,
                 // alignToPixels = _AlignToPixels.Or(_GlyphSource.DefaultAlignment),
                 CharacterWrap = CharacterWrap,
                 WordWrap = WordWrap,
@@ -951,16 +951,13 @@ namespace Squared.Render.Text {
                 LineLimit = measureOnly.HasValue ? measureOnly.Value.LineLimit : _LineLimit,
                 BreakLimit = measureOnly.HasValue ? measureOnly.Value.LineBreakLimit : _LineBreakLimit,
                 MeasureOnly = measureOnly.HasValue || MeasureOnly,
-                // disableMarkers = DisableMarkers,
                 MaskCodepoint = _ReplacementCharacter,
-                // recordUsedTextures = RecordUsedTextures,
-                // usedTextures = _Satellite?.UsedTextures ?? default,
                 DisableDefaultWrapCharacters = SplitAtWrapCharactersOnly,
                 IncludeTrailingWhitespace = IncludeTrailingWhitespace,
                 WrapCharacters = _WordWrapCharacterTable,
-                Listener = _Listener,
+                Listener = this,
                 MarkedRange = _Satellite?.MarkedRange,
-                HitTestLocation = _Satellite?.HitTest
+                HitTestLocation = _Satellite?.HitTest,
             };
         }
 
@@ -1196,6 +1193,28 @@ namespace Squared.Render.Text {
         public StringLayout Get () {
             Get(out StringLayout result);
             return result;
+        }
+
+        void IStringLayoutListener.Initializing (ref StringLayoutEngine2 engine) {
+            _Listener?.Initializing(ref engine);
+        }
+
+        void IStringLayoutListener.RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture) {
+            if (RecordUsedTextures) {
+                var satellite = AutoAllocateSatellite();
+                if (satellite.UsedTextures.IndexOf(texture, AbstractTextureReference.Comparer.Instance) < 0)
+                    satellite.UsedTextures.Add(texture);
+            }
+
+            _Listener?.RecordTexture(ref engine, texture);
+        }
+
+        void IStringLayoutListener.Finishing (ref StringLayoutEngine2 engine) {
+            _Listener?.Finishing(ref engine);
+        }
+
+        void IStringLayoutListener.Finished (ref StringLayoutEngine2 engine, uint spanCount, uint lineCount, ref StringLayout result) {
+            _Listener?.Finished(ref engine, spanCount, lineCount, ref result);
         }
     }
 

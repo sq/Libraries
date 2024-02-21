@@ -53,7 +53,7 @@ namespace Squared.Render.TextLayout2 {
 
     public interface IStringLayoutListener {
         void Initializing (ref StringLayoutEngine2 engine);
-        void RecordTexture (ref StringLayoutEngine2 engine, TextureSet textures);
+        void RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture);
         void Finishing (ref StringLayoutEngine2 engine);
         void Finished (ref StringLayoutEngine2 engine, uint spanCount, uint lineCount, ref StringLayout result);
     }
@@ -151,6 +151,8 @@ namespace Squared.Render.TextLayout2 {
         // List of spans affected by this word, which may include spans that were popped earlier
             WordSpanList;
 
+        AbstractTextureReference MostRecentTexture;
+
 #if TRACK_WORD_CODEPOINTS
         DenseList<uint> CurrentWordCodepoints;
         string CurrentWordText => string.Join("", CurrentWordCodepoints.Select(c => (char)c));
@@ -189,6 +191,7 @@ namespace Squared.Render.TextLayout2 {
         public float InitialIndentation, BreakIndentation; // FIXME: WrapIndentation
         public float AdditionalLineSpacing, ExtraBreakSpacing;
         public float MaximumWidth, DesiredWidth;
+        public float MaximumHeight;
         public float MaxExpansionPerSpace;
 
         public Pair<int>? MarkedRange;
@@ -220,6 +223,7 @@ namespace Squared.Render.TextLayout2 {
             };
             MarkedRangeSpanIndex = uint.MaxValue;
             HitTestResult.Position = HitTestLocation ?? default;
+            MostRecentTexture = AbstractTextureReference.Invalid;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -452,7 +456,8 @@ namespace Squared.Render.TextLayout2 {
                     baseline = glyphBaseline,
                     xBasis = CurrentWord.LeadingWhitespace + LineOffset.X,
                     x1 = xBasis + WordOffset.X,
-                    x2 = x1 + w;
+                    x2 = x1 + w,
+                    y2 = LineOffset.Y + h;
 
                 if (x2 >= MaximumWidth) {
                     if (!isWhiteSpace) {
@@ -464,6 +469,8 @@ namespace Squared.Render.TextLayout2 {
                     else if (HideOverflow)
                         SuppressUntilNextLine = true;
                 }
+                if (y2 >= MaximumHeight)
+                    SuppressUntilEnd = true;
 
                 if (forcedWrap)
                     // HACK: Manually calculate the new width of the word so that we can decide
@@ -512,9 +519,12 @@ namespace Squared.Render.TextLayout2 {
                         Textures = new TextureSet(glyph.Texture),
                         TextureRegion = glyph.BoundsInTexture,
                         LocalData1 = wordIndex,
-                        // HACK: Used when computing bounding boxes later
-                        UserData = new Vector4(wx - x1, x2 - wx, 0, 0),
                     };
+
+                    if (glyph.Texture != MostRecentTexture) {
+                        Listener?.RecordTexture(ref this, glyph.Texture);
+                        MostRecentTexture = glyph.Texture;
+                    }
 
                     ColIndex++;
                 }
@@ -612,10 +622,18 @@ namespace Squared.Render.TextLayout2 {
                 leadingWhitespaceAdjustment = word.LeadingWhitespace - oldLeadingWhitespace;
 
             if (word.DrawCallCount > 0) {
-                for (uint i = word.FirstDrawCall, i2 = i + word.DrawCallCount - 1; i <= i2; i++) {
-                    ref var drawCall = ref Buffers.DrawCall(i);
-                    drawCall.Position.X += Position.X + LineOffset.X + word.LeadingWhitespace;
-                    drawCall.Position.Y += Position.Y + LineOffset.Y + baselineAdjustment;
+                if (word.Height + line.Location.Y >= MaximumHeight) {
+                    // HACK: If wrapping causes overflow, erase the draw calls
+                    for (uint i = word.FirstDrawCall, i2 = i + word.DrawCallCount - 1; i <= i2; i++) {
+                        ref var drawCall = ref Buffers.DrawCall(i);
+                        drawCall = default;
+                    }
+                } else {
+                    for (uint i = word.FirstDrawCall, i2 = i + word.DrawCallCount - 1; i <= i2; i++) {
+                        ref var drawCall = ref Buffers.DrawCall(i);
+                        drawCall.Position.X += Position.X + LineOffset.X + word.LeadingWhitespace;
+                        drawCall.Position.Y += Position.Y + LineOffset.Y + baselineAdjustment;
+                    }
                 }
             }
 
@@ -811,23 +829,8 @@ namespace Squared.Render.TextLayout2 {
                 buffer = new ArraySegment<BitmapDrawCall>(buffer.Array, buffer.Offset, (int)DrawCallIndex);
 
             var lastDrawCallIndex = DrawCallIndex > 0 ? DrawCallIndex - 1 : 0;
-            fixed (BitmapDrawCall* dest = buffer.Array) {
+            fixed (BitmapDrawCall* dest = buffer.Array)
                 Buffer.MemoryCopy(Buffers.DrawCalls, dest, buffer.Count * sizeof(BitmapDrawCall), DrawCallIndex * sizeof(BitmapDrawCall));
-                // HACK: Zero the UserData. We used it to store offsets for bounding box computation.
-                // The draw calls in our internal buffers will still have the UserData.
-                // While we're doing this scan, notify the listener of used textures too.
-                var lastTextures = TextureSet.Invalid;
-                for (uint i = 0; i < DrawCallIndex; i++) {
-                    ref var dc = ref dest[i];
-                    dc.UserData = default;
-                    // We attempt to reduce the number of virtual function calls by only calling
-                    //  RecordTexture if the current texture has changed.
-                    if (!dc.Textures.Equals(lastTextures)) {
-                        Listener?.RecordTexture(ref this, dc.Textures);
-                        lastTextures = dc.Textures;
-                    }
-                }
-            }
 
             result = new StringLayout(
                 Vector2.Zero, constrainedSize, UnconstrainedSize, 0f,
