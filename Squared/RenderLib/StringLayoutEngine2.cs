@@ -140,6 +140,7 @@ namespace Squared.Render.TextLayout2 {
         uint ColIndex, LineIndex, CharIndex, 
             DrawCallIndex, SpanIndex, WordIndex;
         bool SuppressUntilNextLine, SuppressUntilEnd;
+        float IndentationForThisLine;
 
         bool ExternalBuffers;
         StagingBuffers Buffers;
@@ -188,7 +189,7 @@ namespace Squared.Render.TextLayout2 {
         public HorizontalAlignment Alignment;
         public uint? MaskCodepoint;
 
-        public float InitialIndentation, BreakIndentation; // FIXME: WrapIndentation
+        public float InitialIndentation, BreakIndentation, WrapIndentation;
         public float AdditionalLineSpacing, ExtraBreakSpacing;
         public float MaximumWidth, DesiredWidth;
         public float MaximumHeight;
@@ -217,9 +218,10 @@ namespace Squared.Render.TextLayout2 {
             IsInitialized = true;
             Buffers.Span(0) = default;
             CurrentLine = default;
+            IndentationForThisLine = InitialIndentation;
             CurrentWord = new Word {
                 FirstDrawCall = uint.MaxValue,
-                LeadingWhitespace = InitialIndentation
+                LeadingWhitespace = IndentationForThisLine,
             };
             MarkedRangeSpanIndex = uint.MaxValue;
             HitTestResult.Position = HitTestLocation ?? default;
@@ -538,13 +540,17 @@ namespace Squared.Render.TextLayout2 {
                     ColIndex++;
                 }
 
+                suppressThisCharacter |= SuppressUntilEnd || SuppressUntilNextLine;
+
                 if (suppressThisCharacter)
                     ;
                 else if (isWhiteSpace && (CurrentWord.DrawCallCount == 0)) {
                     CurrentWord.LeadingWhitespace += w;
+                    CurrentWord.Height = Math.Max(CurrentWord.Height, h);
                 } else {
                     WordOffset.X += w;
                     CurrentWord.Width += w;
+                    CurrentWord.Height = Math.Max(CurrentWord.Height, h);
                 }
 
                 if (HitTestLocation.HasValue && (HitTestLocation.Value.X >= x1) && (HitTestLocation.Value.X <= x2)) {
@@ -555,7 +561,6 @@ namespace Squared.Render.TextLayout2 {
                 }
 
                 UnconstrainedLineSize.X += w;
-                CurrentWord.Height = Math.Max(CurrentWord.Height, h);
                 UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, h);
 
                 CharIndex++;
@@ -617,12 +622,8 @@ namespace Squared.Render.TextLayout2 {
                 return;
 
             var oldLeadingWhitespace = word.LeadingWhitespace;
-            if (line.Width <= 0) {
-                // FIXME: WrapIndentation
-                word.LeadingWhitespace = (LineIndex == 0)
-                    ? InitialIndentation
-                    : BreakIndentation;
-            }
+            if (line.Width <= 0)
+                word.LeadingWhitespace = IndentationForThisLine;
 
             if (word.Baseline > line.Baseline)
                 IncreaseBaseline(ref line, word.Baseline);
@@ -692,6 +693,7 @@ namespace Squared.Render.TextLayout2 {
             LineOffset.X = 0;
             LineOffset.Y += CurrentLine.Height + (forLineBreak ? ExtraBreakSpacing : 0f);
 
+            IndentationForThisLine = forLineBreak ? BreakIndentation : WrapIndentation;
             SuppressUntilNextLine = false;
             LineIndex++;
             CurrentLine = new Line {
