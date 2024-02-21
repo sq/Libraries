@@ -539,9 +539,7 @@ namespace Squared.PRGUI.Controls {
         protected LayoutMarker? MarkSelection () {
             // FIXME: Insertion mode highlight?
             var esel = ExpandedSelection;
-            var a = esel.First;
-            var b = Math.Max(esel.Second - 1, a);
-            return DynamicLayout.MarkRange(a, b);
+            return DynamicLayout.MarkRange(esel.First, esel.Second);
         }
 
         private LayoutHitTest? ImmediateHitTest (Vector2 virtualPosition) {

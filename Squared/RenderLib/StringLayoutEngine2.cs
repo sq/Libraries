@@ -366,6 +366,18 @@ namespace Squared.Render.TextLayout2 {
             return ref result;
         }
 
+        private void UpdateMarkedRange () {
+            if (MarkedRange?.First == CharIndex)
+                MarkedRangeSpanIndex = BeginSpan(true).Index;
+
+            if (MarkedRange?.Second == CharIndex) {
+                if (MarkedRangeSpanIndex != uint.MaxValue) {
+                    EndSpan(MarkedRangeSpanIndex);
+                    SpanStack.Remove(MarkedRangeSpanIndex);
+                }
+            }
+        }
+
         public void AppendText<TGlyphSource> (
             TGlyphSource glyphSource, AbstractString text            
         ) where TGlyphSource : IGlyphSource {
@@ -392,10 +404,7 @@ namespace Squared.Render.TextLayout2 {
                 if (LineLimit.HasValue && LineLimit.Value <= 0)
                     SuppressUntilEnd = true;
 
-                if (MarkedRange?.First == CharIndex) {
-                    if (MarkedRangeSpanIndex == uint.MaxValue)
-                        MarkedRangeSpanIndex = BeginSpan(true).Index;
-                }
+                UpdateMarkedRange();
 
                 DecodeCodepoint(text, ref i, l, out char ch1, out int currentCodepointSize, out uint codepoint);
 
@@ -519,11 +528,6 @@ namespace Squared.Render.TextLayout2 {
                 UnconstrainedLineSize.X += w;
                 CurrentWord.Height = Math.Max(CurrentWord.Height, h);
                 UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, h);
-
-                if (MarkedRange?.Second == CharIndex) {
-                    if (MarkedRangeSpanIndex != uint.MaxValue)
-                        EndSpan(MarkedRangeSpanIndex);
-                }
 
                 CharIndex++;
             }
@@ -773,6 +777,12 @@ namespace Squared.Render.TextLayout2 {
         }
 
         public unsafe void Finish (ArraySegment<BitmapDrawCall> buffer, out StringLayout result) {
+            UpdateMarkedRange();
+
+            // HACK
+            while (SpanStack.Count > 0)
+                EndCurrentSpan();
+
             FinishWord();
             UnconstrainedSize.X = Math.Max(UnconstrainedSize.X, UnconstrainedLineSize.X);
             UnconstrainedSize.Y += UnconstrainedLineSize.Y;
