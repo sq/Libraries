@@ -410,6 +410,11 @@ namespace FontTest {
             "$(Airburst Shot)\n.1  $(Ammo) x 1  Cooldown: 1\n" +
             "Fire a $(Piercing Round) overhead to $(Ambush) all foes (damage decreases based on number of targets).\n" +
             "\t$(Ambush) target for $(75%) piercing Physical damage.",
+            
+            "Test$( )Abc\n" +
+            "Test $(A)bc\n" +
+            "Test A$(b)c\n" +
+            "Test Ab$(c)\n",
 
             @"In Congress, July 4, 1776
 

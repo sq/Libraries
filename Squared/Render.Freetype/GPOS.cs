@@ -310,22 +310,31 @@ namespace Squared.Render.Text {
         public readonly int Count;
         public readonly UInt16[] Values;
         public readonly RangeRecord[] Ranges;
+        public readonly UInt16 Min, Max;
 
         public Coverage (FTUInt16 * ptr) {
             Format = (CoverageFormats)(*ptr++).Value;
             Count = (*ptr++).Value;
+            Max = 0;
+            Min = UInt16.MaxValue;
             switch (Format) {
                 case CoverageFormats.Values: {
                     Values = new UInt16[Count];
-                    for (int i = 0; i < Count; i++)
+                    for (int i = 0; i < Count; i++) {
                         Values[i] = (*ptr++).Value;
+                        Min = Math.Min(Min, Values[i]);
+                        Max = Math.Max(Max, Values[i]);
+                    }
                     Ranges = null;
                     return;
                 }
                 case CoverageFormats.Ranges: {
                     Ranges = new RangeRecord[Count];
-                    for (int i = 0; i < Count; i++)
+                    for (int i = 0; i < Count; i++) {
                         Ranges[i] = new RangeRecord(ref ptr);
+                        Min = Math.Min(Min, Ranges[i].StartGlyphId);
+                        Max = Math.Max(Max, Ranges[i].EndGlyphId);
+                    }
                     Values = null;
                     return;
                 }
@@ -337,6 +346,11 @@ namespace Squared.Render.Text {
         public bool TryGetIndex (int glyphId, out int result) {
             result = default;
             if (Count == 0)
+                return false;
+
+            if (Min > glyphId)
+                return false;
+            else if (Max < glyphId)
                 return false;
 
             // FIXME

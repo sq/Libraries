@@ -14,6 +14,7 @@ using System.Globalization;
 using Squared.Util.DeclarativeSort;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Threading;
+using System.Security.Cryptography;
 
 namespace Squared.Render.TextLayout2 {
     public struct Line {
@@ -26,7 +27,9 @@ namespace Squared.Render.TextLayout2 {
     public struct Span {
         public uint Index;
         public uint FirstDrawCall, DrawCallCount;
-        public uint FirstLineIndex, LineCount;
+        public uint FirstWordIndex, LastWordIndex, FirstLineIndex, LineCount;
+        // FIXME: Merge the word/relative values into single fields
+        public float FirstWordX, FirstRelativeX, LastWordX, LastRelativeX;
     }
 
     public struct Word {
@@ -141,7 +144,15 @@ namespace Squared.Render.TextLayout2 {
 
         bool NewLinePending;
         Word CurrentWord;
-        DenseList<uint> SpanStack;
+        // Push/pop span stack
+        DenseList<uint> SpanStack, 
+        // List of spans affected by this word, which may include spans that were popped earlier
+            WordSpanStack;
+
+#if DEBUG
+        DenseList<uint> CurrentWordCodepoints;
+        string CurrentWordText => string.Join("", CurrentWordCodepoints.Select(c => (char)c));
+#endif
 
         // Configuration
         public IStringLayoutListener Listener;
@@ -243,8 +254,6 @@ namespace Squared.Render.TextLayout2 {
             ref var span = ref Buffers.Span(index);
             if (span.LineCount == 0)
                 return true;
-            if (span.DrawCallCount == 0)
-                return true;
             if (span.FirstLineIndex == uint.MaxValue)
                 throw new Exception("Corrupt internal state");
 
@@ -252,25 +261,20 @@ namespace Squared.Render.TextLayout2 {
             if ((l2 > LineIndex) || (l2 < l))
                 throw new Exception("Corrupt internal state");
 
+            // FIXME: This whole algorithm doesn't work right if there are spaces at the start or end
+            //  of the span being measured.
+
             for (; l <= l2; l++) {
                 if (!TryGetLineBounds(l, out var lineBounds))
                     continue;
                 ref var line = ref Buffers.Line(l);
 
-                // HACK: Earlier when constructing draw calls, we used UserData.X/Y to store X offsets for
-                //  the left and right edges of the character bounding box. We now recover them for the
-                //  first and last line(s) in the span in order to trim the line's bounding box.
-                if (l == span.FirstLineIndex) {
-                    ref var dc1 = ref Buffers.DrawCall(span.FirstDrawCall);
-                    // The draw call's position probably changed due to things like alignment, so we
-                    //  instead stored an offset in the UserData, which allows us to construct the
-                    //  correct left edge for this draw call based on its new position.
-                    lineBounds.TopLeft.X = dc1.Position.X - dc1.UserData.X;
-                }
+                if (l == span.FirstLineIndex)
+                    lineBounds.TopLeft.X = Position.X + line.Location.X + span.FirstWordX + span.FirstRelativeX;
                 if (l == l2) {
-                    ref var dc2 = ref Buffers.DrawCall(span.FirstDrawCall + span.DrawCallCount - 1);
-                    // Similarly we construct the correct right edge from this draw call's position.
-                    lineBounds.BottomRight.X = dc2.Position.X + dc2.UserData.Y;
+                    // HACK: Depending on how wrapping goes, this could be to the left of TL, so clamp it.
+                    // This may produce a 0-width box.
+                    lineBounds.BottomRight.X = Math.Max(Position.X + line.Location.X + span.LastWordX + span.LastRelativeX, lineBounds.TopLeft.X);
                 }
 
                 output.Add(ref lineBounds);
@@ -298,11 +302,16 @@ namespace Squared.Render.TextLayout2 {
                 SpanStack.Last() = index;
 
             ref var result = ref Buffers.Span(index);
-            result.Index = index;
-            // Initialize FirstLineIndex with a dummy value, it will be filled in by
-            //  either FinishWord or EndSpan.
-            result.FirstLineIndex = uint.MaxValue;
-            result.FirstDrawCall = DrawCallIndex;
+            result = new Span {
+                Index = index,
+                FirstWordIndex = WordIndex,
+                // Initialize FirstLineIndex with a dummy value, it will be filled in by
+                //  either FinishWord or EndSpan.
+                FirstLineIndex = uint.MaxValue,
+                FirstDrawCall = DrawCallIndex,
+                FirstRelativeX = CurrentWord.LeadingWhitespace + WordOffset.X
+            };
+            WordSpanStack.Add(index);
             return ref result;
         }
 
@@ -320,10 +329,13 @@ namespace Squared.Render.TextLayout2 {
             //  in here if that happens.
             if (result.FirstLineIndex == uint.MaxValue)
                 result.FirstLineIndex = LineIndex;
+            result.LastWordIndex = WordIndex;
+            result.LastRelativeX = CurrentWord.LeadingWhitespace + WordOffset.X;
             result.LineCount = (LineIndex - result.FirstLineIndex) + 1;
             result.DrawCallCount = DrawCallIndex - result.FirstDrawCall;
             // FIXME: If we ended a span in the middle of a word, our bounding box will become
             //  incorrect in the event that the word later gets wrapped.
+            WordSpanStack.Add(index);
             return ref result;
         }
 
@@ -433,6 +445,10 @@ namespace Squared.Render.TextLayout2 {
 
                 float alignmentToBaseline = CurrentWord.Baseline - baseline;
 
+#if DEBUG
+                CurrentWordCodepoints.Add(codepoint);
+#endif
+
                 if (!deadGlyph && !isWhiteSpace) {
                     ref var drawCall = ref AppendDrawCall(ref dead);
                     short wordIndex;
@@ -473,14 +489,15 @@ namespace Squared.Render.TextLayout2 {
                     CurrentWord.Width += w;
                 }
 
+                UnconstrainedLineSize.X += w;
+                CurrentWord.Height = Math.Max(CurrentWord.Height, h);
+                UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, h);
+
                 if (MarkedRange?.Second == CharIndex) {
                     if (MarkedRangeSpanIndex != uint.MaxValue)
                         EndSpan(MarkedRangeSpanIndex);
                 }
 
-                UnconstrainedLineSize.X += w;
-                CurrentWord.Height = Math.Max(CurrentWord.Height, h);
-                UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, h);
                 CharIndex++;
             }
         }
@@ -536,6 +553,7 @@ namespace Squared.Render.TextLayout2 {
             ref var word = ref CurrentWord;
             ref var line = ref CurrentLine;
 
+            var oldLeadingWhitespace = word.LeadingWhitespace;
             if (line.Width <= 0) {
                 // FIXME: WrapIndentation
                 word.LeadingWhitespace = (LineIndex == 0)
@@ -543,20 +561,11 @@ namespace Squared.Render.TextLayout2 {
                     : BreakIndentation;
             }
 
-            // HACK: It's possible a span will start in the middle of a word, then the word gets
-            //  wrapped immediately. So we fill in FirstLineIndex lazily to compensate for that,
-            //  setting it the first time a word is actually finished.
-            for (int i = 0, c = SpanStack.Count; i < c; i++) {
-                var spanIndex = SpanStack[i];
-                ref var span = ref Buffers.Span(spanIndex);
-                if (span.FirstLineIndex == uint.MaxValue)
-                    span.FirstLineIndex = LineIndex;
-            }
-
             if (word.Baseline > line.Baseline)
                 IncreaseBaseline(ref line, word.Baseline);
 
-            float baselineAdjustment = line.Baseline - word.Baseline;
+            float baselineAdjustment = line.Baseline - word.Baseline,
+                leadingWhitespaceAdjustment = word.LeadingWhitespace - oldLeadingWhitespace;
 
             if (word.DrawCallCount > 0) {
                 for (uint i = word.FirstDrawCall, i2 = i + word.DrawCallCount - 1; i <= i2; i++) {
@@ -564,6 +573,22 @@ namespace Squared.Render.TextLayout2 {
                     drawCall.Position.X += Position.X + LineOffset.X + word.LeadingWhitespace;
                     drawCall.Position.Y += Position.Y + LineOffset.Y + baselineAdjustment;
                 }
+            }
+
+            // HACK: It's possible a span will start in the middle of a word, then the word gets
+            //  wrapped immediately. So we fill in FirstLineIndex lazily to compensate for that,
+            //  setting it the first time a word is actually finished.
+            for (int i = 0, c = WordSpanStack.Count; i < c; i++) {
+                var spanIndex = WordSpanStack[i];
+                ref var span = ref Buffers.Span(spanIndex);
+                if (span.FirstLineIndex == uint.MaxValue)
+                    span.FirstLineIndex = LineIndex;
+                if (span.FirstWordIndex == WordIndex) {
+                    span.FirstWordX = LineOffset.X + leadingWhitespaceAdjustment;
+                    span.FirstLineIndex = LineIndex;
+                }
+                if (span.LastWordIndex == WordIndex)
+                    span.LastWordX = LineOffset.X + leadingWhitespaceAdjustment;
             }
 
             LineOffset.X += word.TotalWidth;
@@ -582,6 +607,13 @@ namespace Squared.Render.TextLayout2 {
             CurrentWord = new Word {
                 FirstDrawCall = DrawCallIndex,
             };
+
+#if DEBUG
+            CurrentWordCodepoints.Clear();
+#endif
+
+            WordSpanStack.Clear();
+            SpanStack.CopyTo(ref WordSpanStack);
         }
 
         private void FinishLine (bool forLineBreak) {
