@@ -936,7 +936,7 @@ namespace Squared.Render.Text {
                 DisableDefaultWrapCharacters = SplitAtWrapCharactersOnly,
                 IncludeTrailingWhitespace = IncludeTrailingWhitespace,
                 WrapCharacters = _WordWrapCharacterTable,
-                Listener = this,
+                Listener = measureOnly.HasValue ? null : this,
                 MarkedRange = _Satellite?.MarkedRange,
                 HitTestLocation = _Satellite?.HitTest,
             };

@@ -482,27 +482,33 @@ namespace Squared.Render.Text {
         }
     }
 
+    [Flags]
     public enum MarkedStringAction {
         /// <summary>
         /// Lay out the text as normal and generate a marker
         /// </summary>
-        Default = 0,
+        Default = 0b0,
         /// <summary>
         /// Lay out the text as plain text and do not generate a marker
         /// </summary>
-        PlainText = 1,
+        PlainText = 0b1,
         /// <summary>
         /// Do not lay out the text
         /// </summary>
-        Omit = 2,
+        Omit = 0b10,
         /// <summary>
         /// The processor generated new rich text, so process that (gross)
         /// </summary>
-        RichText = 3,
+        RichText = 0b100,
         /// <summary>
         /// The processor failed to process the text
         /// </summary>
-        Error = 4
+        Error = 0b1000,
+
+        /// <summary>
+        /// You can set this flag to suppress recording of the marked string at the end
+        /// </summary>
+        Unmarked = 0b10000000
     }
 
     /// <summary>
@@ -863,17 +869,20 @@ namespace Squared.Render.Text {
                             if (MarkedStringProcessor != null)
                                 action = MarkedStringProcessor(ref astr, ref id, ref markedState, ref layoutEngine);
 
+                            var record = (action & MarkedStringAction.Unmarked) != MarkedStringAction.Unmarked;
+                            action &= ~MarkedStringAction.Unmarked;
+
                             if (action == MarkedStringAction.Error)
                                 parseErrors.Add(new RichParseError {
                                     Message = "Processing failed",
                                     Offset = bracketed.Offset,
                                     Text = bracketed.Value,
                                 });
-
-                            if (action != MarkedStringAction.Omit) {
+                            else if (action != MarkedStringAction.Omit) {
                                 var l = astr.Length;
-                                // FIXME: Omit this too?
-                                stateTracker?.MarkString(this, bracketed.Value, astr, id, span.Index);
+                                if (record)
+                                    stateTracker?.MarkString(this, bracketed.Value, astr, id, span.Index);
+
                                 if (action == MarkedStringAction.RichText)
                                     AppendRichRange(ref layoutEngine, ref state, astr, overrideSuppress, ref parseErrors, stateTracker);
                                 else if (action != MarkedStringAction.PlainText) {
