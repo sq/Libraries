@@ -280,8 +280,12 @@ namespace Squared.Render.TextLayout2 {
                 }
 
                 if (l == l2) {
-                    int cc = (int)(span.FirstDrawCall + span.DrawCallCount - line.FirstDrawCall) - 1,
+                    uint lldc = line.FirstDrawCall + line.DrawCallCount,
+                        sldc = span.FirstDrawCall + span.DrawCallCount;
+                    int cc = (int)(span.FirstDrawCall + span.DrawCallCount - line.FirstDrawCall),
                         wi = (int)(span.LastWordIndex - line.FirstWordIndex);
+                    if (lldc == sldc)
+                        cc -= 1;
                     float lastWordWhitespace = Math.Max(wi, 0) * line.WordWhitespace,
                         lastCharWhitespace = Math.Max(cc, 0) * line.CharacterWhitespace;
                     // HACK: Depending on how wrapping goes, this could be to the left of TL, so clamp it.
