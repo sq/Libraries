@@ -44,6 +44,7 @@ namespace Squared.Render.TextLayout2 {
     }
 
     public struct Fragment {
+        public uint WordIndex;
         public uint FirstDrawCall, DrawCallCount;
         public float Width, Height, Baseline;
         public bool IsWhitespace => DrawCallCount == 0;
@@ -531,7 +532,7 @@ namespace Squared.Render.TextLayout2 {
                     short wordIndex;
                     unchecked {
                         // It's fine for this to wrap around, we just != it later to find word boundaries
-                        wordIndex = (short)FragmentIndex;
+                        wordIndex = (short)WordIndex;
                     }
 
                     float x = FragmentOffset.X + (glyph.XOffset * effectiveScale.X) + (glyph.LeftSideBearing * effectiveScale.X),
@@ -632,6 +633,9 @@ namespace Squared.Render.TextLayout2 {
 
         private void FinishFragment () {
             ref var fragment = ref CurrentFragment;
+            if ((fragment.Width == 0) && fragment.IsWhitespace)
+                return;
+
             ref var line = ref CurrentLine;
 
             if (fragment.Baseline > line.Baseline)
@@ -684,9 +688,13 @@ namespace Squared.Render.TextLayout2 {
             FragmentOffset = default;
 
             if (!fragment.IsWhitespace) {
-                if (line.DrawCallCount == 0)
+                if (line.DrawCallCount == 0) {
                     line.FirstDrawCall = fragment.FirstDrawCall;
+                    line.WordCount++;
+                    WordIndex++;
+                }
                 line.DrawCallCount += fragment.DrawCallCount;
+            } else {
                 line.WordCount++;
                 WordIndex++;
             }
@@ -696,6 +704,7 @@ namespace Squared.Render.TextLayout2 {
 
             CurrentFragment = new Fragment {
                 FirstDrawCall = DrawCallIndex,
+                WordIndex = WordIndex,
             };
 
 #if TRACK_CODEPOINTS
