@@ -349,8 +349,17 @@ namespace Squared.Render.TextLayout2 {
 
         public ref Span EndCurrentSpan () {
             if (!SpanStack.TryRemoveLast(out var index))
-                return ref Buffers.Span(0);
+                throw new Exception("No span active");
 
+            return ref EndSpan(index);
+        }
+
+        public ref Span EndSpanByIndex (uint index) {
+            var offset = SpanStack.IndexOf(index, StringLayoutEngine.UintComparer.Instance);
+            if (offset < 0)
+                throw new Exception("Span not active");
+
+            SpanStack.RemoveAt(offset);
             return ref EndSpan(index);
         }
 

@@ -1,18 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using Squared.Render.Evil;
-using Squared.Render.Text;
-using Squared.Util;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
-using Microsoft.Xna.Framework;
-using System.Reflection;
+using Squared.Render.Text;
+using Squared.Util;
 using Squared.Util.Text;
-using System.Globalization;
 
 namespace Squared.Render.Text {
     public struct StringLayout {
@@ -110,11 +102,16 @@ namespace Squared.Render.Text {
         }
 
         // Inputs
-        public AbstractString MarkedString, MarkedStringActualText, MarkedID;
+        public AbstractString OriginalText;
+        public AbstractString ActualText;
+        public AbstractString ID;
         public int FirstCharacterIndex, LastCharacterIndex;
 
         // Outputs
+        internal uint SpanIndex;
+        // FIXME: Remove this
         internal ushort CurrentSplitGlyphCount;
+        // FIXME: Remove this
         public ushort GlyphCount;
         public int? FirstDrawCallIndex, LastDrawCallIndex;
         public DenseList<Bounds> Bounds;
@@ -136,7 +133,7 @@ namespace Squared.Render.Text {
         }
 
         public override string ToString () {
-            return $"{(MarkedID.IsNull ? "marker" : MarkedID)} [{FirstCharacterIndex} - {LastCharacterIndex}] -> [{FirstDrawCallIndex} - {LastDrawCallIndex}] {Bounds.FirstOrDefault()}";
+            return $"{(ID.IsNull ? "marker" : ID)} [{FirstCharacterIndex} - {LastCharacterIndex}] -> [{FirstDrawCallIndex} - {LastDrawCallIndex}] {Bounds.FirstOrDefault()}";
         }
     }
 

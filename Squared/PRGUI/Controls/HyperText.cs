@@ -95,9 +95,9 @@ namespace Squared.PRGUI.Controls {
                         var m = Content.RichMarkers[i];
                         var hs = (HyperTextHotspot)children[i];
                         hs.Rects = m.Bounds;
-                        hs.ActualText = m.MarkedStringActualText;
-                        hs.MarkedString = m.MarkedString;
-                        hs.MarkedID = m.MarkedID;
+                        hs.ActualText = m.ActualText;
+                        hs.OriginalText = m.OriginalText;
+                        hs.MarkedID = m.ID;
                         if (m.Bounds.Count <= 0) {
                             hs.Visible = false;
                             hs.Enabled = false;
@@ -179,7 +179,7 @@ namespace Squared.PRGUI.Controls {
     }
 
     public class HyperTextHotspot : Control, ICustomTooltipTarget, IReadingTarget, IPartiallyIntangibleControl {
-        public AbstractString MarkedString;
+        public AbstractString OriginalText;
         public AbstractString MarkedID;
         public AbstractString ActualText;
         public Vector2 RectBase;
@@ -218,7 +218,7 @@ namespace Squared.PRGUI.Controls {
         AbstractString IReadingTarget.Text {
             get {
                 var result = new StringBuilder();
-                result.AppendLine(MarkedString.ToString());
+                result.AppendLine(OriginalText.ToString());
                 var ictt = (this as ICustomTooltipTarget);
                 var content = ictt.GetContent();
                 if (content != default(AbstractTooltipContent)) {
@@ -234,7 +234,7 @@ namespace Squared.PRGUI.Controls {
 
         AbstractTooltipContent ICustomTooltipTarget.GetContent () {
             if (Parent.GetTooltipForString != null)
-                return Parent.GetTooltipForString(Parent, MarkedString, MarkedID);
+                return Parent.GetTooltipForString(Parent, OriginalText, MarkedID);
             else
                 return default(AbstractTooltipContent);
         }
@@ -251,7 +251,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         void IReadingTarget.FormatValueInto (StringBuilder sb) {
-            sb.Append(MarkedString.ToString());
+            sb.Append(OriginalText.ToString());
         }
 
         protected override bool OnHitTest (RectF box, Vector2 position, ref HitTestState state) {
@@ -285,7 +285,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public override string ToString () {
-            return $"HotSpot '{MarkedID}' '{ActualText.ToString() ?? MarkedString}'";
+            return $"HotSpot '{MarkedID}' '{ActualText.ToString() ?? OriginalText}'";
         }
     }
 }

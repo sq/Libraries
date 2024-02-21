@@ -13,13 +13,21 @@ using Squared.Util.Text;
 
 namespace Squared.Render.Text {
     public struct StringLayoutEngine : IDisposable {
-        internal sealed class UintComparer : IComparer<uint> {
+        internal sealed class UintComparer : IComparer<uint>, IEqualityComparer<uint> {
             public static readonly UintComparer Instance = new UintComparer();
 
             public int Compare (uint x, uint y) {
                 unchecked {
                     return (int)x - (int)y;
                 }
+            }
+
+            public bool Equals (uint x, uint y) {
+                return x == y;
+            }
+
+            public int GetHashCode (uint obj) {
+                return obj.GetHashCode();
             }
         }
 

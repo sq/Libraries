@@ -17,7 +17,7 @@ using Squared.Util.Hash;
 using Squared.Util.Text;
 
 namespace Squared.Render.Text {
-    public sealed class DynamicStringLayout : IStringLayoutListener {
+    public sealed class DynamicStringLayout : IStringLayoutListener, IRichTextStateTracker {
         public struct MeasurementSettings {
             public float DesiredWidth;
             public float? LineBreakAtX,
@@ -39,7 +39,6 @@ namespace Squared.Render.Text {
         private class Satellite {
             public DenseList<AbstractTextureReference> UsedTextures;
             public DenseList<AsyncRichImage> Dependencies;
-            public Dictionary<Pair<int>, LayoutMarker> Markers = null;
             public Vector2? HitTest;
             public LayoutHitTest HitTestResult;
             public Pair<int>? MarkedRange;
@@ -196,10 +195,6 @@ namespace Squared.Render.Text {
                 _Satellite.MarkedRange = null;
                 Invalidate();
             }
-            if ((_Satellite?.Markers != null) && (_Satellite.Markers.Count > 0)) {
-                _Satellite.Markers.Clear();
-                Invalidate();
-            }
             if (_Satellite?.HitTest != null) {
                 _Satellite.HitTest = null;
                 Invalidate();
@@ -212,13 +207,6 @@ namespace Squared.Render.Text {
             return _Satellite;
         }
 
-        private Dictionary<Pair<int>, LayoutMarker> GetMarkers () {
-            var satellite = AutoAllocateSatellite();
-            if (satellite.Markers == null)
-                satellite.Markers = new Dictionary<Pair<int>, LayoutMarker>(Pair<int>.Comparer.Instance);
-            return satellite.Markers;
-        }
-
         public LayoutMarker MarkRange (int characterIndex) => MarkRange(characterIndex, characterIndex);
 
         public LayoutMarker MarkRange (int firstCharacterIndex, int lastCharacterIndex) {
@@ -227,16 +215,12 @@ namespace Squared.Render.Text {
 
             var key = new Pair<int>(Math.Min(firstCharacterIndex, lastCharacterIndex), Math.Max(firstCharacterIndex, lastCharacterIndex));
             var satellite = AutoAllocateSatellite();
+            if (satellite.MarkedRange == key)
+                return satellite.MarkedRangeResult;
+
             satellite.MarkedRange = key;
-
-            var m = GetMarkers();
-            LayoutMarker result;
-            if (!m.TryGetValue(key, out result)) {
-                m[key] = new LayoutMarker(firstCharacterIndex, lastCharacterIndex);
-                Invalidate();
-                return default;
-            }
-
+            satellite.MarkedRangeResult = default;
+            Invalidate();
             return satellite.MarkedRangeResult;
         }
 
@@ -266,8 +250,6 @@ namespace Squared.Render.Text {
 
         private static readonly Dictionary<Pair<int>, LayoutMarker> EmptyMarkers = new Dictionary<Pair<int>, LayoutMarker>();
 
-        // Unfortunately enumerating over ReadOnlyDictionary boxes their enumerators :(
-        public IReadOnlyDictionary<Pair<int>, LayoutMarker> Markers => _Satellite?.Markers ?? EmptyMarkers;
         public Vector2? HitTestLocation {
             get => _Satellite?.HitTest;
             set {
@@ -911,9 +893,8 @@ namespace Squared.Render.Text {
 
             result.SetBuffer(_Buffer, true);
 
-            if ((_Satellite?.Markers?.Count ?? 0) > 0)
-                foreach (var kvp in _Satellite.Markers)
-                    result.Markers.Add(kvp.Value);
+            if (_Satellite?.MarkedRange != null)
+                result.Markers.Add(new LayoutMarker(_Satellite.MarkedRange.Value.First, _Satellite.MarkedRange.Value.Second));
 
             if (_Satellite?.HitTest != null)
                 result.HitTests.Add(new LayoutHitTest { Position = _Satellite.HitTest.Value });
@@ -1078,7 +1059,8 @@ namespace Squared.Render.Text {
                     if (RichText) {
                         rls = new RichTextLayoutState(ref le2, glyphSource);
                         rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
-                        var dependencies = _RichTextConfiguration.Append(ref le2, ref rls, _Text, _StyleName);
+                        _RichTextConfiguration.Append(ref le2, ref rls, _Text, _StyleName, stateTracker: this);
+                        var dependencies = _Satellite?.Dependencies ?? default;
                         if (dependencies.Count > 0) {
                             SetFlag(InternalFlags.AwaitingDependencies, false);
 
@@ -1215,6 +1197,29 @@ namespace Squared.Render.Text {
 
         void IStringLayoutListener.Finished (ref StringLayoutEngine2 engine, uint spanCount, uint lineCount, ref StringLayout result) {
             _Listener?.Finished(ref engine, spanCount, lineCount, ref result);
+
+            if (_Satellite == null)
+                return;
+
+            for (int i = 0, c = _Satellite.RichMarkers.Count; i < c; i++) {
+                ref var rm = ref _Satellite.RichMarkers.Item(i);
+                engine.TryGetSpanBoundingBoxes(rm.SpanIndex, ref rm.Bounds);
+            }
+        }
+
+        void IRichTextStateTracker.MarkString (RichTextConfiguration config, AbstractString originalText, AbstractString text, AbstractString id, uint spanIndex) {
+            if (DisableMarkers)
+                return;
+            AutoAllocateSatellite().RichMarkers.Add(new LayoutMarker {
+                OriginalText = originalText,
+                ActualText = text,
+                ID = id,
+                SpanIndex = spanIndex,
+            });
+        }
+
+        void IRichTextStateTracker.ReferencedImage (RichTextConfiguration config, ref AsyncRichImage image) {
+            AutoAllocateSatellite().Dependencies.Add(ref image);
         }
     }
 
