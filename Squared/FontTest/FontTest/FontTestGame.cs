@@ -49,6 +49,7 @@ namespace FontTest {
         PressableKey Expand = new PressableKey(Keys.E);
         PressableKey LimitExpansion = new PressableKey(Keys.X);
         PressableKey Kerning = new PressableKey(Keys.K);
+        PressableKey HideOverflow = new PressableKey(Keys.D);
 
         Texture2D[] Images = new Texture2D[4];
 
@@ -120,6 +121,10 @@ namespace FontTest {
                 ftf.Invalidate();
                 Text.Invalidate();
             };
+            HideOverflow.Pressed += (s, e) => {
+                Text.HideOverflow = !Text.HideOverflow;
+                Text.Invalidate();
+            };
         }
 
         protected override void OnLoadContent (bool isReloading) {
@@ -152,7 +157,7 @@ namespace FontTest {
                 Scale = TextScale,
                 ReverseOrder = true,
                 RichText = true,
-                HideOverflow = true,
+                HideOverflow = false,
                 RichTextConfiguration = new RichTextConfiguration {
                     MarkedStringProcessor = ProcessMarkedString,
                     Styles = new ImmutableAbstractStringLookup<RichStyle> {
@@ -263,6 +268,7 @@ namespace FontTest {
             Expand.Update(ref ks);
             LimitExpansion.Update(ref ks);
             Kerning.Update(ref ks);
+            HideOverflow.Update(ref ks);
 
             if (!Text.Text.TextEquals(SelectedString)) {
                 Text.Text = SelectedString;
@@ -414,7 +420,9 @@ namespace FontTest {
             "Test$( )Abc\n" +
             "Test $(A)bc\n" +
             "Test A$(b)c\n" +
-            "Test Ab$(c)\n",
+            "Test Ab$(c)\n" +
+            "Test Test A$(bc)d\n" +
+            "Test Test Test $(Abcd)",
 
             @"In Congress, July 4, 1776
 

@@ -18,10 +18,12 @@ using System.Security.Cryptography;
 
 namespace Squared.Render.TextLayout2 {
     public struct Line {
-        public uint Index, VisibleWordCount;
+        public uint Index;
+        public uint FirstWordIndex, VisibleWordCount;
         public uint FirstDrawCall, DrawCallCount;
         public Vector2 Location;
         public float Width, Height, Baseline;
+        public float WordWhitespace, CharacterWhitespace;
     }
 
     public struct Span {
@@ -147,7 +149,7 @@ namespace Squared.Render.TextLayout2 {
         // Push/pop span stack
         DenseList<uint> SpanStack, 
         // List of spans affected by this word, which may include spans that were popped earlier
-            WordSpanStack;
+            WordSpanList;
 
 #if DEBUG
         DenseList<uint> CurrentWordCodepoints;
@@ -269,12 +271,22 @@ namespace Squared.Render.TextLayout2 {
                     continue;
                 ref var line = ref Buffers.Line(l);
 
-                if (l == span.FirstLineIndex)
-                    lineBounds.TopLeft.X = Position.X + line.Location.X + span.FirstWordX + span.FirstRelativeX;
+                if (l == span.FirstLineIndex) {
+                    int wi = (int)(span.FirstWordIndex - line.FirstWordIndex),
+                        ci = (int)(span.FirstDrawCall - line.FirstDrawCall);
+                    float firstWordWhitespace = wi * line.WordWhitespace,
+                        firstCharWhitespace = ci * line.CharacterWhitespace;
+                    lineBounds.TopLeft.X = Position.X + line.Location.X + span.FirstWordX + span.FirstRelativeX + firstWordWhitespace + firstCharWhitespace;
+                }
+
                 if (l == l2) {
+                    int cc = (int)(span.FirstDrawCall + span.DrawCallCount - line.FirstDrawCall) - 1,
+                        wi = (int)(span.LastWordIndex - line.FirstWordIndex);
+                    float lastWordWhitespace = Math.Max(wi, 0) * line.WordWhitespace,
+                        lastCharWhitespace = Math.Max(cc, 0) * line.CharacterWhitespace;
                     // HACK: Depending on how wrapping goes, this could be to the left of TL, so clamp it.
                     // This may produce a 0-width box.
-                    lineBounds.BottomRight.X = Math.Max(Position.X + line.Location.X + span.LastWordX + span.LastRelativeX, lineBounds.TopLeft.X);
+                    lineBounds.BottomRight.X = Math.Max(Position.X + line.Location.X + span.LastWordX + span.LastRelativeX + lastWordWhitespace + lastCharWhitespace, lineBounds.TopLeft.X);
                 }
 
                 output.Add(ref lineBounds);
@@ -309,9 +321,10 @@ namespace Squared.Render.TextLayout2 {
                 //  either FinishWord or EndSpan.
                 FirstLineIndex = uint.MaxValue,
                 FirstDrawCall = DrawCallIndex,
-                FirstRelativeX = CurrentWord.LeadingWhitespace + WordOffset.X
+                FirstRelativeX = CurrentWord.LeadingWhitespace + WordOffset.X,
+                LastWordIndex = WordIndex,
             };
-            WordSpanStack.Add(index);
+            WordSpanList.Add(index);
             return ref result;
         }
 
@@ -329,13 +342,15 @@ namespace Squared.Render.TextLayout2 {
             //  in here if that happens.
             if (result.FirstLineIndex == uint.MaxValue)
                 result.FirstLineIndex = LineIndex;
-            result.LastWordIndex = WordIndex;
+
             result.LastRelativeX = CurrentWord.LeadingWhitespace + WordOffset.X;
+            result.LastWordIndex = WordIndex;
+
             result.LineCount = (LineIndex - result.FirstLineIndex) + 1;
             result.DrawCallCount = DrawCallIndex - result.FirstDrawCall;
             // FIXME: If we ended a span in the middle of a word, our bounding box will become
             //  incorrect in the event that the word later gets wrapped.
-            WordSpanStack.Add(index);
+            WordSpanList.Add(index);
             return ref result;
         }
 
@@ -578,8 +593,8 @@ namespace Squared.Render.TextLayout2 {
             // HACK: It's possible a span will start in the middle of a word, then the word gets
             //  wrapped immediately. So we fill in FirstLineIndex lazily to compensate for that,
             //  setting it the first time a word is actually finished.
-            for (int i = 0, c = WordSpanStack.Count; i < c; i++) {
-                var spanIndex = WordSpanStack[i];
+            for (int i = 0, c = WordSpanList.Count; i < c; i++) {
+                var spanIndex = WordSpanList[i];
                 ref var span = ref Buffers.Span(spanIndex);
                 if (span.FirstLineIndex == uint.MaxValue)
                     span.FirstLineIndex = LineIndex;
@@ -602,7 +617,6 @@ namespace Squared.Render.TextLayout2 {
             }
             WordOffset = default;
 
-            // FIXME
             WordIndex++;
             CurrentWord = new Word {
                 FirstDrawCall = DrawCallIndex,
@@ -612,8 +626,8 @@ namespace Squared.Render.TextLayout2 {
             CurrentWordCodepoints.Clear();
 #endif
 
-            WordSpanStack.Clear();
-            SpanStack.CopyTo(ref WordSpanStack);
+            WordSpanList.Clear();
+            SpanStack.CopyTo(ref WordSpanList);
         }
 
         private void FinishLine (bool forLineBreak) {
@@ -623,10 +637,11 @@ namespace Squared.Render.TextLayout2 {
             LineOffset.Y += CurrentLine.Height + (forLineBreak ? ExtraBreakSpacing : 0f);
 
             SuppressUntilNextLine = false;
-            var index = LineIndex++;
+            LineIndex++;
             CurrentLine = new Line {
-                Index = index,
+                Index = LineIndex,
                 Location = LineOffset,
+                FirstWordIndex = WordIndex,
             };
             ColIndex = 0;
         }
@@ -664,9 +679,13 @@ namespace Squared.Render.TextLayout2 {
                 int wordCountMinusOne = (line.VisibleWordCount > 1) 
                     ? (int)line.VisibleWordCount - 1 
                     : (int)line.VisibleWordCount;
-                float whitespace = totalWidth - line.Width,
-                    wordWhitespace = 0f,
-                    characterWhitespace = 0f;
+                float whitespace = totalWidth - line.Width;
+                // Record justification whitespace to use when reconstructing span bounding boxes
+                ref float wordWhitespace = ref line.WordWhitespace;
+                ref float characterWhitespace = ref line.CharacterWhitespace;
+                wordWhitespace = 0f;
+                characterWhitespace = 0f;
+
                 switch (Alignment) {
                     case HorizontalAlignment.Center:
                         whitespace *= 0.5f;
