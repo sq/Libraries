@@ -498,7 +498,7 @@ namespace Squared.Render.TextLayout2 {
                     FinishWord();
 
                 if (baseline > CurrentWord.Baseline)
-                    IncreaseBaseline(ref CurrentWord, baseline);
+                    IncreaseBaseline(baseline);
 
                 float alignmentToBaseline = CurrentWord.Baseline - baseline;
 
@@ -567,13 +567,13 @@ namespace Squared.Render.TextLayout2 {
             }
         }
 
-        private void IncreaseBaseline (ref Word word, float newBaseline) {
-            float adjustment = newBaseline - word.Baseline;
-            word.Baseline = newBaseline;
-            if (word.DrawCallCount == 0)
+        private void IncreaseBaseline (float newBaseline) {
+            float adjustment = newBaseline - CurrentWord.Baseline;
+            CurrentWord.Baseline = newBaseline;
+            if (CurrentWord.DrawCallCount == 0)
                 return;
 
-            for (uint d = word.FirstDrawCall, d2 = d + word.DrawCallCount - 1; d <= d2; d++) {
+            for (uint d = CurrentWord.FirstDrawCall, d2 = d + CurrentWord.DrawCallCount - 1; d <= d2; d++) {
                 ref var dc = ref Buffers.DrawCall(d);
                 dc.Position.Y += adjustment;
             }
@@ -691,7 +691,8 @@ namespace Squared.Render.TextLayout2 {
             ref var line = ref CurrentLine;
 
             LineOffset.X = 0;
-            LineOffset.Y += CurrentLine.Height + (forLineBreak ? ExtraBreakSpacing : 0f);
+            if (!SuppressUntilEnd)
+                LineOffset.Y += CurrentLine.Height + (forLineBreak ? ExtraBreakSpacing : 0f);
 
             IndentationForThisLine = forLineBreak ? BreakIndentation : WrapIndentation;
             SuppressUntilNextLine = false;
@@ -844,10 +845,10 @@ namespace Squared.Render.TextLayout2 {
                 Buffer.MemoryCopy(Buffers.DrawCalls, dest, buffer.Count * sizeof(BitmapDrawCall), DrawCallIndex * sizeof(BitmapDrawCall));
 
             result = new StringLayout(
-                Vector2.Zero, constrainedSize, UnconstrainedSize, 0f,
+                Position, constrainedSize, UnconstrainedSize, Buffers.Line(0).Height,
                 Buffers.DrawCall(0).EstimateDrawBounds(),
                 Buffers.DrawCall(lastDrawCallIndex).EstimateDrawBounds(),
-                buffer, false, (int)WordIndex, (int)LineIndex
+                buffer, (LineLimit.HasValue && LineLimit.Value <= 0), (int)WordIndex, (int)LineIndex
             );
 
             Listener?.Finished(ref this, SpanIndex, LineIndex, ref result);
