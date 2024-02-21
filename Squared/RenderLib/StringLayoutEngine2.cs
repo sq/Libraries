@@ -276,7 +276,8 @@ namespace Squared.Render.TextLayout2 {
                         ci = (int)(span.FirstDrawCall - line.FirstDrawCall);
                     float firstWordWhitespace = wi * line.WordWhitespace,
                         firstCharWhitespace = ci * line.CharacterWhitespace;
-                    lineBounds.TopLeft.X = Position.X + line.Location.X + span.FirstWordX + span.FirstRelativeX + firstWordWhitespace + firstCharWhitespace;
+                    lineBounds.TopLeft.X = Position.X + line.Location.X + span.FirstWordX + span.FirstRelativeX + 
+                        firstWordWhitespace + firstCharWhitespace;
                 }
 
                 if (l == l2) {
@@ -284,13 +285,20 @@ namespace Squared.Render.TextLayout2 {
                         sldc = span.FirstDrawCall + span.DrawCallCount;
                     int cc = (int)(span.FirstDrawCall + span.DrawCallCount - line.FirstDrawCall),
                         wi = (int)(span.LastWordIndex - line.FirstWordIndex);
+                    // HACK: Shrink the character count at the end of the line so we don't overhang in character justification mode
                     if (lldc == sldc)
                         cc -= 1;
                     float lastWordWhitespace = Math.Max(wi, 0) * line.WordWhitespace,
                         lastCharWhitespace = Math.Max(cc, 0) * line.CharacterWhitespace;
                     // HACK: Depending on how wrapping goes, this could be to the left of TL, so clamp it.
+                    //  In word justification mode this can also overhang if the span wraps around a line break, I think?
                     // This may produce a 0-width box.
-                    lineBounds.BottomRight.X = Math.Max(Position.X + line.Location.X + span.LastWordX + span.LastRelativeX + lastWordWhitespace + lastCharWhitespace, lineBounds.TopLeft.X);
+                    lineBounds.BottomRight.X = Arithmetic.Clamp(
+                        Position.X + line.Location.X + span.LastWordX + span.LastRelativeX + 
+                            lastWordWhitespace + lastCharWhitespace, 
+                        lineBounds.TopLeft.X,
+                        Position.X + line.Location.X + line.Width
+                    );
                 }
 
                 output.Add(ref lineBounds);
@@ -571,6 +579,9 @@ namespace Squared.Render.TextLayout2 {
         private void FinishWord () {
             ref var word = ref CurrentWord;
             ref var line = ref CurrentLine;
+
+            if ((word.LeadingWhitespace + word.Width) <= 0)
+                return;
 
             var oldLeadingWhitespace = word.LeadingWhitespace;
             if (line.Width <= 0) {
