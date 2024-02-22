@@ -45,7 +45,7 @@ namespace Squared.Render.TextLayout2 {
     public struct Fragment {
         public uint FirstDrawCall, DrawCallCount;
         public float Left, Width, Height, Baseline;
-        public bool IsWhitespace;
+        public bool ContainsContent;
     }
 
     public struct Box {
@@ -155,7 +155,7 @@ namespace Squared.Render.TextLayout2 {
         Vector2 UnconstrainedSize, UnconstrainedLineSize;
         uint ColIndex, LineIndex, CharIndex, 
             DrawCallIndex, SpanIndex, FragmentIndex;
-        bool SuppressUntilNextFragment, SuppressUntilNextLine, SuppressUntilEnd;
+        bool SuppressUntilEnd;
         float IndentationForThisLine;
         CharacterCategory PreviousCharacterCategory;
 
@@ -243,7 +243,7 @@ namespace Squared.Render.TextLayout2 {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref BitmapDrawCall AppendDrawCall (ref BitmapDrawCall dead) {
-            if (SuppressUntilEnd || SuppressUntilNextFragment || MeasureOnly)
+            if (SuppressUntilEnd || MeasureOnly)
                 return ref dead;
 
             // FIXME: If current fragment is whitespace, end it
@@ -452,7 +452,8 @@ namespace Squared.Render.TextLayout2 {
                 );
 
                 BuildGlyphInformation(
-                    glyphSource, effectiveScale, Spacing, ch1, codepoint,
+                    // FIXME: This will be wrong after recalc
+                    glyphSource, effectiveScale, Spacing, ch1, codepoint, CurrentLine.Width == 0,
                     out deadGlyph, out Glyph glyph, out float glyphLineSpacing, out float glyphBaseline
                 );
 
@@ -462,6 +463,9 @@ namespace Squared.Render.TextLayout2 {
 
                 if (category != PreviousCharacterCategory)
                     FinishFragment();
+
+                if (!isWhiteSpace)
+                    CurrentFragment.ContainsContent = true;
 
                 // FIXME: Kerning across multiple AppendText calls
                 if ((glyph.KerningProvider != null) && (i < l - 2)) {
@@ -514,20 +518,16 @@ namespace Squared.Render.TextLayout2 {
                 }
 
                 if (HideOverflow) {
-                    if (overflowX)
-                        SuppressUntilNextFragment = true;
                     if (overflowY)
                         SuppressUntilEnd = true;
                 }
 
                 ref var fragment = ref CurrentFragment;
-
                 if (baseline > fragment.Baseline)
                     IncreaseBaseline(baseline);
 
                 float alignmentToBaseline = fragment.Baseline - baseline;
-                bool suppressThisCharacter = SuppressUntilEnd || SuppressUntilNextFragment;
-                fragment.IsWhitespace = isWhiteSpace;
+                bool suppressThisCharacter = SuppressUntilEnd || (overflowX && HideOverflow);
 
 #if TRACK_CODEPOINTS
                 CurrentFragmentCodepoints.Add(codepoint);
@@ -557,8 +557,6 @@ namespace Squared.Render.TextLayout2 {
                         Listener?.RecordTexture(ref this, glyph.Texture);
                         MostRecentTexture = glyph.Texture;
                     }
-
-                    ColIndex++;
                 }
 
                 FragmentOffset.X += w;
@@ -598,13 +596,18 @@ namespace Squared.Render.TextLayout2 {
             // Determine whether wrapping the entire fragment will work.
             if (WordWrap) {
                 // If we're about to wrap a whitespace fragment, just say we succeeded but don't do anything.
-                if (fragment.IsWhitespace)
+                if (!fragment.ContainsContent)
                     return true;
 
                 if (fragment.Width + characterWidth <= MaximumWidth) {
+                } else if (CharacterWrap) {
+                    // We can't cleanly word wrap so we should try to character wrap instead.
+                    FinishFragment();
                     FinishLine(false);
-                    return true;
+                    return (characterWidth <= MaximumWidth);
                 }
+                FinishLine(false);
+                return true;
             }
             
             if (CharacterWrap) {
@@ -628,27 +631,18 @@ namespace Squared.Render.TextLayout2 {
             FinishLine(true);
         }
 
-        private void CollapseFragment () {
-            ref var fragment = ref CurrentFragment;
-            if (!fragment.IsWhitespace)
-                throw new InvalidOperationException();
-
-            fragment.Width = 0;
-        }
-
         private void FinishFragment () {
             ref var fragment = ref CurrentFragment;
-            if ((fragment.Width == 0) && fragment.IsWhitespace)
+            if ((fragment.Width == 0) && !fragment.ContainsContent)
                 return;
 
-            SuppressUntilNextFragment = false;
             ref var line = ref CurrentLine;
 
             line.Baseline = Math.Max(line.Baseline, fragment.Baseline);
 
             float baselineAdjustment = line.Baseline - fragment.Baseline;
 
-            if (fragment.IsWhitespace)
+            if (!fragment.ContainsContent)
                 line.GapCount++;
 
             // HACK: It's possible a span will start in the middle of a word, then the word gets
@@ -668,7 +662,7 @@ namespace Squared.Render.TextLayout2 {
 
             FragmentOffset = default;
 
-            if (!fragment.IsWhitespace) {
+            if (fragment.DrawCallCount > 0) {
                 if (line.DrawCallCount == 0)
                     line.FirstDrawCall = fragment.FirstDrawCall;
                 line.DrawCallCount += fragment.DrawCallCount;
@@ -702,7 +696,6 @@ namespace Squared.Render.TextLayout2 {
                 Location = new Vector2(0, Y),
                 FirstFragmentIndex = FragmentIndex,
             };
-            ColIndex = 0;
         }
 
         public void CreateEmptyBox (float width, float height, Vector2 margins) {
@@ -733,10 +726,13 @@ namespace Squared.Render.TextLayout2 {
 
                 int gapCount = (int)Math.Max(line.GapCount, 1);
                 if (line.FragmentCount > 1) {
+                    ref var lastFragment = ref Buffers.Fragment(line.FirstFragmentIndex + line.FragmentCount - 1);
                     // Don't enlarge trailing whitespace at the end of a line in justification mode.
                     // Crush it instead.
-                    if (Buffers.Fragment(line.FirstFragmentIndex + line.FragmentCount - 1).IsWhitespace)
+                    if (!lastFragment.ContainsContent) {
                         gapCount -= 1;
+                        lastFragment.Width = 0f;
+                    }
                 }
 
                 float whitespace = totalWidth - line.Width;
@@ -948,7 +944,9 @@ namespace Squared.Render.TextLayout2 {
 
         private void BuildGlyphInformation<TGlyphSource> (
             in TGlyphSource font, Vector2 scale, Vector2 spacing, 
-            char ch1, uint codepoint, out bool deadGlyph, out Glyph glyph, out float glyphLineSpacing, out float glyphBaseline
+            char ch1, uint codepoint, bool startOfLine, 
+            out bool deadGlyph, out Glyph glyph, 
+            out float glyphLineSpacing, out float glyphBaseline
         ) where TGlyphSource : IGlyphSource {
             deadGlyph = !font.GetGlyph(codepoint, out glyph);
 
@@ -989,7 +987,7 @@ namespace Squared.Render.TextLayout2 {
 
             // MonoGame#1355 rears its ugly head: If a character with negative left-side bearing is at the start of a line,
             //  we need to compensate for the bearing to prevent the character from extending outside of the layout bounds
-            if (ColIndex <= 0) {
+            if (startOfLine) {
                 if (glyph.LeftSideBearing < 0)
                     glyph.LeftSideBearing = 0;
             }
