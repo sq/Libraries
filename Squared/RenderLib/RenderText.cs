@@ -83,8 +83,6 @@ namespace Squared.Render.Text {
         Left,
         Center,
         Right,
-        JustifyCharacters,
-        JustifyCharactersCentered,
         JustifyWords,
         JustifyWordsCentered
     }

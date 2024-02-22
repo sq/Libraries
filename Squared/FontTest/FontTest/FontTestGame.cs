@@ -66,7 +66,7 @@ namespace FontTest {
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
             Alignment.Pressed += (s, e) => {
-                Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 7);
+                Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 5);
             };
             CharacterWrap.Pressed += (s, e) => {
                 Text.CharacterWrap = !Text.CharacterWrap;

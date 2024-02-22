@@ -544,7 +544,7 @@ namespace Squared.PRGUI.Controls {
             var hasWidthConstraint = (width.Fixed ?? width.Maximum).HasValue;
             var maxPx = (width.Fixed ?? width.Maximum) - computedPadding.X;
 
-            if (TextAlignment >= HorizontalAlignment.JustifyCharacters) {
+            if (TextAlignment >= HorizontalAlignment.JustifyWords) {
                 // FIXME: Minimum of 1 instead of 0?
                 var dw = (float)Math.Max(Math.Floor((Width.Minimum ?? 0) - AutoSizePadding - computedPadding.X), 0);
                 // HACK: If AutoSize is disabled and there is no size constraint, we should try to use the line break point as
@@ -936,7 +936,7 @@ namespace Squared.PRGUI.Controls {
                     //  any gutter on the right side.
                     if (
                         (
-                            (TextAlignment >= HorizontalAlignment.JustifyCharacters) &&
+                            (TextAlignment >= HorizontalAlignment.JustifyWords) &&
                             Content.ExpandHorizontallyWhenAligning
                         ) || (
                             (Content.CharacterWrap || Content.WordWrap) && !AutoSizeWidth

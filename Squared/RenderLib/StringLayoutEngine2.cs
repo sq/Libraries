@@ -31,8 +31,7 @@ namespace Squared.Render.TextLayout2 {
         public uint GapCount;
         public uint FirstDrawCall, DrawCallCount;
         public Vector2 Location;
-        public float Width, Height, Baseline;
-        public float CallWhitespace;
+        public float Width, TrailingWhitespace, Height, Baseline;
     }
 
     public struct Span {
@@ -323,7 +322,7 @@ namespace Squared.Render.TextLayout2 {
         
         public ref Span BeginSpan (bool push) {
             // HACK: Split whitespace fragments when beginning a span,
-            //  so that relative positioning is accurate.
+            //  so that relative positioning is accurate in justified mode.
             if (!CurrentFragment.ContainsContent && CurrentFragment.Width > 0)
                 FinishFragment();
 
@@ -606,10 +605,15 @@ namespace Squared.Render.TextLayout2 {
 
             float baselineAdjustment = line.Baseline - fragment.Baseline;
 
-            if (!fragment.ContainsContent)
+            line.Width += line.TrailingWhitespace;
+            if (!fragment.ContainsContent) {
                 line.GapCount++;
+                line.TrailingWhitespace = fragment.Width;
+            } else {
+                line.TrailingWhitespace = 0f;
+                line.Width += fragment.Width;
+            }
 
-            line.Width += fragment.Width;
             line.Height = Math.Max(line.Height, fragment.Height);
 
             FragmentOffset = default;
@@ -685,11 +689,7 @@ namespace Squared.Render.TextLayout2 {
                     }
                 }
 
-                float whitespace = totalWidth - line.Width;
-                // Record justification whitespace to use when reconstructing span bounding boxes
-                float gapWhitespace = 0f;
-                ref float callWhitespace = ref line.CallWhitespace;
-                callWhitespace = 0f;
+                float whitespace = totalWidth - line.Width, gapWhitespace = 0f;
 
                 switch (Alignment) {
                     case HorizontalAlignment.Left:
@@ -707,7 +707,7 @@ namespace Squared.Render.TextLayout2 {
                         whitespace = 0f;
                         break;
                     case HorizontalAlignment.JustifyWordsCentered:
-                        if (gapCount > 0) {
+                        if (line.GapCount > 0) {
                             gapWhitespace = whitespace / gapCount;
                             if (gapWhitespace > MaxExpansionPerSpace)
                                 gapWhitespace = 0f;
@@ -715,25 +715,10 @@ namespace Squared.Render.TextLayout2 {
                         }
                         whitespace *= 0.5f;
                         break;
-                    case HorizontalAlignment.JustifyCharacters:
-                        callWhitespace = whitespace / (line.DrawCallCount - 1);
-                        if (callWhitespace > MaxExpansionPerSpace)
-                            callWhitespace = 0f;
-                        whitespace = 0f;
-                        break;
-                    case HorizontalAlignment.JustifyCharactersCentered:
-                        if (line.DrawCallCount > 1) {
-                            callWhitespace = whitespace / (line.DrawCallCount - 1);
-                            if (callWhitespace > MaxExpansionPerSpace)
-                                callWhitespace = 0f;
-                            whitespace -= (callWhitespace * (line.DrawCallCount - 1));
-                        }
-                        whitespace *= 0.5f;
-                        break;
                 }
 
                 line.Location.X += whitespace;
-                line.Width += (gapWhitespace * gapCount) + (callWhitespace * (line.DrawCallCount - 1));
+                line.Width += (gapWhitespace * gapCount);
 
                 float x = line.Location.X + Position.X,
                     y = line.Location.Y + Position.Y,
@@ -747,9 +732,8 @@ namespace Squared.Render.TextLayout2 {
                     if (fragment.DrawCallCount > 0) {
                         for (uint dc = fragment.FirstDrawCall, dc2 = dc + fragment.DrawCallCount - 1; dc <= dc2; dc++) {
                             ref var drawCall = ref Buffers.DrawCall(dc);
-                            drawCall.Position.X += x + cws;
+                            drawCall.Position.X += x;
                             drawCall.Position.Y += fragmentY;
-                            cws += callWhitespace;
                         }
                     } else {
                         fragment.Width += gapWhitespace;

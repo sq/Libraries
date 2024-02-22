@@ -473,13 +473,9 @@ namespace Squared.Render.Text {
                     else
                         return;
                 }
-            } else if (localAlignment >= HorizontalAlignment.JustifyCharacters) {
-                if (lastIndex <= (firstIndex + 1)) {
-                    if (localAlignment == HorizontalAlignment.JustifyCharactersCentered)
-                        localAlignment = HorizontalAlignment.Center;
-                    else
-                        return;
-                }
+            } else if (localAlignment >= HorizontalAlignment.JustifyWords) {
+                if (lastIndex <= (firstIndex + 1))
+                    return;
             }
 
             float lineWidth = (endDc.BottomRight.X - firstDc.TopLeft.X),
@@ -522,24 +518,13 @@ namespace Squared.Render.Text {
             // In JustifyWords mode we spread all the extra whitespace into the gaps between words.
             // In both cases the goal is for the last character of each line to end up flush
             //  against the right side of the layout box.
-            float characterSpacing = 0, wordSpacing = 0, accumulatedSpacing = 0;
+            float wordSpacing = 0, accumulatedSpacing = 0;
             if (localAlignment >= HorizontalAlignment.JustifyWords) {
                 wordSpacing = whitespace / wordCountMinusOne;
 
                 if (maxExpansionPerSpace.HasValue && wordSpacing > maxExpansionPerSpace.Value) {
                     wordSpacing = 0;
                     whitespace = (localAlignment == HorizontalAlignment.JustifyWordsCentered)
-                        ? whitespace / 2
-                        : 0;
-                } else {
-                    whitespace = 0;
-                }
-            } else if (localAlignment >= HorizontalAlignment.JustifyCharacters) {
-                characterSpacing = whitespace / (lastIndex - firstIndex);
-
-                if (maxExpansionPerSpace.HasValue && characterSpacing > maxExpansionPerSpace.Value) {
-                    characterSpacing = 0;
-                    whitespace = (localAlignment == HorizontalAlignment.JustifyCharactersCentered)
                         ? whitespace / 2
                         : 0;
                 } else {
@@ -582,9 +567,6 @@ namespace Squared.Render.Text {
 
                 var computedOffset = whitespace + accumulatedSpacing;
                 buffer.Array[buffer.Offset + j].Position.X += computedOffset;
-
-                // In character justify mode we just spread all the characters out.
-                accumulatedSpacing += characterSpacing;
             }
 
             /*
