@@ -881,7 +881,6 @@ namespace Squared.Render.Text {
                 extraLineBreakSpacing = _ExtraLineBreakSpacing,
                 lineBreakAtX = measureOnly.HasValue ? measureOnly.Value.LineBreakAtX : _LineBreakAtX,
                 stopAtY =    _StopAtY,
-                alignToPixels = _AlignToPixels.Or(_GlyphSource.DefaultAlignment),
                 characterWrap = CharacterWrap,
                 wordWrap = WordWrap,
                 hideOverflow = HideOverflow,
@@ -1333,7 +1332,6 @@ namespace Squared.Render.Text {
         bool GetGlyph (uint ch, out Glyph result);
         float LineSpacing { get; }
         float DPIScaleFactor { get; }
-        GlyphPixelAlignment? DefaultAlignment { get; }
         bool IsDisposed { get; }
         int Version { get; }
         object UniqueKey { get; }

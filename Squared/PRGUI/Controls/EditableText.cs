@@ -110,10 +110,8 @@ namespace Squared.PRGUI.Controls {
 
         protected DynamicStringLayout DescriptionLayout = new DynamicStringLayout {
             HideOverflow = true,
-            AlignToPixels = StaticTextBase.DefaultGlyphPixelAlignment
         };
         protected DynamicStringLayout DynamicLayout = new DynamicStringLayout {
-            AlignToPixels = StaticTextBase.DefaultGlyphPixelAlignment,
             HideOverflow = false,
         };
         protected StringBuilder Builder = new StringBuilder();

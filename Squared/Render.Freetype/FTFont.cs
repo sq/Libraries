@@ -96,7 +96,6 @@ namespace Squared.Render.Text {
                 Font.Sizes.Add(this);
             }
 
-            public GlyphPixelAlignment? DefaultAlignment { get; set; } = GlyphPixelAlignment.None;
 
             public float VerticalOffset;
 
@@ -590,11 +589,6 @@ namespace Squared.Render.Text {
         internal Face Face;
 
         object IGlyphSource.UniqueKey => this;
-
-        public GlyphPixelAlignment? DefaultAlignment {
-            get => DefaultSize.DefaultAlignment;
-            set => DefaultSize.DefaultAlignment = value;
-        }
 
         public FontSize DefaultSize { get; private set; }
         // FIXME: Invalidate on set

@@ -42,7 +42,6 @@ namespace Squared.PRGUI.Controls {
             // Multiline = false;
         }
 
-        public static GlyphPixelAlignment DefaultGlyphPixelAlignment = GlyphPixelAlignment.Default;
         public const float LineBreakRightPadding = 1.1f;
         public const float AutoSizePadding = 0.5f;
         public const bool DiagnosticText = false;
@@ -76,7 +75,6 @@ namespace Squared.PRGUI.Controls {
         protected DynamicStringLayout Content = new DynamicStringLayout {
             HideOverflow = true,
             RecordUsedTextures = true,
-            AlignToPixels = DefaultGlyphPixelAlignment,
             ExpandHorizontallyWhenAligning = false,
             DisableMarkers = true
         };

@@ -119,7 +119,6 @@ namespace Squared.PRGUI.Controls {
             _NeedsLayoutReset = false;
             content.Reset();
             content.DisableMarkers = true;
-            content.AlignToPixels = StaticTextBase.DefaultGlyphPixelAlignment;
             content.WordWrap = true;
             content.CharacterWrap = false;
             content.HideOverflow = true;

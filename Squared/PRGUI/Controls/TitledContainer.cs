@@ -39,7 +39,6 @@ namespace Squared.PRGUI.Controls {
 
         protected DynamicStringLayout TitleLayout = new DynamicStringLayout {
             HideOverflow = true,
-            AlignToPixels = StaticTextBase.DefaultGlyphPixelAlignment,
             LineLimit = 1,
             WordWrap = false,
             CharacterWrap = false,
