@@ -759,7 +759,7 @@ namespace Squared.Render.TextLayout2 {
 
                 for (uint f = line.FirstFragmentIndex, f2 = f + line.FragmentCount - 1; f <= f2; f++) {
                     ref var fragment = ref Buffers.Fragment(f);
-                    float fragmentY = y + (line.Height - fragment.Height);
+                    float fragmentY = y + (line.Baseline - fragment.Baseline);
                     fragment.Left = x;
 
                     if (fragment.Category == gapCategory)
