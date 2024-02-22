@@ -933,7 +933,7 @@ namespace Squared.Render.Text {
                 BreakLimit = measureOnly.HasValue ? measureOnly.Value.LineBreakLimit : _LineBreakLimit,
                 MeasureOnly = measureOnly.HasValue || MeasureOnly,
                 MaskCodepoint = _ReplacementCharacter,
-                DisableDefaultWrapCharacters = SplitAtWrapCharactersOnly,
+                SplitAtWrapCharactersOnly = SplitAtWrapCharactersOnly,
                 IncludeTrailingWhitespace = IncludeTrailingWhitespace,
                 WrapCharacters = _WordWrapCharacterTable,
                 Listener = measureOnly.HasValue ? null : this,

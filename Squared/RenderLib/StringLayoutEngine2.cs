@@ -20,9 +20,11 @@ using System.Security.Cryptography;
 
 namespace Squared.Render.TextLayout2 {
     public enum CharacterCategory : byte {
+        Unknown = 0,
         Regular,
         WrapPoint,
         Whitespace,
+        NonPrintable,
     }
 
     public struct Line {
@@ -32,6 +34,11 @@ namespace Squared.Render.TextLayout2 {
         public uint FirstDrawCall, DrawCallCount;
         public Vector2 Location;
         public float Width, TrailingWhitespace, Height, Baseline;
+
+        public float ActualWidth {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Width + TrailingWhitespace;
+        }
     }
 
     public struct Span {
@@ -45,7 +52,11 @@ namespace Squared.Render.TextLayout2 {
         public uint LineIndex;
         public uint FirstDrawCall, DrawCallCount;
         public float Left, Width, Height, Baseline;
-        public bool ContainsContent;
+        public CharacterCategory Category;
+        public bool ContainsContent {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Category < CharacterCategory.Whitespace;
+        }
     }
 
     public struct Box {
@@ -156,8 +167,6 @@ namespace Squared.Render.TextLayout2 {
         uint ColIndex, LineIndex, CharIndex, 
             DrawCallIndex, SpanIndex, FragmentIndex;
         bool SuppressUntilEnd;
-        float IndentationForThisLine;
-        CharacterCategory PreviousCharacterCategory;
 
         StagingBuffers Buffers;
 
@@ -179,7 +188,7 @@ namespace Squared.Render.TextLayout2 {
         public DenseList<uint> WrapCharacters;
 
         public bool MeasureOnly;
-        public bool CharacterWrap, WordWrap, DisableDefaultWrapCharacters;
+        public bool CharacterWrap, WordWrap, SplitAtWrapCharactersOnly;
         public bool HideOverflow, IncludeTrailingWhitespace;
         public bool OverrideColor;
 
@@ -231,9 +240,11 @@ namespace Squared.Render.TextLayout2 {
 
             IsInitialized = true;
             Buffers.Span(0) = default;
-            CurrentLine = default;
+            CurrentLine = new Line {
+                Location = new Vector2(InitialIndentation, 0f),
+            };
+            Y = 0f;
             CurrentFragment = default;
-            IndentationForThisLine = InitialIndentation;
             MarkedRangeSpanIndex = uint.MaxValue;
             HitTestResult.Position = HitTestLocation ?? default;
             MostRecentTexture = AbstractTextureReference.Invalid;
@@ -297,10 +308,10 @@ namespace Squared.Render.TextLayout2 {
                     lineBounds.TopLeft.X = fragment1.Left + span.FirstRelativeX;
 
                 if (l == l2)
-                    lineBounds.BottomRight.X = fragment2.Left + span.LastRelativeX;
-
-                if (lineBounds.BottomRight.X < lineBounds.TopLeft.X)
-                    lineBounds.BottomRight.X = lineBounds.TopLeft.X;
+                    lineBounds.BottomRight.X = Arithmetic.Clamp(
+                        fragment2.Left + span.LastRelativeX, 
+                        lineBounds.TopLeft.X, lineBounds.BottomRight.X
+                    );
 
                 if (lineBounds.Size.X > 0f)
                     output.Add(ref lineBounds);
@@ -316,7 +327,10 @@ namespace Squared.Render.TextLayout2 {
             }
 
             ref var line = ref Buffers.Line(index);
-            bounds = Bounds.FromPositionAndSize(line.Location.X + Position.X, line.Location.Y + Position.Y, line.Width, line.Height);
+            bounds = Bounds.FromPositionAndSize(
+                line.Location.X + Position.X, line.Location.Y + Position.Y, 
+                line.Width, line.Height
+            );
             return true;
         }
         
@@ -410,24 +424,27 @@ namespace Squared.Render.TextLayout2 {
                 DecodeCodepoint(text, ref i, l, out char ch1, out int currentCodepointSize, out uint codepoint);
 
                 AnalyzeWhitespace(
-                    ch1, codepoint, out bool isWhiteSpace, out bool lineBreak, out bool deadGlyph, out bool isWordWrapPoint
+                    ch1, codepoint, out bool lineBreak, out bool deadGlyph, out var category
                 );
 
                 BuildGlyphInformation(
                     // FIXME: This will be wrong after recalc
-                    glyphSource, effectiveScale, Spacing, ch1, codepoint, CurrentLine.Width == 0,
+                    glyphSource, effectiveScale, Spacing, ch1, codepoint, CurrentLine.DrawCallCount == 0,
                     out deadGlyph, out Glyph glyph, out float glyphLineSpacing, out float glyphBaseline
                 );
 
-                var category = isWhiteSpace
-                    ? CharacterCategory.Whitespace
-                    : (isWordWrapPoint ? CharacterCategory.WrapPoint : CharacterCategory.Regular);
+                if (category == CharacterCategory.NonPrintable) {
+                    ;
+                } else {
+                    if (CurrentFragment.Category == CharacterCategory.Unknown)
+                        CurrentFragment.Category = category;
 
-                if (category != PreviousCharacterCategory)
-                    FinishFragment();
+                    if (category != CurrentFragment.Category)
+                        FinishFragment();
 
-                if (!isWhiteSpace)
-                    CurrentFragment.ContainsContent = true;
+                    if (CurrentFragment.Category == CharacterCategory.Unknown)
+                        CurrentFragment.Category = category;
+                }
 
                 // FIXME: Kerning across multiple AppendText calls
                 if ((glyph.KerningProvider != null) && (i < l - 2)) {
@@ -460,7 +477,7 @@ namespace Squared.Render.TextLayout2 {
                 float w = (glyph.WidthIncludingBearing * effectiveScale.X) + (glyph.CharacterSpacing * effectiveScale.X),
                     h = glyphLineSpacing,
                     baseline = glyphBaseline,
-                    xBasis = CurrentLine.Width,
+                    xBasis = CurrentLine.Location.X + CurrentLine.ActualWidth,
                     x1 = xBasis + FragmentOffset.X,
                     x2 = x1 + w,
                     y2 = Y + h;
@@ -495,7 +512,7 @@ namespace Squared.Render.TextLayout2 {
                 CurrentFragmentCodepoints.Add(codepoint);
 #endif
 
-                if (!deadGlyph && !isWhiteSpace && !suppressThisCharacter) {
+                if (!deadGlyph && !suppressThisCharacter && (category < CharacterCategory.Whitespace)) {
                     ref var drawCall = ref AppendDrawCall(ref dead);
 
                     float x = FragmentOffset.X + (glyph.XOffset * effectiveScale.X) + (glyph.LeftSideBearing * effectiveScale.X),
@@ -534,7 +551,6 @@ namespace Squared.Render.TextLayout2 {
 
                 UnconstrainedLineSize.X += w;
                 UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, h);
-                PreviousCharacterCategory = category;
 
                 CharIndex++;
             }
@@ -596,8 +612,6 @@ namespace Squared.Render.TextLayout2 {
         private void FinishFragment () {
             ref var fragment = ref CurrentFragment;
             fragment.LineIndex = LineIndex;
-            if ((fragment.Width == 0) && !fragment.ContainsContent)
-                return;
 
             ref var line = ref CurrentLine;
 
@@ -605,13 +619,25 @@ namespace Squared.Render.TextLayout2 {
 
             float baselineAdjustment = line.Baseline - fragment.Baseline;
 
-            line.Width += line.TrailingWhitespace;
-            if (!fragment.ContainsContent) {
-                line.GapCount++;
-                line.TrailingWhitespace = fragment.Width;
-            } else {
-                line.TrailingWhitespace = 0f;
-                line.Width += fragment.Width;
+            switch (fragment.Category) {
+                case CharacterCategory.Regular:
+                    line.Width += fragment.Width + line.TrailingWhitespace;
+                    line.TrailingWhitespace = 0f;
+                    break;
+                case CharacterCategory.WrapPoint:
+                    if (SplitAtWrapCharactersOnly)
+                        line.GapCount++;
+                    line.Width += fragment.Width + line.TrailingWhitespace;
+                    line.TrailingWhitespace = 0f;
+                    break;
+                case CharacterCategory.Whitespace:
+                    if (!SplitAtWrapCharactersOnly)
+                        line.GapCount++;
+                    line.TrailingWhitespace += fragment.Width;
+                    break;
+                case CharacterCategory.NonPrintable:
+                    line.Width += fragment.Width;
+                    break;
             }
 
             line.Height = Math.Max(line.Height, fragment.Height);
@@ -643,11 +669,11 @@ namespace Squared.Render.TextLayout2 {
             if (!SuppressUntilEnd)
                 Y += CurrentLine.Height + (forLineBreak ? ExtraBreakSpacing : 0f);
 
-            IndentationForThisLine = forLineBreak ? BreakIndentation : WrapIndentation;
+            float indentation = forLineBreak ? BreakIndentation : WrapIndentation;
             LineIndex++;
             CurrentLine = new Line {
                 Index = LineIndex,
-                Location = new Vector2(0, Y),
+                Location = new Vector2(indentation, Y),
                 FirstFragmentIndex = FragmentIndex,
             };
         }
@@ -673,18 +699,23 @@ namespace Squared.Render.TextLayout2 {
         }
 
         private void ArrangeFragments (float totalWidth) {
+            var gapCategory = SplitAtWrapCharactersOnly 
+                ? CharacterCategory.WrapPoint 
+                : CharacterCategory.Whitespace;
+
             for (uint i = 0; i <= LineIndex; i++) {
                 ref var line = ref Buffers.Line(i);
                 if (line.DrawCallCount == 0)
                     continue;
 
-                int gapCount = (int)Math.Max(line.GapCount, 1);
+                int gapCount = (int)line.GapCount;
                 if (line.FragmentCount > 1) {
                     ref var lastFragment = ref Buffers.Fragment(line.FirstFragmentIndex + line.FragmentCount - 1);
                     // Don't enlarge trailing whitespace at the end of a line in justification mode.
                     // Crush it instead.
                     if (!lastFragment.ContainsContent) {
-                        gapCount -= 1;
+                        if (!SplitAtWrapCharactersOnly)
+                            gapCount -= 1;
                         lastFragment.Width = 0f;
                     }
                 }
@@ -701,13 +732,15 @@ namespace Squared.Render.TextLayout2 {
                     case HorizontalAlignment.Right:
                         break;
                     case HorizontalAlignment.JustifyWords:
-                        gapWhitespace = whitespace / gapCount;
-                        if (gapWhitespace > MaxExpansionPerSpace)
-                            gapWhitespace = 0f;
+                        if (gapCount > 0) {
+                            gapWhitespace = whitespace / gapCount;
+                            if (gapWhitespace > MaxExpansionPerSpace)
+                                gapWhitespace = 0f;
+                        }
                         whitespace = 0f;
                         break;
                     case HorizontalAlignment.JustifyWordsCentered:
-                        if (line.GapCount > 0) {
+                        if (gapCount > 1) {
                             gapWhitespace = whitespace / gapCount;
                             if (gapWhitespace > MaxExpansionPerSpace)
                                 gapWhitespace = 0f;
@@ -720,8 +753,8 @@ namespace Squared.Render.TextLayout2 {
                 line.Location.X += whitespace;
                 line.Width += (gapWhitespace * gapCount);
 
-                float x = line.Location.X + Position.X,
-                    y = line.Location.Y + Position.Y,
+                float x = Position.X + line.Location.X,
+                    y = Position.Y + line.Location.Y,
                     cws = 0;
 
                 for (uint f = line.FirstFragmentIndex, f2 = f + line.FragmentCount - 1; f <= f2; f++) {
@@ -729,14 +762,15 @@ namespace Squared.Render.TextLayout2 {
                     float fragmentY = y + (line.Height - fragment.Height);
                     fragment.Left = x;
 
+                    if (fragment.Category == gapCategory)
+                        x += gapWhitespace;
+
                     if (fragment.DrawCallCount > 0) {
                         for (uint dc = fragment.FirstDrawCall, dc2 = dc + fragment.DrawCallCount - 1; dc <= dc2; dc++) {
                             ref var drawCall = ref Buffers.DrawCall(dc);
                             drawCall.Position.X += x;
                             drawCall.Position.Y += fragmentY;
                         }
-                    } else {
-                        fragment.Width += gapWhitespace;
                     }
 
                     x += fragment.Width;
@@ -795,23 +829,28 @@ namespace Squared.Render.TextLayout2 {
             Listener?.Finished(ref this, SpanIndex, LineIndex, ref result);
         }
 
-        private void AnalyzeWhitespace (char ch1, uint codepoint, out bool isWhiteSpace, out bool lineBreak, out bool deadGlyph, out bool isWordWrapPoint) {
-            isWhiteSpace = Unicode.IsWhiteSpace(ch1) && !MaskCodepoint.HasValue;
+        private void AnalyzeWhitespace (char ch1, uint codepoint, out bool lineBreak, out bool deadGlyph, out CharacterCategory category) {
+            bool isWhitespace = Unicode.IsWhiteSpace(codepoint) && !MaskCodepoint.HasValue,
+                isWordWrapPoint = false, isNonPrintable = codepoint < 32;
             lineBreak = false;
             deadGlyph = false;
 
-            if (DisableDefaultWrapCharacters)
+            if (SplitAtWrapCharactersOnly)
                 isWordWrapPoint = WrapCharacters.BinarySearchNonRef(codepoint, StringLayoutEngine.UintComparer.Instance) >= 0;
             else
-                isWordWrapPoint = isWhiteSpace || char.IsSeparator(ch1) ||
+                isWordWrapPoint = isWhitespace || char.IsSeparator(ch1) ||
                     MaskCodepoint.HasValue || WrapCharacters.BinarySearchNonRef(codepoint, StringLayoutEngine.UintComparer.Instance) >= 0;
 
             if (codepoint > 255) {
                 // HACK: Attempt to word-wrap at "other" punctuation in non-western character sets, which will include things like commas
                 // This is less than ideal but .NET does not appear to expose the classification tables needed to do this correctly
-                var category = CharUnicodeInfo.GetUnicodeCategory(ch1);
-                if (category == UnicodeCategory.OtherPunctuation)
+                var uniCategory = CharUnicodeInfo.GetUnicodeCategory(ch1);
+                if (uniCategory == UnicodeCategory.OtherPunctuation)
                     isWordWrapPoint = true;
+                else if (uniCategory == UnicodeCategory.Control)
+                    isNonPrintable = true;
+                else if (uniCategory == UnicodeCategory.Format)
+                    isNonPrintable = true;
             }
             // Wrapping and justify expansion should never occur for a non-breaking space
             if (codepoint == 0x00A0)
@@ -835,6 +874,24 @@ namespace Squared.Render.TextLayout2 {
                     NewLinePending = true;
             } else if (LineLimit.HasValue && LineLimit.Value <= 0) {
                 SuppressUntilEnd = true;
+            }
+
+            if (isNonPrintable)
+                category = CharacterCategory.NonPrintable;
+            else if (SplitAtWrapCharactersOnly) {
+                if (isWordWrapPoint)
+                    category = CharacterCategory.WrapPoint;
+                else if (isWhitespace)
+                    category = CharacterCategory.Whitespace;
+                else
+                    category = CharacterCategory.Regular;
+            } else {
+                if (isWhitespace)
+                    category = CharacterCategory.Whitespace;
+                else if (isWordWrapPoint)
+                    category = CharacterCategory.WrapPoint;
+                else
+                    category = CharacterCategory.Regular;
             }
         }
 
