@@ -25,6 +25,7 @@ namespace Squared.Render.TextLayout2 {
         WrapPoint,
         Whitespace,
         NonPrintable,
+        Suppressed
     }
 
     public struct Line {
@@ -429,15 +430,15 @@ namespace Squared.Render.TextLayout2 {
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 if (LineLimit.HasValue && LineLimit.Value <= 0)
-                    SuppressUntilEnd = true;
+                    SuppressLayoutForLimit();
                 else if (Y > MaximumHeight)
-                    SuppressUntilEnd = true;
+                    SuppressLayoutForLimit();
 
                 UpdateMarkedRange();
 
                 DecodeCodepoint(text, ref i, l, out char ch1, out int currentCodepointSize, out uint codepoint);
                 if (codepoint == TerminatorCodepoint)
-                    SuppressUntilEnd = true;
+                    SuppressLayoutForLimit();
 
                 AnalyzeWhitespace(
                     ch1, codepoint, out bool lineBreak, out bool deadGlyph, out var category
@@ -514,7 +515,7 @@ namespace Squared.Render.TextLayout2 {
 
                 if (HideOverflow) {
                     if (overflowY)
-                        SuppressUntilEnd = true;
+                        SuppressLayoutForLimit();
                 }
 
                 ref var fragment = ref CurrentFragment;
@@ -628,6 +629,27 @@ namespace Squared.Render.TextLayout2 {
             FinishLine(true);
         }
 
+        private void SuppressLayoutForLimit () {
+            if (!SuppressUntilEnd)
+                EraseFragment(ref CurrentFragment);
+            SuppressUntilEnd = true;
+        }
+
+        private void EraseFragment (ref Fragment fragment) {
+            fragment.Category = CharacterCategory.Suppressed;
+            fragment.Width = 0;
+            fragment.Height = 0;
+            fragment.Baseline = 0;
+
+            if (fragment.DrawCallCount == 0)
+                return;
+
+            for (uint f = fragment.FirstDrawCall, f2 = f + fragment.DrawCallCount - 1; f <= f2; f++)
+                Buffers.DrawCall(f) = default;
+
+            fragment.DrawCallCount = 0;
+        }
+
         private void FinishFragment () {
             ref var fragment = ref CurrentFragment;
             fragment.LineIndex = LineIndex;
@@ -657,9 +679,12 @@ namespace Squared.Render.TextLayout2 {
                 case CharacterCategory.NonPrintable:
                     line.Width += fragment.Width;
                     break;
+                case CharacterCategory.Suppressed:
+                    break;
             }
 
-            line.Height = Math.Max(line.Height, fragment.Height);
+            if (fragment.Category != CharacterCategory.Suppressed)
+                line.Height = Math.Max(line.Height, fragment.Height);
 
             FragmentOffset = default;
 
@@ -699,7 +724,7 @@ namespace Squared.Render.TextLayout2 {
             if (LineLimit.HasValue) {
                 LineLimit--;
                 if (LineLimit.Value <= 0)
-                    SuppressUntilEnd = true;
+                    SuppressLayoutForLimit();
             }
         }
 
@@ -893,12 +918,12 @@ namespace Squared.Render.TextLayout2 {
                 if (BreakLimit.HasValue) {
                     BreakLimit--;
                     if (BreakLimit.Value <= 0)
-                        SuppressUntilEnd = true;
+                        SuppressLayoutForLimit();
                 }
                 if (!SuppressUntilEnd && IncludeTrailingWhitespace)
                     NewLinePending = true;
             } else if (LineLimit.HasValue && LineLimit.Value <= 0) {
-                SuppressUntilEnd = true;
+                SuppressLayoutForLimit();
             }
 
             if (SplitAtWrapCharactersOnly) {
