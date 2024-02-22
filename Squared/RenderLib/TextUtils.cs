@@ -99,6 +99,7 @@ namespace Squared.Render.Text {
         private int _LineLimit;
         private int _LineBreakLimit;
         private char? _ReplacementCharacter;
+        private char? _TerminatorCharacter;
         private uint[] _WordWrapCharacters;
         private DenseList<uint> _WordWrapCharacterTable;
         private Vector4? _UserData;
@@ -766,6 +767,19 @@ namespace Squared.Render.Text {
         }
 
         /// <summary>
+        /// If set, layout will stop the first time this character is encountered.
+        /// You can use this to produce truncated "previews" of larger blocks of text using non-printable markers.
+        /// </summary>
+        public char? TerminatorCharacter {
+            get {
+                return _TerminatorCharacter;
+            }
+            set {
+                InvalidatingNullableAssignment(ref _TerminatorCharacter, value);
+            }
+        }
+
+        /// <summary>
         /// If set, every texture used in the layout will be recorded so you can use it for tracking and lifetime management.
         /// </summary>
         public bool RecordUsedTextures {
@@ -1074,19 +1088,18 @@ namespace Squared.Render.Text {
                             SetFlag(InternalFlags.AwaitingDependencies, false);
 
                         // FIXME
-                        /*
-                        if (le.IsTruncated && !TruncatedIndicator.IsNull)
-                            _RichTextConfiguration.Append(ref le2, ref rls, TruncatedIndicator, _StyleName, overrideSuppress: false);
-                        */
+                        if (le2.IsTruncated && !TruncatedIndicator.IsNull) {
+                            le2.Desuppress();
+                            _RichTextConfiguration.Append(ref le2, ref rls, TruncatedIndicator, _StyleName);
+                        }
                     } else {
                         SetFlag(InternalFlags.AwaitingDependencies, false);
                         // le.AppendText(glyphSource, _Text);
                         le2.AppendText(glyphSource, _Text);
-                        // FIXME: le2 truncation
-                        /*
-                        if (le.IsTruncated && !TruncatedIndicator.IsNull)
-                            le.AppendText(glyphSource, TruncatedIndicator, overrideSuppress: false);
-                        */
+                        if (le2.IsTruncated && !TruncatedIndicator.IsNull) {
+                            le2.Desuppress();
+                            le2.AppendText(glyphSource, TruncatedIndicator);
+                        }
                     }
 
                     if (!measureOnly.HasValue) {

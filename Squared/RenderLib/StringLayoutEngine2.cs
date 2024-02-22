@@ -192,8 +192,13 @@ namespace Squared.Render.TextLayout2 {
         public bool HideOverflow, IncludeTrailingWhitespace;
         public bool OverrideColor;
 
-        public int CharacterSkipCount, LineSkipCount;
-        public int? CharacterLimit, LineLimit, BreakLimit;
+        // FIXME: Not implemented
+        public int CharacterSkipCount;
+        // FIXME: Not implemented
+        public int? CharacterLimit, 
+            // FIXME: These seem buggy
+            LineLimit, 
+            BreakLimit;
 
         public Vector2 Position;
         private Vector2 SpacingMinusOne, ScaleMinusOne;
@@ -211,6 +216,7 @@ namespace Squared.Render.TextLayout2 {
 
         public HorizontalAlignment Alignment;
         public uint? MaskCodepoint;
+        public uint? TerminatorCodepoint;
 
         public float InitialIndentation, BreakIndentation, WrapIndentation;
         public float AdditionalLineSpacing, ExtraBreakSpacing;
@@ -224,8 +230,14 @@ namespace Squared.Render.TextLayout2 {
         // Output
         public uint MarkedRangeSpanIndex;
         public LayoutHitTest HitTestResult;
+        public bool AnyCharactersSuppressed;
 
         bool IsInitialized;
+        public bool IsTruncated =>
+            // FIXME: < 0 instead of <= 0?
+            ((LineLimit ?? int.MaxValue) <= 0) ||
+            ((BreakLimit ?? int.MaxValue) <= 0) ||
+            ((CharacterLimit ?? int.MaxValue) <= 0);
 
         public void Initialize () {
             // FIXME
@@ -418,10 +430,14 @@ namespace Squared.Render.TextLayout2 {
             for (int i = 0, l = text.Length; i < l; i++) {
                 if (LineLimit.HasValue && LineLimit.Value <= 0)
                     SuppressUntilEnd = true;
+                else if (Y > MaximumHeight)
+                    SuppressUntilEnd = true;
 
                 UpdateMarkedRange();
 
                 DecodeCodepoint(text, ref i, l, out char ch1, out int currentCodepointSize, out uint codepoint);
+                if (codepoint == TerminatorCodepoint)
+                    SuppressUntilEnd = true;
 
                 AnalyzeWhitespace(
                     ch1, codepoint, out bool lineBreak, out bool deadGlyph, out var category
@@ -537,6 +553,9 @@ namespace Squared.Render.TextLayout2 {
                         MostRecentTexture = glyph.Texture;
                     }
                 }
+
+                if (suppressThisCharacter && !deadGlyph && (category < CharacterCategory.Whitespace))
+                    AnyCharactersSuppressed = true;
 
                 FragmentOffset.X += w;
                 fragment.Width += w;
@@ -676,6 +695,12 @@ namespace Squared.Render.TextLayout2 {
                 Location = new Vector2(indentation, Y),
                 FirstFragmentIndex = FragmentIndex,
             };
+
+            if (LineLimit.HasValue) {
+                LineLimit--;
+                if (LineLimit.Value <= 0)
+                    SuppressUntilEnd = true;
+            }
         }
 
         public void CreateEmptyBox (float width, float height, Vector2 margins) {
@@ -822,11 +847,16 @@ namespace Squared.Render.TextLayout2 {
                 Position, constrainedSize, UnconstrainedSize, Buffers.Line(0).Height,
                 Buffers.DrawCall(0).EstimateDrawBounds(),
                 Buffers.DrawCall(lastDrawCallIndex).EstimateDrawBounds(),
-                buffer, (LineLimit.HasValue && LineLimit.Value <= 0), 
+                buffer, AnyCharactersSuppressed, 
                 /* FIXME */ 0, (int)LineIndex
             );
 
             Listener?.Finished(ref this, SpanIndex, LineIndex, ref result);
+        }
+
+        public void Desuppress () {
+            SuppressUntilEnd = false;
+            BreakLimit = CharacterLimit = LineLimit = null;
         }
 
         private void AnalyzeWhitespace (char ch1, uint codepoint, out bool lineBreak, out bool deadGlyph, out CharacterCategory category) {
@@ -860,11 +890,6 @@ namespace Squared.Render.TextLayout2 {
                 lineBreak = true;
 
             if (lineBreak) {
-                if (LineLimit.HasValue) {
-                    LineLimit--;
-                    if (LineLimit.Value <= 0)
-                        SuppressUntilEnd = true;
-                }
                 if (BreakLimit.HasValue) {
                     BreakLimit--;
                     if (BreakLimit.Value <= 0)

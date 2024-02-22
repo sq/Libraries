@@ -1010,9 +1010,11 @@ namespace Squared.PRGUI {
 
                 var idealMaxSize = PlaceTooltipContentIntoTooltip(instance, target, cttt, text, content);
 
-                // FIXME: Shift it around if it's already too close to the right side
+                // HACK: Set a width constraint on the tooltip based on its ideal max size.
                 instance.Width.Maximum = idealMaxSize.X;
-                instance.Height.Maximum = idealMaxSize.Y;
+                // We don't want to set a height constraint because right now it doesn't inform the text layout
+                //  engine, so the text would overflow the top and/or bottom if it doesn't fit.
+                // instance.Height.Maximum = idealMaxSize.Y;
                 instance.Invalidate();
 
                 // FIXME: Sometimes this keeps happening every frame

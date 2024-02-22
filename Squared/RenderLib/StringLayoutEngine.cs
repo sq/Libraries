@@ -73,6 +73,7 @@ namespace Squared.Render.Text {
         public GlyphPixelAlignment alignToPixels;
         public HorizontalAlignment alignment;
         public uint?               replacementCodepoint;
+        public uint?               terminatorCodepoint;
         public Func<ArraySegment<BitmapDrawCall>, ArraySegment<BitmapDrawCall>> growBuffer;
         public Vector4             userData;
         public Vector4             imageUserData;
@@ -843,6 +844,9 @@ namespace Squared.Render.Text {
                     suppress = true;
 
                 DecodeCodepoint(text, ref i, l, out char ch1, out int currentCodepointSize, out uint codepoint);
+
+                if (codepoint == terminatorCodepoint)
+                    suppress = true;
 
                 AnalyzeWhitespace(
                     ch1, codepoint, out bool isWhiteSpace, out bool forcedWrap, out bool lineBreak, 
