@@ -20,12 +20,11 @@ using System.Security.Cryptography;
 
 namespace Squared.Render.TextLayout2 {
     public enum CharacterCategory : byte {
-        Unknown = 0,
-        Regular,
-        WrapPoint,
-        Whitespace,
-        NonPrintable,
-        Suppressed
+        Unknown = 0b0,
+        Regular = 0b1,
+        WrapPoint = 0b10,
+        Whitespace = 0b100,
+        NonPrintable = 0b1000,
     }
 
     public struct Line {
@@ -54,6 +53,11 @@ namespace Squared.Render.TextLayout2 {
         public uint FirstDrawCall, DrawCallCount;
         public float Left, Width, Height, Baseline;
         public CharacterCategory Category;
+        public bool WasSuppressed;
+        public bool WasFullySuppressed {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => WasSuppressed && (DrawCallCount == 0) && (Width <= 0);
+        }
         public bool ContainsContent {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => Category < CharacterCategory.Whitespace;
@@ -308,6 +312,8 @@ namespace Squared.Render.TextLayout2 {
 
             ref var fragment1 = ref Buffers.Fragment(span.FirstFragmentIndex);
             ref var fragment2 = ref Buffers.Fragment(span.LastFragmentIndex);
+            if (fragment1.WasFullySuppressed)
+                return false;
 
             // FIXME: This whole algorithm doesn't work right if there are spaces at the start or end
             //  of the span being measured.
@@ -553,14 +559,21 @@ namespace Squared.Render.TextLayout2 {
                         Listener?.RecordTexture(ref this, glyph.Texture);
                         MostRecentTexture = glyph.Texture;
                     }
+
+                    if (fragment.WasSuppressed)
+                        fragment.WasSuppressed = false;
                 }
 
-                if (suppressThisCharacter && !deadGlyph && (category < CharacterCategory.Whitespace))
+                if (suppressThisCharacter && !deadGlyph && (category < CharacterCategory.Whitespace)) {
+                    fragment.WasSuppressed = true;
                     AnyCharactersSuppressed = true;
+                }
 
                 FragmentOffset.X += w;
-                fragment.Width += w;
-                fragment.Height = Math.Max(fragment.Height, h);
+                if (!SuppressUntilEnd) {
+                    fragment.Width += w;
+                    fragment.Height = Math.Max(fragment.Height, h);
+                }
 
                 if (HitTestLocation.HasValue && (HitTestLocation.Value.X >= x1) && (HitTestLocation.Value.X <= x2)) {
                     if (!HitTestResult.FirstCharacterIndex.HasValue)
@@ -636,7 +649,7 @@ namespace Squared.Render.TextLayout2 {
         }
 
         private void EraseFragment (ref Fragment fragment) {
-            fragment.Category = CharacterCategory.Suppressed;
+            fragment.WasSuppressed = true;
             fragment.Width = 0;
             fragment.Height = 0;
             fragment.Baseline = 0;
@@ -679,11 +692,9 @@ namespace Squared.Render.TextLayout2 {
                 case CharacterCategory.NonPrintable:
                     line.Width += fragment.Width;
                     break;
-                case CharacterCategory.Suppressed:
-                    break;
             }
 
-            if (fragment.Category != CharacterCategory.Suppressed)
+            if (!fragment.WasFullySuppressed)
                 line.Height = Math.Max(line.Height, fragment.Height);
 
             FragmentOffset = default;
@@ -700,6 +711,7 @@ namespace Squared.Render.TextLayout2 {
             CurrentFragment = new Fragment {
                 FirstDrawCall = DrawCallIndex,
                 LineIndex = LineIndex,
+                WasSuppressed = SuppressUntilEnd
             };
 
 #if TRACK_CODEPOINTS
@@ -833,6 +845,12 @@ namespace Squared.Render.TextLayout2 {
             for (uint i = 0; i <= LineIndex; i++) {
                 ref var line = ref Buffers.Line(i);
                 constrainedSize.X = Math.Max(constrainedSize.X, line.Width);
+
+                // HACK: Fixes a single-line size overhang from line limiting
+                // FIXME: This will break trailing whitespace from extra line breaks.
+                if ((line.DrawCallCount == 0) && (line.Width <= 0))
+                    continue;
+
                 // We have to use Max here because of things like ExtraBreakSpacing that don't
                 //  alter the line's height. If we were to just sum heights it would be too small
                 constrainedSize.Y = Math.Max(constrainedSize.Y, line.Location.Y + line.Height);

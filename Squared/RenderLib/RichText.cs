@@ -761,7 +761,7 @@ namespace Squared.Render.Text {
                         insertionMode && (ImageProvider != null) && 
                         (ai = ImageProvider(bracketed.Value, this)).IsInitialized
                     ) {
-                        layoutEngine.ComputeConstrainedSize(out var constrainedSize);
+                        // layoutEngine.ComputeConstrainedSize(out var constrainedSize);
                         if (ai.Dead) {
                             stateTracker?.ReferencedImage(this, ref ai);
                         } else if (DisableImages) {
