@@ -740,7 +740,7 @@ namespace Squared.Render.TextLayout2 {
                         whitespace = 0f;
                         break;
                     case HorizontalAlignment.JustifyWordsCentered:
-                        if (gapCount > 1) {
+                        if (gapCount > 0) {
                             gapWhitespace = whitespace / gapCount;
                             if (gapWhitespace > MaxExpansionPerSpace)
                                 gapWhitespace = 0f;
@@ -876,17 +876,19 @@ namespace Squared.Render.TextLayout2 {
                 SuppressUntilEnd = true;
             }
 
-            if (isNonPrintable)
-                category = CharacterCategory.NonPrintable;
-            else if (SplitAtWrapCharactersOnly) {
+            if (SplitAtWrapCharactersOnly) {
                 if (isWordWrapPoint)
                     category = CharacterCategory.WrapPoint;
+                else if (isNonPrintable)
+                    category = CharacterCategory.NonPrintable;
                 else if (isWhitespace)
                     category = CharacterCategory.Whitespace;
                 else
                     category = CharacterCategory.Regular;
             } else {
-                if (isWhitespace)
+                if (isNonPrintable)
+                    category = CharacterCategory.NonPrintable;
+                else if (isWhitespace)
                     category = CharacterCategory.Whitespace;
                 else if (isWordWrapPoint)
                     category = CharacterCategory.WrapPoint;
