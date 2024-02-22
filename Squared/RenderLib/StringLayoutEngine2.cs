@@ -32,17 +32,18 @@ namespace Squared.Render.TextLayout2 {
         public uint FirstDrawCall, DrawCallCount;
         public Vector2 Location;
         public float Width, Height, Baseline;
-        public float CharacterWhitespace;
+        public float CallWhitespace;
     }
 
     public struct Span {
         public uint Index;
         public uint FirstDrawCall, DrawCallCount;
-        public uint FirstFragmentIndex, LastFragmentIndex, FirstLineIndex, LineCount;
+        public uint FirstFragmentIndex, LastFragmentIndex;
         public float FirstRelativeX, LastRelativeX;
     }
 
     public struct Fragment {
+        public uint LineIndex;
         public uint FirstDrawCall, DrawCallCount;
         public float Left, Width, Height, Baseline;
         public bool ContainsContent;
@@ -164,9 +165,7 @@ namespace Squared.Render.TextLayout2 {
         // FIXME: Make this do something
         bool NewLinePending;
         // Push/pop span stack
-        DenseList<uint> SpanStack, 
-        // List of spans affected by this fragment, which may include spans that were popped earlier
-            FragmentSpanList;
+        DenseList<uint> SpanStack;
 
         AbstractTextureReference MostRecentTexture;
 
@@ -281,54 +280,28 @@ namespace Squared.Render.TextLayout2 {
                 return false;
 
             ref var span = ref Buffers.Span(index);
-            if (span.LineCount == 0)
+            if (span.LastFragmentIndex == uint.MaxValue)
                 return true;
-            if (span.FirstLineIndex == uint.MaxValue)
-                throw new Exception("Corrupt internal state");
 
-            uint l = span.FirstLineIndex, l2 = l + span.LineCount - 1;
-            if ((l2 > LineIndex) || (l2 < l))
-                throw new Exception("Corrupt internal state");
+            ref var fragment1 = ref Buffers.Fragment(span.FirstFragmentIndex);
+            ref var fragment2 = ref Buffers.Fragment(span.LastFragmentIndex);
 
             // FIXME: This whole algorithm doesn't work right if there are spaces at the start or end
             //  of the span being measured.
 
-            for (; l <= l2; l++) {
+            for (uint l = fragment1.LineIndex, l2 = fragment2.LineIndex; l <= l2; l++) {
                 if (!TryGetLineBounds(l, out var lineBounds))
                     continue;
                 ref var line = ref Buffers.Line(l);
 
-                /*
-                if (l == span.FirstLineIndex) {
-                    int wi = (int)(span.FirstFragmentIndex - line.FirstFragmentIndex),
-                        ci = (int)(span.FirstDrawCall - line.FirstDrawCall);
-                    float firstWordWhitespace = wi * line.GapWhitespace,
-                        firstCharWhitespace = ci * line.CharacterWhitespace;
-                    lineBounds.TopLeft.X = Position.X + line.Location.X + span.FirstRelativeX + 
-                        firstWordWhitespace + firstCharWhitespace;
-                }
+                if (l == fragment1.LineIndex)
+                    lineBounds.TopLeft.X = fragment1.Left + span.FirstRelativeX;
 
-                if (l == l2) {
-                    uint lldc = line.FirstDrawCall + line.DrawCallCount,
-                        sldc = span.FirstDrawCall + span.DrawCallCount;
-                    int cc = (int)(span.FirstDrawCall + span.DrawCallCount - line.FirstDrawCall),
-                        wi = (int)(span.LastFragmentIndex - line.FirstFragmentIndex);
-                    // HACK: Shrink the character count at the end of the line so we don't overhang in character justification mode
-                    if (lldc == sldc)
-                        cc -= 1;
-                    float lastWordWhitespace = Math.Max(wi, 0) * line.GapWhitespace,
-                        lastCharWhitespace = Math.Max(cc, 0) * line.CharacterWhitespace;
-                    // HACK: Depending on how wrapping goes, this could be to the left of TL, so clamp it.
-                    //  In word justification mode this can also overhang if the span wraps around a line break, I think?
-                    // This may produce a 0-width box.
-                    lineBounds.BottomRight.X = Arithmetic.Clamp(
-                        Position.X + line.Location.X + span.LastRelativeX + 
-                            lastWordWhitespace + lastCharWhitespace, 
-                        lineBounds.TopLeft.X,
-                        Position.X + line.Location.X + line.Width
-                    );
-                }
-                */
+                if (l == l2)
+                    lineBounds.BottomRight.X = fragment2.Left + span.LastRelativeX;
+
+                if (lineBounds.BottomRight.X < lineBounds.TopLeft.X)
+                    lineBounds.BottomRight.X = lineBounds.TopLeft.X;
 
                 if (lineBounds.Size.X > 0f)
                     output.Add(ref lineBounds);
@@ -349,6 +322,11 @@ namespace Squared.Render.TextLayout2 {
         }
         
         public ref Span BeginSpan (bool push) {
+            // HACK: Split whitespace fragments when beginning a span,
+            //  so that relative positioning is accurate.
+            if (!CurrentFragment.ContainsContent && CurrentFragment.Width > 0)
+                FinishFragment();
+
             var index = SpanIndex++;
             if (push || SpanStack.Count == 0)
                 SpanStack.Add(index);
@@ -358,15 +336,11 @@ namespace Squared.Render.TextLayout2 {
             ref var result = ref Buffers.Span(index);
             result = new Span {
                 Index = index,
-                FirstFragmentIndex = FragmentIndex,
-                // Initialize FirstLineIndex with a dummy value, it will be filled in by
-                //  either FinishWord or EndSpan.
-                FirstLineIndex = uint.MaxValue,
                 FirstDrawCall = DrawCallIndex,
+                FirstFragmentIndex = FragmentIndex,
                 FirstRelativeX = FragmentOffset.X,
-                LastFragmentIndex = FragmentIndex,
+                LastFragmentIndex = uint.MaxValue,
             };
-            FragmentSpanList.Add(index);
             return ref result;
         }
 
@@ -388,20 +362,9 @@ namespace Squared.Render.TextLayout2 {
 
         private ref Span EndSpan (uint index) {
             ref var result = ref Buffers.Span(index);
-            // It's possible EndSpan will be called in the middle of a word, in which
-            //  case FirstLineIndex will never get filled in by FinishWord. So fill it
-            //  in here if that happens.
-            if (result.FirstLineIndex == uint.MaxValue)
-                result.FirstLineIndex = LineIndex;
-
             result.LastRelativeX = FragmentOffset.X;
             result.LastFragmentIndex = FragmentIndex;
-
-            result.LineCount = (LineIndex - result.FirstLineIndex) + 1;
             result.DrawCallCount = DrawCallIndex - result.FirstDrawCall;
-            // FIXME: If we ended a span in the middle of a word, our bounding box will become
-            //  incorrect in the event that the word later gets wrapped.
-            FragmentSpanList.Add(index);
             return ref result;
         }
 
@@ -633,6 +596,7 @@ namespace Squared.Render.TextLayout2 {
 
         private void FinishFragment () {
             ref var fragment = ref CurrentFragment;
+            fragment.LineIndex = LineIndex;
             if ((fragment.Width == 0) && !fragment.ContainsContent)
                 return;
 
@@ -644,18 +608,6 @@ namespace Squared.Render.TextLayout2 {
 
             if (!fragment.ContainsContent)
                 line.GapCount++;
-
-            // HACK: It's possible a span will start in the middle of a word, then the word gets
-            //  wrapped immediately. So we fill in FirstLineIndex lazily to compensate for that,
-            //  setting it the first time a word is actually finished.
-            for (int i = 0, c = FragmentSpanList.Count; i < c; i++) {
-                var spanIndex = FragmentSpanList[i];
-                ref var span = ref Buffers.Span(spanIndex);
-                if (span.FirstLineIndex == uint.MaxValue)
-                    span.FirstLineIndex = LineIndex;
-                if (span.FirstFragmentIndex == FragmentIndex)
-                    span.FirstLineIndex = LineIndex;
-            }
 
             line.Width += fragment.Width;
             line.Height = Math.Max(line.Height, fragment.Height);
@@ -673,14 +625,12 @@ namespace Squared.Render.TextLayout2 {
 
             CurrentFragment = new Fragment {
                 FirstDrawCall = DrawCallIndex,
+                LineIndex = LineIndex,
             };
 
 #if TRACK_CODEPOINTS
             CurrentFragmentCodepoints.Clear();
 #endif
-
-            FragmentSpanList.Clear();
-            SpanStack.CopyTo(ref FragmentSpanList);
         }
 
         private void FinishLine (bool forLineBreak) {
@@ -738,8 +688,8 @@ namespace Squared.Render.TextLayout2 {
                 float whitespace = totalWidth - line.Width;
                 // Record justification whitespace to use when reconstructing span bounding boxes
                 float gapWhitespace = 0f;
-                ref float characterWhitespace = ref line.CharacterWhitespace;
-                characterWhitespace = 0f;
+                ref float callWhitespace = ref line.CallWhitespace;
+                callWhitespace = 0f;
 
                 switch (Alignment) {
                     case HorizontalAlignment.Left:
@@ -757,7 +707,7 @@ namespace Squared.Render.TextLayout2 {
                         whitespace = 0f;
                         break;
                     case HorizontalAlignment.JustifyWordsCentered:
-                        if (line.FragmentCount > 1) {
+                        if (gapCount > 0) {
                             gapWhitespace = whitespace / gapCount;
                             if (gapWhitespace > MaxExpansionPerSpace)
                                 gapWhitespace = 0f;
@@ -766,27 +716,28 @@ namespace Squared.Render.TextLayout2 {
                         whitespace *= 0.5f;
                         break;
                     case HorizontalAlignment.JustifyCharacters:
-                        characterWhitespace = whitespace / (line.DrawCallCount - 1);
-                        if (characterWhitespace > MaxExpansionPerSpace)
-                            characterWhitespace = 0f;
+                        callWhitespace = whitespace / (line.DrawCallCount - 1);
+                        if (callWhitespace > MaxExpansionPerSpace)
+                            callWhitespace = 0f;
                         whitespace = 0f;
                         break;
                     case HorizontalAlignment.JustifyCharactersCentered:
                         if (line.DrawCallCount > 1) {
-                            characterWhitespace = whitespace / (line.DrawCallCount - 1);
-                            if (characterWhitespace > MaxExpansionPerSpace)
-                                characterWhitespace = 0f;
-                            whitespace -= (characterWhitespace * (line.DrawCallCount - 1));
+                            callWhitespace = whitespace / (line.DrawCallCount - 1);
+                            if (callWhitespace > MaxExpansionPerSpace)
+                                callWhitespace = 0f;
+                            whitespace -= (callWhitespace * (line.DrawCallCount - 1));
                         }
                         whitespace *= 0.5f;
                         break;
                 }
 
                 line.Location.X += whitespace;
-                line.Width += (gapWhitespace * gapCount) + (characterWhitespace * (line.DrawCallCount - 1));
+                line.Width += (gapWhitespace * gapCount) + (callWhitespace * (line.DrawCallCount - 1));
 
                 float x = line.Location.X + Position.X,
-                    y = line.Location.Y + Position.Y;
+                    y = line.Location.Y + Position.Y,
+                    cws = 0;
 
                 for (uint f = line.FirstFragmentIndex, f2 = f + line.FragmentCount - 1; f <= f2; f++) {
                     ref var fragment = ref Buffers.Fragment(f);
@@ -796,8 +747,9 @@ namespace Squared.Render.TextLayout2 {
                     if (fragment.DrawCallCount > 0) {
                         for (uint dc = fragment.FirstDrawCall, dc2 = dc + fragment.DrawCallCount - 1; dc <= dc2; dc++) {
                             ref var drawCall = ref Buffers.DrawCall(dc);
-                            drawCall.Position.X += x;
+                            drawCall.Position.X += x + cws;
                             drawCall.Position.Y += fragmentY;
+                            cws += callWhitespace;
                         }
                     } else {
                         fragment.Width += gapWhitespace;
@@ -805,24 +757,6 @@ namespace Squared.Render.TextLayout2 {
 
                     x += fragment.Width;
                 }
-
-                /*
-                short lastWordIndex = -1;
-                for (uint j = line.FirstDrawCall, j2 = j + line.DrawCallCount - 1; j <= j2; j++) {
-                    ref var drawCall = ref Buffers.DrawCall(j);
-                    // LocalData2 being set means that this draw call is absolutely positioned.
-                    // FIXME: Should this ever happen?
-                    if (drawCall.LocalData2 != 0)
-                        continue;
-
-                    if ((drawCall.LocalData1 != lastWordIndex) && (lastWordIndex >= 0))
-                        whitespace += wordWhitespace;
-                    lastWordIndex = drawCall.LocalData1;
-
-                    drawCall.Position.X += whitespace;
-                    whitespace += characterWhitespace;
-                }
-                */
             }
         }
 
