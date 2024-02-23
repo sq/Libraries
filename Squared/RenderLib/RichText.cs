@@ -762,8 +762,12 @@ namespace Squared.Render.Text {
                         } else if (ai.Width.HasValue) {
                             // Missing image of explicit size
                             var w = ai.Width.Value;
+                            if (ai.MaxWidthPercent.HasValue) {
+                                var mw = ai.MaxWidthPercent.Value * Math.Max(layoutEngine.MaximumWidth, layoutEngine.DesiredWidth) / 100f;
+                                w = Math.Min(w, mw);
+                            }
                             var h = (ai.Height ?? 0);
-                            layoutEngine.CreateEmptyBox(w, h);
+                            layoutEngine.CreateEmptyBox(w, h, ai.Margin, ai.HorizontalAlignment, ai.DoNotAdjustLineSpacing);
                             stateTracker?.ReferencedImage(this, ref ai);
                         } else {
                             stateTracker?.ReferencedImage(this, ref ai);

@@ -802,7 +802,11 @@ namespace Squared.Render.TextLayout2 {
             }
         }
 
-        public void CreateEmptyBox (float width, float height) {
+        public void CreateEmptyBox (
+            float width, float height, 
+            Vector2 margin, ImageHorizontalAlignment alignment,
+            bool doNotAdjustLineSpacing
+        ) {
             FinishFragment();
 
             var boxIndex = BoxIndex++;
@@ -811,16 +815,30 @@ namespace Squared.Render.TextLayout2 {
             fragment.BoxIndex = boxIndex;
             fragment.Category = FragmentCategory.Box;
             fragment.Width = width;
-            fragment.Height = height;
+            fragment.Height = doNotAdjustLineSpacing ? CurrentLine.Height : height;
+
+            switch (alignment) {
+                case ImageHorizontalAlignment.Inline:
+                    fragment.Width += (margin.X * 2);
+                    CurrentLine.Width += fragment.Width;
+                    break;
+                case ImageHorizontalAlignment.Left:
+                    CurrentLine.Inset += width + margin.X;
+                    break;
+                case ImageHorizontalAlignment.Right:
+                    CurrentLine.Crush += width + margin.X;
+                    break;
+            }
 
             ref var box = ref Buffers.Box(boxIndex);
             box = new Box {
                 FragmentIndex = FragmentIndex,
                 DrawCallIndex = uint.MaxValue,
                 // FIXME
-                HorizontalAlignment = ImageHorizontalAlignment.Inline,
+                HorizontalAlignment = alignment,
                 // FIXME
-                Bounds = default,
+                Margin = margin,
+                Bounds = Bounds.FromPositionAndSize(0f, CurrentLine.Location.Y, width, height),
             };
 
             FinishFragment();
@@ -851,10 +869,11 @@ namespace Squared.Render.TextLayout2 {
             ref var fragment = ref CurrentFragment;
             fragment.BoxIndex = boxIndex;
             fragment.Category = FragmentCategory.Box;
-            fragment.Width = bounds.Size.X + (image.Margin.X * 2);
+            fragment.Width = bounds.Size.X;
             switch (image.HorizontalAlignment) {
                 case ImageHorizontalAlignment.Inline:
-                    CurrentLine.Width += fragment.Width + (image.Margin.X * 2);
+                    fragment.Width += (image.Margin.X * 2);
+                    CurrentLine.Width += fragment.Width;
                     break;
                 case ImageHorizontalAlignment.Left:
                     CurrentLine.Inset += fragment.Width + image.Margin.X;
@@ -863,7 +882,9 @@ namespace Squared.Render.TextLayout2 {
                     CurrentLine.Crush += fragment.Width + image.Margin.X;
                     break;
             }
-            fragment.Height = image.DoNotAdjustLineSpacing ? CurrentLine.Height : bounds.Size.Y + (image.Margin.Y * 2);
+            fragment.Height = image.DoNotAdjustLineSpacing 
+                ? CurrentLine.Height 
+                : bounds.Size.Y;
 
             ref var box = ref Buffers.Box(boxIndex);
             box = new Box {
