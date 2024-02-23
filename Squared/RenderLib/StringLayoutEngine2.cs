@@ -336,7 +336,16 @@ namespace Squared.Render.TextLayout2 {
                         lineBounds.TopLeft.X, lineBounds.BottomRight.X
                     );
 
-                if (lineBounds.Size.X > 0f)
+                if (
+                    // If the line bounds were clamped into nothingness, don't report them.
+                    (lineBounds.Size.X > 0f) || 
+                    (
+                        // Unless the span itself was 0 pixels wide originally,
+                        //  in which case the caller wants that!
+                        (span.FirstRelativeX == span.LastRelativeX) &&
+                        (span.FirstFragmentIndex == span.LastFragmentIndex)
+                    )
+                )
                     output.Add(ref lineBounds);
             }
 
