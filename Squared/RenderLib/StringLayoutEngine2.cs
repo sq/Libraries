@@ -583,6 +583,7 @@ namespace Squared.Render.TextLayout2 {
                             Scale = effectiveScale * glyph.RenderScale,
                             Textures = new TextureSet(glyph.Texture),
                             TextureRegion = glyph.BoundsInTexture,
+                            SortKey = SortKey,
                         };
 
                         if (glyph.Texture != MostRecentTexture) {
@@ -860,6 +861,12 @@ namespace Squared.Render.TextLayout2 {
                 new TextureSet(image.Texture), Vector2.Zero
             ) {
                 ScaleF = effectiveScale,
+                TextureRegion = image.Bounds ?? Bounds.Unit,
+                // HACK: Pass through an image flag to the text material
+                UserData = new Vector4(0f, 0f, 1f, 0f),
+                MultiplyColor = OverrideColor ? MultiplyColor : Color.White,
+                AddColor = AddColor,
+                SortKey = SortKey,
             };
             var bounds = drawCall.EstimateDrawBounds();
             if (!MeasureOnly)
