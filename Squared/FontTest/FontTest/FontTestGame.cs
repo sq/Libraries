@@ -207,7 +207,7 @@ namespace FontTest {
                 HorizontalAlignment = x,
                 BaselineAlignment = y,
                 DoNotAdjustLineSpacing = true,
-                Margin = Vector2.One * 3f,
+                Margin = Vector2.One * 16f,
             };
             return new AsyncRichImage(ref ri);
         }

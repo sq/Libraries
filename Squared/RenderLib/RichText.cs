@@ -177,6 +177,7 @@ namespace Squared.Render.Text {
                                 });
                         } else {
                             result.Add(new RichRule {
+                                Offset = i,
                                 Key = text.Substring(keyStart, keyEnd.Value - keyStart),
                                 Value = text.Substring(valueStart.Value, i - valueStart.Value),
                             });
@@ -203,6 +204,8 @@ namespace Squared.Render.Text {
     }
 
     public struct RichRule {
+        // NOTE: Not considered by Equals or GetHashCode.
+        public int Offset;
         public AbstractString Key;
         public AbstractString Value;
 

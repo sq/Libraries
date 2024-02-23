@@ -71,6 +71,7 @@ namespace Squared.Render.TextLayout2 {
 
     public struct Box {
         public Bounds Bounds;
+        public Vector2 Margin;
         public ImageHorizontalAlignment HorizontalAlignment;
         public float BaselineAlignment;
         public uint FragmentIndex;
@@ -761,13 +762,16 @@ namespace Squared.Render.TextLayout2 {
             float inset = 0f, crush = 0f;
             for (uint b = 0; b < BoxIndex; b++) {
                 ref var box = ref Buffers.Box(b);
-                if (!box.Bounds.Y.Intersects(interval))
+                var boxInterval = box.Bounds.Y;
+                boxInterval.Min -= box.Margin.Y;
+                boxInterval.Max += box.Margin.Y;
+                if (!boxInterval.Intersects(interval))
                     continue;
 
                 if (box.HorizontalAlignment == ImageHorizontalAlignment.Left)
-                    inset = Math.Max(inset, box.Bounds.Size.X);
+                    inset = Math.Max(inset, box.Bounds.Size.X + box.Margin.X);
                 else if (box.HorizontalAlignment == ImageHorizontalAlignment.Right)
-                    crush = Math.Max(crush, box.Bounds.Size.X);
+                    crush = Math.Max(crush, box.Bounds.Size.X + box.Margin.X);
             }
 
             line.Inset = inset;
@@ -823,10 +827,16 @@ namespace Squared.Render.TextLayout2 {
             FinishFragment();
 
             var drawCallIndex = DrawCallIndex;
+            float maximumWidth = image.MaxWidthPercent.HasValue
+                ? Math.Max(MaximumWidth, DesiredWidth) * image.MaxWidthPercent.Value / 100f
+                : float.MaxValue,
+                maximumScale = Math.Min(1f, maximumWidth / image.Texture.Instance.Width),
+                effectiveScale = Math.Min(image.Scale, maximumScale);
+
             var drawCall = new BitmapDrawCall(
                 new TextureSet(image.Texture), Vector2.Zero
             ) {
-                ScaleF = image.Scale,
+                ScaleF = effectiveScale,
             };
             var bounds = drawCall.EstimateDrawBounds();
             if (!MeasureOnly)
@@ -836,19 +846,19 @@ namespace Squared.Render.TextLayout2 {
             ref var fragment = ref CurrentFragment;
             fragment.BoxIndex = boxIndex;
             fragment.Category = FragmentCategory.Box;
-            fragment.Width = bounds.Size.X;
+            fragment.Width = bounds.Size.X + (image.Margin.X * 2);
             switch (image.HorizontalAlignment) {
                 case ImageHorizontalAlignment.Inline:
-                    CurrentLine.Width += fragment.Width;
+                    CurrentLine.Width += fragment.Width + (image.Margin.X * 2);
                     break;
                 case ImageHorizontalAlignment.Left:
-                    CurrentLine.Inset += fragment.Width;
+                    CurrentLine.Inset += fragment.Width + image.Margin.X;
                     break;
                 case ImageHorizontalAlignment.Right:
-                    CurrentLine.Crush += fragment.Width;
+                    CurrentLine.Crush += fragment.Width + image.Margin.X;
                     break;
             }
-            fragment.Height = image.DoNotAdjustLineSpacing ? CurrentLine.Height : bounds.Size.Y;
+            fragment.Height = image.DoNotAdjustLineSpacing ? CurrentLine.Height : bounds.Size.Y + (image.Margin.Y * 2);
 
             ref var box = ref Buffers.Box(boxIndex);
             box = new Box {
@@ -856,6 +866,7 @@ namespace Squared.Render.TextLayout2 {
                 DrawCallIndex = drawCallIndex,
                 HorizontalAlignment = image.HorizontalAlignment,
                 BaselineAlignment = image.BaselineAlignment,
+                Margin = image.Margin,
                 // FIXME: Baseline alignment
                 Bounds = Bounds.FromPositionAndSize(0f, CurrentLine.Location.Y, bounds.Size.X, bounds.Size.Y),
             };
