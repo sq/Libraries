@@ -1,4 +1,6 @@
-﻿#define TRACK_CODEPOINTS
+﻿#if DEBUG
+// #define TRACK_CODEPOINTS
+#endif
 
 using System;
 using System.Collections.Generic;
