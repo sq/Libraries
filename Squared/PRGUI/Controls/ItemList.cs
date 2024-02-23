@@ -660,10 +660,10 @@ namespace Squared.PRGUI.Controls {
             CreateControlForValueDelegate<T> createControlForValue
         ) {
             Control newControl;
-            if (value is Control)
-                newControl = (Control)(object)value;
-            else if (createControlForValue != null)
+            if (createControlForValue != null)
                 newControl = createControlForValue(ref value, existingControl);
+            else if (value is Control c)
+                newControl = c;
             else
                 throw new ArgumentNullException("createControlForValue");
 
@@ -676,10 +676,10 @@ namespace Squared.PRGUI.Controls {
             CreateControlForValueDelegate<T, TUserData> createControlForValue
         ) {
             Control newControl;
-            if (value is Control)
-                newControl = (Control)(object)value;
-            else if (createControlForValue != null)
+            if (createControlForValue != null)
                 newControl = createControlForValue(ref value, existingControl, ref userData);
+            else if (value is Control c)
+                newControl = c;
             else
                 throw new ArgumentNullException("createControlForValue");
 

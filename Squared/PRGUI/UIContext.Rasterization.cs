@@ -43,7 +43,7 @@ namespace Squared.PRGUI {
             public readonly AutoRenderTarget Instance;
             public readonly UnorderedList<RectF> UsedRectangles = new UnorderedList<RectF>();
             public ImperativeRenderer Renderer;
-            public List<ScratchRenderTarget> Dependencies = new List<ScratchRenderTarget>();
+            public DenseList<ScratchRenderTarget> Dependencies;
             internal bool VisitedByTopoSort;
 
             public ScratchRenderTarget (RenderCoordinator coordinator, UIContext context) {
