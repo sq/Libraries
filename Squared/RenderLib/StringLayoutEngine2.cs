@@ -18,6 +18,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Threading;
 using System.Security.Cryptography;
 using static System.Net.Mime.MediaTypeNames;
+using System.Diagnostics.Eventing.Reader;
 
 namespace Squared.Render.TextLayout2 {
     public enum FragmentCategory : byte {
@@ -68,6 +69,7 @@ namespace Squared.Render.TextLayout2 {
 
     public struct Box {
         public Bounds Bounds;
+        public Vector2 Alignment;
         public uint FragmentIndex;
         // Optional
         public uint DrawCallIndex;
@@ -798,7 +800,7 @@ namespace Squared.Render.TextLayout2 {
 
             var boxIndex = BoxIndex++;
             ref var fragment = ref CurrentFragment;
-            fragment.BoxIndex = BoxIndex;
+            fragment.BoxIndex = boxIndex;
             fragment.Category = FragmentCategory.Box;
             fragment.Width = bounds.Size.X;
             fragment.Height = image.DoNotAdjustLineSpacing ? CurrentLine.Height : bounds.Size.Y;
@@ -807,12 +809,13 @@ namespace Squared.Render.TextLayout2 {
             box = new Box {
                 FragmentIndex = FragmentIndex,
                 DrawCallIndex = drawCallIndex,
+                Alignment = image.Alignment,
             };
 
             FinishFragment();
         }
 
-        private void ArrangeFragments (Vector2 constrainedSize) {
+        private void ArrangeFragments (ref Vector2 constrainedSize) {
             var gapCategory = SplitAtWrapCharactersOnly 
                 ? FragmentCategory.WrapPoint 
                 : FragmentCategory.Whitespace;
@@ -831,18 +834,41 @@ namespace Squared.Render.TextLayout2 {
                     }
                 }
 
-                float totalWidth = constrainedSize.X, inset = 0f;
-                for (uint b = 0; b < BoxIndex; b++) {
-                    ref var box = ref Buffers.Box(b);
-                    if (box.FragmentIndex >= line.FirstFragmentIndex)
-                        break;
+                float totalWidth = constrainedSize.X, inset = 0f, crush = 0f;
+                var interval = new Interval(line.Location.Y, line.Location.Y + line.Height);
+                AnalyzeEdgeBoxes(constrainedSize, ref line, totalWidth, ref inset, ref crush, interval, 0, line.FirstFragmentIndex);
+                totalWidth = constrainedSize.X - crush - inset;
 
-                    if (box.Bounds.TopLeft.X <= 0) {
-                        inset += box.Bounds.Size.X;
-                        totalWidth -= box.Bounds.Size.X;
-                    } else if (box.Bounds.BottomRight.X >= totalWidth) {
-                        totalWidth -= box.Bounds.Size.X;
+                float y = Position.Y + line.Location.Y;
+
+                // If we have any boxes, we need to scan this line for absolutely-positioned boxes so we can
+                //  determine how much they're crowding the left/right edges, which means we need to arrange them
+                if (BoxIndex > 0) {
+                    for (uint f = line.FirstFragmentIndex, f2 = f + line.FragmentCount - 1; f <= f2; f++) {
+                        ref var fragment = ref Buffers.Fragment(f);
+                        if (fragment.Category != FragmentCategory.Box)
+                            continue;
+
+                        ref var box = ref Buffers.Box(fragment.BoxIndex);
+                        if (box.Alignment.X == 0.5f)
+                            continue;
+
+                        if (box.DrawCallIndex != uint.MaxValue) {
+                            ref var drawCall = ref Buffers.DrawCall(box.DrawCallIndex);
+                            var estimatedBounds = drawCall.EstimateDrawBounds();
+                            float boxX = Arithmetic.Lerp(Position.X, constrainedSize.X - estimatedBounds.Size.X + Position.X, box.Alignment.X);
+                            box.Bounds = Bounds.FromPositionAndSize(boxX, y, estimatedBounds.Size.X, estimatedBounds.Size.Y);
+                            drawCall.Position = new Vector2(boxX, y);
+                        } else {
+                            float boxX = Arithmetic.Lerp(Position.X, constrainedSize.X - fragment.Width + Position.X, box.Alignment.X);
+                            box.Bounds = Bounds.FromPositionAndSize(boxX, y, fragment.Width, fragment.Height);
+                        }
+
+                        constrainedSize.Y = Math.Max(constrainedSize.Y, box.Bounds.BottomRight.Y - Position.Y);
                     }
+
+                    // Afterwards, we scan all the boxes from this line too
+                    AnalyzeEdgeBoxes(constrainedSize, ref line, totalWidth, ref inset, ref crush, interval, line.FirstFragmentIndex, line.FirstFragmentIndex + line.FragmentCount + 1);
                 }
 
                 float whitespace = totalWidth - line.Width, gapWhitespace = 0f;
@@ -875,13 +901,12 @@ namespace Squared.Render.TextLayout2 {
                         break;
                 }
 
-                line.Location.X += whitespace;
+                line.Location.X += inset + whitespace;
                 line.Width += (gapWhitespace * gapCount);
                 if (line.FragmentCount == 0)
                     continue;
 
-                float x = Position.X + line.Location.X + inset,
-                    y = Position.Y + line.Location.Y;
+                float x = Position.X + line.Location.X;
 
                 for (uint f = line.FirstFragmentIndex, f2 = f + line.FragmentCount - 1; f <= f2; f++) {
                     ref var fragment = ref Buffers.Fragment(f);
@@ -890,6 +915,9 @@ namespace Squared.Render.TextLayout2 {
 
                     if (fragment.Category == FragmentCategory.Box) {
                         ref var box = ref Buffers.Box(fragment.BoxIndex);
+                        if (box.Alignment.X != 0.5f)
+                            continue;
+
                         if (box.DrawCallIndex != uint.MaxValue) {
                             ref var drawCall = ref Buffers.DrawCall(box.DrawCallIndex);
                             var estimatedBounds = drawCall.EstimateDrawBounds();
@@ -898,6 +926,10 @@ namespace Squared.Render.TextLayout2 {
                         } else {
                             box.Bounds = Bounds.FromPositionAndSize(x, y, fragment.Width, fragment.Height);
                         }
+
+                        constrainedSize.Y = Math.Max(constrainedSize.Y, box.Bounds.BottomRight.Y - Position.Y);
+
+                        x += fragment.Width;
                     } else {
                         if (fragment.Category == gapCategory)
                             x += gapWhitespace;
@@ -909,9 +941,35 @@ namespace Squared.Render.TextLayout2 {
                                 drawCall.Position.Y += fragmentY;
                             }
                         }
-                    }
 
-                    x += fragment.Width;
+                        x += fragment.Width;
+                    }
+                }
+            }
+        }
+
+        private void AnalyzeEdgeBoxes (
+            Vector2 constrainedSize, ref Line line, 
+            float totalWidth, ref float inset, ref float crush, 
+            Interval interval, uint firstIndex, uint indexLimit
+        ) {
+            for (uint b = 0; b < BoxIndex; b++) {
+                ref var box = ref Buffers.Box(b);
+                // FIXME: Optimize this
+                if (box.FragmentIndex < firstIndex)
+                    continue;
+                if (box.FragmentIndex >= indexLimit)
+                    break;
+                if (box.Alignment.X == 0.5f)
+                    continue;
+
+                if (!box.Bounds.Y.Intersects(interval, 0.1f))
+                    continue;
+
+                if (box.Bounds.TopLeft.X <= (Position.X + inset)) {
+                    inset += box.Bounds.Size.X;
+                } else if (box.Bounds.BottomRight.X >= (Position.X + totalWidth)) {
+                    crush += box.Bounds.Size.X;
                 }
             }
         }
@@ -957,7 +1015,8 @@ namespace Squared.Render.TextLayout2 {
             ComputeConstrainedSize(out var constrainedSize);
             // Now scan through and sequentially arrange all our fragments.
             // Boxes are attached to fragments, so those will get arranged as we go too.
-            ArrangeFragments(constrainedSize);
+            // Boxes may overhang the bottom and change our height.
+            ArrangeFragments(ref constrainedSize);
 
             var lastDrawCallIndex = DrawCallIndex > 0 ? DrawCallIndex - 1 : 0;
             if (MeasureOnly) {
