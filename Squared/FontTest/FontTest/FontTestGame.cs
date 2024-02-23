@@ -43,7 +43,7 @@ namespace FontTest {
         PressableKey ShowOutlines = new PressableKey(Keys.O);
         PressableKey Hinting = new PressableKey(Keys.H);
         PressableKey Which = new PressableKey(Keys.Space);
-        PressableKey Margin = new PressableKey(Keys.M);
+        PressableKey MeasureOnly = new PressableKey(Keys.M);
         PressableKey Indent = new PressableKey(Keys.I);
         PressableKey Monochrome = new PressableKey(Keys.R);
         PressableKey Expand = new PressableKey(Keys.E);
@@ -62,6 +62,8 @@ namespace FontTest {
 
         protected override void Initialize () {
             base.Initialize();
+
+            IsFixedTimeStep = false;
 
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
@@ -83,10 +85,8 @@ namespace FontTest {
                 ftf.Invalidate();
                 Text.Invalidate();
             };
-            Margin.Pressed += (s, e) => {
-                var ftf = (FreeTypeFont)LatinFont;
-                ftf.GlyphMargin = (ftf.GlyphMargin + 1) % 6;
-                ftf.Invalidate();
+            MeasureOnly.Pressed += (s, e) => {
+                Text.MeasureOnly = !Text.MeasureOnly;
                 Text.Invalidate();
             };
             Monochrome.Pressed += (s, e) => {
@@ -259,7 +259,7 @@ namespace FontTest {
             ShowOutlines.Update(ref ks);
             Hinting.Update(ref ks);
             Which.Update(ref ks);
-            Margin.Update(ref ks);
+            MeasureOnly.Update(ref ks);
             Indent.Update(ref ks);
             Monochrome.Update(ref ks);
             Expand.Update(ref ks);
@@ -297,7 +297,7 @@ namespace FontTest {
             Text.LineBreakAtX = targetX;
             Text.DesiredWidth = Expand.Value ? targetX : 0;
             Text.MaxExpansionPerSpace = LimitExpansion.Value ? 16 : (float?)null;
-            Text.StopAtY = BottomRight.Y - TopLeft.Y;
+            Text.StopAtY = Text.HideOverflow ? BottomRight.Y - TopLeft.Y : null;
             Text.WrapIndentation = Indent.Value ? 64 : 0;
 
             ir.OutlineRectangle(new Bounds(TopLeft, BottomRight), Color.Red);

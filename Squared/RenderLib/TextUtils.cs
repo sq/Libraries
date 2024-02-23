@@ -321,6 +321,7 @@ namespace Squared.Render.Text {
         }
 
         public void EnsureBufferCapacity (int size) {
+            size = ((Math.Max(size, 0) + 7) / 8) * 8;
             if ((_Buffer.Array == null) || (_Buffer.Count < size))
                 _Buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[size]);
         }
@@ -1103,11 +1104,8 @@ namespace Squared.Render.Text {
 
                     if (!measureOnly.HasValue) {
                         _CachedGlyphVersion = glyphSource.Version;
+                        EnsureBufferCapacity(le2.DrawCallCount);
                         le2.Finish(_Buffer, out _CachedStringLayout);
-                        // HACK: Detect that the layout engine allocated a new bigger buffer and store it.
-                        if (_CachedStringLayout.DrawCalls.Array != _Buffer.Array)
-                            _Buffer = new ArraySegment<BitmapDrawCall>(_CachedStringLayout.DrawCalls.Array);
-                        // _CachedStringLayout = le.Finish();
 
                         if (_Satellite?.MarkedRange != null) {
                             _Satellite.MarkedRangeResult.FirstCharacterIndex = _Satellite.MarkedRange.Value.First;
@@ -1131,31 +1129,10 @@ namespace Squared.Render.Text {
                         if (_Satellite?.HitTest != null)
                             _Satellite.HitTestResult = le2.HitTestResult;
 
-                        /*
-                        if (le.usedTextures.HasList)
-                            AutoAllocateSatellite().UsedTextures = le.usedTextures;
-
-                        if (!GetFlag(InternalFlags.DisableMarkers) && (le.Markers.Count > 0)) {
-                            var m = GetMarkers();
-                            foreach (var kvp in le.Markers) {
-                                if ((rls.MarkedStrings != null) && (rls.MarkedStrings.Count > 0) && (kvp.MarkedString != default)) {
-                                    AutoAllocateSatellite().RichMarkers.Add(kvp);
-                                } else {
-                                    m[new Pair<int>(kvp.FirstCharacterIndex, kvp.LastCharacterIndex)] = kvp;
-                                }
-                            }
-                        }
-                        if (le.HitTests.Count > 0) {
-                            var ht = GetHitTests();
-                            foreach (var kvp in le.HitTests) 
-                                ht[kvp.Position] = kvp;
-                        }
-                        */
-
                         // FIXME
                         SetFlag(InternalFlags.HasCachedStringLayout, true);
                     } else {
-                        le2.Finish(_Buffer, out result);
+                        le2.Finish(default, out result);
                         return true;
                     }
                 } finally {

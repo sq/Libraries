@@ -159,9 +159,9 @@ namespace Squared.Render.TextLayout2 {
                 Deallocate(ref Fragments, ref FragmentCapacity);
             }
 
-            internal void EnsureCapacity (uint drawCallCount) {
+            internal void EnsureCapacity (uint drawCallCount, uint fragmentCount) {
                 Reallocate(ref DrawCalls, ref DrawCallCapacity, drawCallCount);
-                Reallocate(ref Fragments, ref FragmentCapacity, drawCallCount / 8);
+                Reallocate(ref Fragments, ref FragmentCapacity, fragmentCount);
             }
         }
 
@@ -268,11 +268,7 @@ namespace Squared.Render.TextLayout2 {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref BitmapDrawCall AppendDrawCall (ref BitmapDrawCall dead) {
-            if (SuppressUntilEnd || MeasureOnly)
-                return ref dead;
-
-            // FIXME: If current fragment is whitespace, end it
+        private ref BitmapDrawCall AppendDrawCall () {
             if (CurrentFragment.FirstDrawCall == uint.MaxValue)
                 CurrentFragment.FirstDrawCall = DrawCallIndex;
             CurrentFragment.DrawCallCount++;
@@ -426,10 +422,12 @@ namespace Squared.Render.TextLayout2 {
             if (text.IsNull)
                 throw new ArgumentNullException(nameof(text));
 
-            BitmapDrawCall dead = default;
             KerningData thisKerning = default, nextKerning = default;
             bool hasKerningNow = false, hasKerningNext = false;
-            Buffers.EnsureCapacity((uint)(DrawCallIndex + text.Length));
+            Buffers.EnsureCapacity(
+                MeasureOnly ? 0 : (uint)(DrawCallIndex + text.Length),
+                (uint)(FragmentIndex + (text.Length / 8))
+            );
 
             var effectiveScale = Scale * (1.0f / glyphSource.DPIScaleFactor);
             float defaultLineSpacing = glyphSource.LineSpacing * effectiveScale.Y;
@@ -499,7 +497,6 @@ namespace Squared.Render.TextLayout2 {
             recalc:
                 float w = (glyph.WidthIncludingBearing * effectiveScale.X) + (glyph.CharacterSpacing * effectiveScale.X),
                     h = glyphLineSpacing,
-                    baseline = glyphBaseline,
                     xBasis = CurrentLine.Location.X + CurrentLine.ActualWidth,
                     x1 = xBasis + FragmentOffset.X,
                     x2 = x1 + w,
@@ -525,43 +522,55 @@ namespace Squared.Render.TextLayout2 {
                 }
 
                 ref var fragment = ref CurrentFragment;
-                if (baseline > fragment.Baseline)
-                    IncreaseBaseline(baseline);
+                if (glyphBaseline > fragment.Baseline)
+                    IncreaseBaseline(glyphBaseline);
 
-                float alignmentToBaseline = fragment.Baseline - baseline;
+                float alignmentToBaseline = fragment.Baseline - glyphBaseline;
                 bool suppressThisCharacter = SuppressUntilEnd || (overflowX && HideOverflow);
 
 #if TRACK_CODEPOINTS
                 CurrentFragmentCodepoints.Add(codepoint);
 #endif
 
-                if (!deadGlyph && !suppressThisCharacter && (category < CharacterCategory.Whitespace)) {
-                    ref var drawCall = ref AppendDrawCall(ref dead);
+                if (
+                    !deadGlyph && 
+                    !suppressThisCharacter && 
+                    (category < CharacterCategory.Whitespace)
+                ) {
+                    if (MeasureOnly) {
+                        // HACK: There is code that uses DrawCallCount != 0 to make decisions,
+                        //  so we need to maintain a fake draw call counter in order to keep that working
+                        if (CurrentFragment.FirstDrawCall == uint.MaxValue)
+                            CurrentFragment.FirstDrawCall = DrawCallIndex;
+                        CurrentFragment.DrawCallCount++;
+                    } else {
+                        ref var drawCall = ref AppendDrawCall();
 
-                    float x = FragmentOffset.X + (glyph.XOffset * effectiveScale.X) + (glyph.LeftSideBearing * effectiveScale.X),
-                        // Used to compute bounding box offsets
-                        wx = xBasis + x,
-                        y = FragmentOffset.Y + (glyph.YOffset * effectiveScale.Y) + alignmentToBaseline;
-                    drawCall = new BitmapDrawCall {
-                        MultiplyColor = OverrideColor 
-                            ? MultiplyColor
-                            : (glyph.DefaultColor ?? MultiplyColor),
-                        AddColor = AddColor,
-                        Position = new Vector2(
-                            x, y
-                        ),
-                        Scale = effectiveScale * glyph.RenderScale,
-                        Textures = new TextureSet(glyph.Texture),
-                        TextureRegion = glyph.BoundsInTexture,
-                    };
+                        float x = FragmentOffset.X + (glyph.XOffset * effectiveScale.X) + (glyph.LeftSideBearing * effectiveScale.X),
+                            // Used to compute bounding box offsets
+                            wx = xBasis + x,
+                            y = FragmentOffset.Y + (glyph.YOffset * effectiveScale.Y) + alignmentToBaseline;
+                        drawCall = new BitmapDrawCall {
+                            MultiplyColor = OverrideColor 
+                                ? MultiplyColor
+                                : (glyph.DefaultColor ?? MultiplyColor),
+                            AddColor = AddColor,
+                            Position = new Vector2(
+                                x, y
+                            ),
+                            Scale = effectiveScale * glyph.RenderScale,
+                            Textures = new TextureSet(glyph.Texture),
+                            TextureRegion = glyph.BoundsInTexture,
+                        };
 
-                    if (glyph.Texture != MostRecentTexture) {
-                        Listener?.RecordTexture(ref this, glyph.Texture);
-                        MostRecentTexture = glyph.Texture;
+                        if (glyph.Texture != MostRecentTexture) {
+                            Listener?.RecordTexture(ref this, glyph.Texture);
+                            MostRecentTexture = glyph.Texture;
+                        }
+
+                        if (fragment.WasSuppressed)
+                            fragment.WasSuppressed = false;
                     }
-
-                    if (fragment.WasSuppressed)
-                        fragment.WasSuppressed = false;
                 }
 
                 if (suppressThisCharacter && !deadGlyph && (category < CharacterCategory.Whitespace)) {
@@ -858,6 +867,8 @@ namespace Squared.Render.TextLayout2 {
             constrainedSize.X = Math.Max(constrainedSize.X, DesiredWidth);
         }
 
+        public int DrawCallCount => (int)DrawCallIndex;
+
         public unsafe void Finish (ArraySegment<BitmapDrawCall> buffer, out StringLayout result) {
             UpdateMarkedRange();
 
@@ -875,22 +886,28 @@ namespace Squared.Render.TextLayout2 {
             ComputeConstrainedSize(out var constrainedSize);
             ArrangeFragments(constrainedSize.X);
 
-            // HACK
-            int bufferSize = (int)DrawCallIndex;
-            if ((buffer.Array == null) || (buffer.Count < bufferSize))
-                buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[bufferSize]);
-            else
-                buffer = new ArraySegment<BitmapDrawCall>(buffer.Array, buffer.Offset, (int)DrawCallIndex);
-
             var lastDrawCallIndex = DrawCallIndex > 0 ? DrawCallIndex - 1 : 0;
-            fixed (BitmapDrawCall* dest = buffer.Array)
-                Buffer.MemoryCopy(Buffers.DrawCalls, dest, buffer.Count * sizeof(BitmapDrawCall), DrawCallIndex * sizeof(BitmapDrawCall));
+            if (MeasureOnly) {
+                // FIXME: Can we skip arranging fragments too?
+            } else {
+                // HACK
+                int bufferSize = (int)DrawCallIndex;
+                if ((buffer.Array == null) || (buffer.Count < bufferSize))
+                    buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[bufferSize]);
+                else
+                    buffer = new ArraySegment<BitmapDrawCall>(buffer.Array, buffer.Offset, (int)DrawCallIndex);
+
+                fixed (BitmapDrawCall* dest = buffer.Array)
+                    Buffer.MemoryCopy(Buffers.DrawCalls, dest, buffer.Count * sizeof(BitmapDrawCall), DrawCallIndex * sizeof(BitmapDrawCall));
+            }
 
             result = new StringLayout(
-                Position, constrainedSize, UnconstrainedSize, Buffers.Line(0).Height,
-                Buffers.DrawCall(0).EstimateDrawBounds(),
-                Buffers.DrawCall(lastDrawCallIndex).EstimateDrawBounds(),
-                buffer, AnyCharactersSuppressed, 
+                Position, constrainedSize, UnconstrainedSize, 
+                Buffers.Line(0).Height,
+                MeasureOnly ? default : Buffers.DrawCall(0).EstimateDrawBounds(),
+                MeasureOnly ? default : Buffers.DrawCall(lastDrawCallIndex).EstimateDrawBounds(),
+                MeasureOnly ? default : buffer, 
+                AnyCharactersSuppressed, 
                 /* FIXME */ 0, (int)LineIndex
             );
 
