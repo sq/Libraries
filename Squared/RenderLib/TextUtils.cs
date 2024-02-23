@@ -269,6 +269,7 @@ namespace Squared.Render.Text {
         }
         public LayoutHitTest HitTestResult => _Satellite?.HitTestResult ?? default;
         public DenseList<LayoutMarker> RichMarkers => _Satellite?.RichMarkers ?? default;
+        public DenseList<AbstractTextureReference> UsedTextures => _Satellite?.UsedTextures ?? default;
         public DenseList<Bounds> Boxes => _Satellite?.Boxes ?? default;
         public DenseList<AsyncRichImage> Dependencies => _Satellite?.Dependencies ?? default;
 
@@ -917,8 +918,6 @@ namespace Squared.Render.Text {
         public void MakeLayoutEngine2 (out StringLayoutEngine2 result, MeasurementSettings? measureOnly = null) {
             if (_GlyphSource == null)
                 throw new ArgumentNullException("GlyphSource");
-
-            _Satellite?.UsedTextures.Clear();
 
             result = new StringLayoutEngine2 {
                 Position = _Position,

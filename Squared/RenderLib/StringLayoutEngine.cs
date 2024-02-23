@@ -1497,7 +1497,6 @@ namespace Squared.Render.Text {
                 wordIndex + 1, rowIndex + 1
             ) {
                 // Boxes = boxes,
-                UsedTextures = usedTextures
             };
         }
 

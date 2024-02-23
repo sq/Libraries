@@ -27,7 +27,7 @@ namespace Squared.PRGUI.Controls {
             NeedRelayout                   = 0b1000,
             ScaleToFitX                    = 0b10000,
             ScaleToFitY                    = 0b100000,
-            DidUseTextures                 = 0b1000000,
+            // DidUseTextures                 = 0b1000000,
             RichTextIsSet                  = 0b10000000,
             RichTextValue                  = 0b100000000,
             UseTooltipForReadingIsSet      = 0b1000000000,
@@ -406,7 +406,6 @@ namespace Squared.PRGUI.Controls {
             GetCurrent_Prologue(false, autoReset);
 
             Content.Get(out result);
-            SetInternalFlag(StaticTextStateFlags.DidUseTextures, result.UsedTextures.Count > 0);
         }
 
         protected void ComputeAutoSize (ref UIOperationContext context, ref Margins computedPadding, ref Margins computedMargins) {
@@ -514,10 +513,8 @@ namespace Squared.PRGUI.Controls {
             result.Tag = LayoutTags.Text;
 
             // HACK: Ensure that we report all the textures we use even if we're not currently being rasterized
-            if (Content.IsValid && GetInternalFlag(StaticTextStateFlags.DidUseTextures)) {
-                // FIXME: This is slow
-                GetCurrentLayout(out var layout, false);
-                foreach (var tex in layout.UsedTextures)
+            if (Content.IsValid && (Content.UsedTextures.Count > 0)) {
+                foreach (var tex in Content.UsedTextures)
                     context.UIContext.NotifyTextureUsed(this, tex);
             }
 

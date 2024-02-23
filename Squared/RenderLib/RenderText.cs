@@ -21,7 +21,6 @@ namespace Squared.Render.Text {
         public readonly Bounds FirstCharacterBounds;
         public readonly Bounds LastCharacterBounds;
         public ArraySegment<BitmapDrawCall> DrawCalls;
-        public DenseList<AbstractTextureReference> UsedTextures;
         public readonly int WordCount, LineCount;
         public readonly bool WasLineLimited;
 
@@ -39,7 +38,6 @@ namespace Squared.Render.Text {
             LastCharacterBounds = lastCharacter;
             DrawCalls = drawCalls;
             WasLineLimited = wasLineLimited;
-            UsedTextures = default;
             WordCount = wordCount;
             LineCount = lineCount;
         }
