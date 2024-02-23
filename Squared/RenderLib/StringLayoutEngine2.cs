@@ -69,7 +69,8 @@ namespace Squared.Render.TextLayout2 {
 
     public struct Box {
         public Bounds Bounds;
-        public Vector2 Alignment;
+        public ImageHorizontalAlignment HorizontalAlignment;
+        public float BaselineAlignment;
         public uint FragmentIndex;
         // Optional
         public uint DrawCallIndex;
@@ -809,7 +810,8 @@ namespace Squared.Render.TextLayout2 {
             box = new Box {
                 FragmentIndex = FragmentIndex,
                 DrawCallIndex = drawCallIndex,
-                Alignment = image.Alignment,
+                HorizontalAlignment = image.HorizontalAlignment,
+                BaselineAlignment = image.BaselineAlignment,
             };
 
             FinishFragment();
@@ -850,17 +852,21 @@ namespace Squared.Render.TextLayout2 {
                             continue;
 
                         ref var box = ref Buffers.Box(fragment.BoxIndex);
-                        if (box.Alignment.X == 0.5f)
+                        if (box.HorizontalAlignment == ImageHorizontalAlignment.Inline)
                             continue;
 
                         if (box.DrawCallIndex != uint.MaxValue) {
                             ref var drawCall = ref Buffers.DrawCall(box.DrawCallIndex);
                             var estimatedBounds = drawCall.EstimateDrawBounds();
-                            float boxX = Arithmetic.Lerp(Position.X, constrainedSize.X - estimatedBounds.Size.X + Position.X, box.Alignment.X);
+                            float boxX = box.HorizontalAlignment == ImageHorizontalAlignment.Left
+                                ? Position.X
+                                : constrainedSize.X - estimatedBounds.Size.X + Position.X;
                             box.Bounds = Bounds.FromPositionAndSize(boxX, y, estimatedBounds.Size.X, estimatedBounds.Size.Y);
                             drawCall.Position = new Vector2(boxX, y);
                         } else {
-                            float boxX = Arithmetic.Lerp(Position.X, constrainedSize.X - fragment.Width + Position.X, box.Alignment.X);
+                            float boxX = box.HorizontalAlignment == ImageHorizontalAlignment.Left
+                                ? Position.X
+                                : constrainedSize.X - fragment.Width + Position.X;
                             box.Bounds = Bounds.FromPositionAndSize(boxX, y, fragment.Width, fragment.Height);
                         }
 
@@ -901,6 +907,8 @@ namespace Squared.Render.TextLayout2 {
                         break;
                 }
 
+                whitespace = Math.Max(whitespace, 0f);
+                gapWhitespace = Math.Max(gapWhitespace, 0f);
                 line.Location.X += inset + whitespace;
                 line.Width += (gapWhitespace * gapCount);
                 if (line.FragmentCount == 0)
@@ -915,7 +923,7 @@ namespace Squared.Render.TextLayout2 {
 
                     if (fragment.Category == FragmentCategory.Box) {
                         ref var box = ref Buffers.Box(fragment.BoxIndex);
-                        if (box.Alignment.X != 0.5f)
+                        if (box.HorizontalAlignment != ImageHorizontalAlignment.Inline)
                             continue;
 
                         if (box.DrawCallIndex != uint.MaxValue) {
@@ -960,15 +968,15 @@ namespace Squared.Render.TextLayout2 {
                     continue;
                 if (box.FragmentIndex >= indexLimit)
                     break;
-                if (box.Alignment.X == 0.5f)
+                if (box.HorizontalAlignment == ImageHorizontalAlignment.Inline)
                     continue;
 
                 if (!box.Bounds.Y.Intersects(interval, 0.1f))
                     continue;
 
-                if (box.Bounds.TopLeft.X <= (Position.X + inset)) {
+                if (box.HorizontalAlignment == ImageHorizontalAlignment.Left) {
                     inset += box.Bounds.Size.X;
-                } else if (box.Bounds.BottomRight.X >= (Position.X + totalWidth)) {
+                } else if (box.HorizontalAlignment == ImageHorizontalAlignment.Right) {
                     crush += box.Bounds.Size.X;
                 }
             }

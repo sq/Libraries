@@ -240,7 +240,9 @@ namespace Squared.Render.Text {
         public Future<Texture2D> Future;
         public RichImage? Value;
         public float? Width, Height, MaxWidthPercent;
-        public Vector2 Margin, Alignment;
+        public Vector2 Margin;
+        public ImageHorizontalAlignment HorizontalAlignment;
+        public float BaselineAlignment;
         public float Scale;
         public bool DoNotAdjustLineSpacing;
         public readonly bool Dead;
@@ -262,7 +264,8 @@ namespace Squared.Render.Text {
             Value = img;
             Future = null;
             DoNotAdjustLineSpacing = img.DoNotAdjustLineSpacing;
-            Alignment = img.Alignment;
+            HorizontalAlignment = img.HorizontalAlignment;
+            BaselineAlignment = img.BaselineAlignment;
             Dead = false;
             MaxWidthPercent = null;
         }
@@ -310,7 +313,8 @@ namespace Squared.Render.Text {
 
                 result = new RichImage {
                     Texture = tex,
-                    Alignment = Alignment,
+                    HorizontalAlignment = HorizontalAlignment,
+                    BaselineAlignment = BaselineAlignment,
                     DoNotAdjustLineSpacing = DoNotAdjustLineSpacing,
                     Scale = scale,
                     Margin = Margin,
@@ -326,10 +330,18 @@ namespace Squared.Render.Text {
         public bool IsInitialized => (Future != null) || Value.HasValue || Dead;
     }
 
+    public enum ImageHorizontalAlignment : byte {
+        Inline = 0,
+        Left,
+        Right,
+    }
+
     public struct RichImage {
         public AbstractTextureReference Texture;
         public Bounds? Bounds;
-        public Vector2 Margin, Alignment;
+        public Vector2 Margin;
+        public ImageHorizontalAlignment HorizontalAlignment;
+        public float BaselineAlignment;
         public float? OverrideWidth, OverrideHeight, MaxWidthPercent;
         public bool DoNotAdjustLineSpacing;
 

@@ -181,21 +181,22 @@ namespace FontTest {
 
         private AsyncRichImage Text_ImageProvider (AbstractString arg, RichTextConfiguration config) {
             int i;
-            float x = 0.5f,
-                y = 0.5f;
+            ImageHorizontalAlignment x = ImageHorizontalAlignment.Inline;
+            float y = 0.5f;
             if (arg == "img:left") {
-                x = 0f;
+                x = ImageHorizontalAlignment.Left;
+                y = 0f;
                 i = 0;
             } else if (arg == "img:bottomleft") {
-                x = 0f;
+                x = ImageHorizontalAlignment.Left;
                 y = 1f;
                 i = 3;
             } else if (arg == "img:bottomright") {
-                x = 1f;
+                x = ImageHorizontalAlignment.Right;
                 y = 1f;
                 i = 1;
             } else if (arg == "img:topright") {
-                x = 1f;
+                x = ImageHorizontalAlignment.Right;
                 y = 0f;
                 i = 2;
             } else
@@ -203,7 +204,8 @@ namespace FontTest {
             var tex = Images[i];
             var ri = new RichImage {
                 Texture = tex,
-                Alignment = new Vector2(x, y),
+                HorizontalAlignment = x,
+                BaselineAlignment = y,
                 DoNotAdjustLineSpacing = true,
                 Margin = Vector2.One * 3f,
             };
