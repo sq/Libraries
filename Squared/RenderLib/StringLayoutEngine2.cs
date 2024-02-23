@@ -562,6 +562,9 @@ namespace Squared.Render.TextLayout2 {
                         if (CurrentFragment.FirstDrawCall == uint.MaxValue)
                             CurrentFragment.FirstDrawCall = DrawCallIndex;
                         CurrentFragment.DrawCallCount++;
+
+                        if (fragment.WasSuppressed)
+                            fragment.WasSuppressed = false;
                     } else {
                         ref var drawCall = ref AppendDrawCall();
 
@@ -824,6 +827,8 @@ namespace Squared.Render.TextLayout2 {
         }
 
         public void AppendImage (ref RichImage image) {
+            Listener?.RecordTexture(ref this, image.Texture);
+
             FinishFragment();
 
             var drawCallIndex = DrawCallIndex;
@@ -946,7 +951,20 @@ namespace Squared.Render.TextLayout2 {
                         ref var box = ref Buffers.Box(fragment.BoxIndex);
 
                         float boxX = x;
-                        if (box.DrawCallIndex != uint.MaxValue) {
+                        if (MeasureOnly) {
+                            // We don't have draw call information so we can only align the existing box.
+                            // Its size should be fairly accurate though.
+                            switch (box.HorizontalAlignment) {
+                                case ImageHorizontalAlignment.Left:
+                                    boxX = Position.X;
+                                    break;
+                                case ImageHorizontalAlignment.Right:
+                                    constrainedSize.X = boxRightEdge; // :(
+                                    boxX = boxRightEdge - box.Bounds.Size.X + Position.X;
+                                    break;
+                            }
+                            box.Bounds = Bounds.FromPositionAndSize(boxX, y, box.Bounds.Size.X, box.Bounds.Size.Y);
+                        } else if (box.DrawCallIndex != uint.MaxValue) {
                             ref var drawCall = ref Buffers.DrawCall(box.DrawCallIndex);
                             var estimatedBounds = drawCall.EstimateDrawBounds();
                             switch (box.HorizontalAlignment) {
@@ -1001,7 +1019,8 @@ namespace Squared.Render.TextLayout2 {
             constrainedSize = Vector2.Zero;
             for (uint i = 0; i <= LineIndex; i++) {
                 ref var line = ref Buffers.Line(i);
-                constrainedSize.X = Math.Max(constrainedSize.X, line.Width);
+                // Omit trailing whitespace.
+                constrainedSize.X = Math.Max(constrainedSize.X, line.Width + line.Inset + line.Crush);
 
                 // HACK: Fixes a single-line size overhang from line limiting
                 // FIXME: This will break trailing whitespace from extra line breaks.
