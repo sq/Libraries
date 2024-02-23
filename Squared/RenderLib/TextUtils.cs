@@ -1104,7 +1104,7 @@ namespace Squared.Render.Text {
 
                     if (!measureOnly.HasValue) {
                         _CachedGlyphVersion = glyphSource.Version;
-                        EnsureBufferCapacity(le2.DrawCallCount);
+                        EnsureBufferCapacity((int)le2.DrawCallCount);
                         le2.Finish(_Buffer, out _CachedStringLayout);
 
                         if (_Satellite?.MarkedRange != null) {
@@ -1149,12 +1149,6 @@ namespace Squared.Render.Text {
             }
 
             result = _CachedStringLayout;
-            if (result.Boxes.Count > 0) {
-                var satellite = AutoAllocateSatellite();
-                satellite.Boxes.EnsureCapacity(result.Boxes.Count);
-                for (int i = 0, c = result.Boxes.Count; i < c; i++)
-                    satellite.Boxes.Add(result.Boxes[i]);
-            }
             return true;
         }
 
@@ -1184,8 +1178,19 @@ namespace Squared.Render.Text {
             _Listener?.Finishing(ref engine);
         }
 
-        void IStringLayoutListener.Finished (ref StringLayoutEngine2 engine, uint spanCount, uint lineCount, ref StringLayout result) {
-            _Listener?.Finished(ref engine, spanCount, lineCount, ref result);
+        void IStringLayoutListener.Finished (ref StringLayoutEngine2 engine, ref StringLayout result) {
+            _Listener?.Finished(ref engine, ref result);
+
+            _Satellite?.Boxes.Clear();
+
+            if (engine.BoxCount > 0) {
+                var satellite = AutoAllocateSatellite();
+                satellite.Boxes.EnsureCapacity((int)engine.BoxCount);
+                for (uint i = 0, c = engine.BoxCount; i < c; i++) {
+                    engine.TryGetBoxBounds(i, out var box);
+                    satellite.Boxes.Add(ref box);
+                }
+            }
 
             if (_Satellite == null)
                 return;

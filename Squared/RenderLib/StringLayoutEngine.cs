@@ -1496,7 +1496,7 @@ namespace Squared.Render.Text {
                     (lineBreakLimit.HasValue && (lineBreakLimit.Value <= 0)),
                 wordIndex + 1, rowIndex + 1
             ) {
-                Boxes = boxes,
+                // Boxes = boxes,
                 UsedTextures = usedTextures
             };
         }

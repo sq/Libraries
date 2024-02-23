@@ -240,17 +240,14 @@ namespace Squared.Render.Text {
         public Future<Texture2D> Future;
         public RichImage? Value;
         public float? Width, Height, MaxWidthPercent;
-        public Vector2? Margin;
-        public float? HardHorizontalAlignment, HardVerticalAlignment;
+        public Vector2 Margin, Alignment;
         public float Scale;
-        public float VerticalAlignment;
-        public bool DoNotAdjustLineSpacing, CreateBox, Clear;
+        public bool DoNotAdjustLineSpacing;
         public readonly bool Dead;
 
-        public AsyncRichImage (bool dead) {
+        public AsyncRichImage (bool dead) : this() {
             if (!dead)
                 throw new ArgumentException();
-            this = default;
             Dead = true;
         }
 
@@ -265,11 +262,7 @@ namespace Squared.Render.Text {
             Value = img;
             Future = null;
             DoNotAdjustLineSpacing = img.DoNotAdjustLineSpacing;
-            CreateBox = img.CreateBox;
-            Clear = img.Clear;
-            HardHorizontalAlignment = img.HardHorizontalAlignment;
-            HardVerticalAlignment = img.HardVerticalAlignment;
-            VerticalAlignment = img.VerticalAlignment;
+            Alignment = img.Alignment;
             Dead = false;
             MaxWidthPercent = null;
         }
@@ -279,27 +272,13 @@ namespace Squared.Render.Text {
         }
 
         public AsyncRichImage (
-            Future<Texture2D> f, float? width = null, float? height = null, 
-            Vector2? margin = null, float? hardHorizontalAlignment = null, float? hardVerticalAlignment = null, 
-            float scale = 1f, float verticalAlignment = 1f, bool doNotAdjustLineSpacing = false, 
-            bool createBox = false, float? maxWidthPercent = null, bool clear = false
-        ) {
+            Future<Texture2D> f
+        ) : this() {
             if (f == null)
                 throw new ArgumentNullException("f");
             Future = f;
-            Width = width;
-            Scale = scale;
-            Height = height;
-            Margin = margin;
-            HardHorizontalAlignment = hardHorizontalAlignment;
-            HardVerticalAlignment = hardVerticalAlignment;
-            VerticalAlignment = verticalAlignment;
-            Value = null;
-            DoNotAdjustLineSpacing = doNotAdjustLineSpacing;
-            CreateBox = createBox;
-            Clear = clear;
             Dead = false;
-            MaxWidthPercent = maxWidthPercent;
+            Value = null;
         }
 
         public bool TryGetValue (out RichImage result) {
@@ -331,16 +310,12 @@ namespace Squared.Render.Text {
 
                 result = new RichImage {
                     Texture = tex,
-                    CreateBox = CreateBox,
-                    Clear = Clear,
+                    Alignment = Alignment,
                     DoNotAdjustLineSpacing = DoNotAdjustLineSpacing,
                     Scale = scale,
-                    HardHorizontalAlignment = HardHorizontalAlignment,
-                    HardVerticalAlignment = HardVerticalAlignment,
-                    Margin = Margin ?? Vector2.Zero,
+                    Margin = Margin,
                     OverrideHeight = Height * Scale,
                     OverrideWidth = Width * Scale,
-                    VerticalAlignment = VerticalAlignment,
                     MaxWidthPercent = MaxWidthPercent
                 };
                 return true;
@@ -354,18 +329,13 @@ namespace Squared.Render.Text {
     public struct RichImage {
         public AbstractTextureReference Texture;
         public Bounds? Bounds;
-        public Vector2 Margin;
+        public Vector2 Margin, Alignment;
         public float? OverrideWidth, OverrideHeight, MaxWidthPercent;
-        public float? HardHorizontalAlignment, HardVerticalAlignment;
         public bool DoNotAdjustLineSpacing;
-        public bool CreateBox, Clear;
-        private float VerticalAlignmentMinusOne;
+
         private float ScaleMinusOne;
 
-        public float VerticalAlignment {
-            get => VerticalAlignmentMinusOne + 1;
-            set => VerticalAlignmentMinusOne = value - 1;
-        }
+        public readonly bool Dead;
 
         public float Scale {
             get => ScaleMinusOne + 1;
@@ -776,32 +746,9 @@ namespace Squared.Render.Text {
                             stateTracker?.ReferencedImage(this, ref ai);
                         } else if (ai.Width.HasValue) {
                             // Missing image of explicit size
-                            var m = ai.Margin ?? Vector2.Zero;
                             var w = ai.Width.Value;
                             var h = (ai.Height ?? 0);
-                            if (ai.CreateBox) {
-                                // FIXME
-                                /*
-                                Bounds box;
-                                float boxX = layoutEngine.characterOffset.X,
-                                    boxY = layoutEngine.characterOffset.Y;
-                                if (ai.HardHorizontalAlignment.HasValue)
-                                    // FIXME
-                                    boxX = Arithmetic.Lerp(layoutEngine.actualPosition.X, layoutEngine.actualPosition.X + layoutEngine.currentLineBreakAtX - w ?? 0f, ai.HardHorizontalAlignment.Value);
-                                if (ai.HardVerticalAlignment.HasValue)
-                                    // FIXME
-                                    boxY = Arithmetic.Lerp(layoutEngine.actualPosition.Y, layoutEngine.actualPosition.Y + layoutEngine.stopAtY - h ?? 0f, ai.HardVerticalAlignment.Value);
-                                box = Bounds.FromPositionAndSize(boxX - halfM.X, boxY - halfM.Y, w + m.X, h + m.Y);
-                                layoutEngine.CreateBox(ref box);
-                                */
-                                layoutEngine.CreateEmptyBox(w, h, m);
-                                if (ai.HardHorizontalAlignment.HasValue || ai.HardVerticalAlignment.HasValue)
-                                    ;
-                                else
-                                    layoutEngine.Advance(w, h, ai.DoNotAdjustLineSpacing, false);
-                            } else {
-                                layoutEngine.Advance(w, h, ai.DoNotAdjustLineSpacing, false);
-                            }
+                            layoutEngine.CreateEmptyBox(w, h);
                             stateTracker?.ReferencedImage(this, ref ai);
                         } else {
                             stateTracker?.ReferencedImage(this, ref ai);
@@ -958,19 +905,6 @@ namespace Squared.Render.Text {
 
         private void AppendImage (ref TLayoutEngine layoutEngine, RichImage image) {
             layoutEngine.AppendImage(ref image);
-            // FIXME
-            /*
-            layoutEngine.AppendImage(
-                image.Texture.Instance, scale: image.Scale, 
-                verticalAlignment: image.VerticalAlignment,
-                margin: image.Margin,
-                textureRegion: image.Bounds ?? Bounds.Unit,
-                doNotAdjustLineSpacing: image.DoNotAdjustLineSpacing, createBox: image.CreateBox, 
-                hardXAlignment: image.HardHorizontalAlignment, hardYAlignment: image.HardVerticalAlignment,
-                overrideWidth: image.OverrideWidth, overrideHeight: image.OverrideHeight,
-                maxWidthPercent: image.MaxWidthPercent, clear: image.Clear
-            );
-            */
         }
 
         private void AppendPlainRange (

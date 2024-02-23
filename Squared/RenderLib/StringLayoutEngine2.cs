@@ -17,14 +17,16 @@ using Squared.Util.DeclarativeSort;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Threading;
 using System.Security.Cryptography;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Squared.Render.TextLayout2 {
-    public enum CharacterCategory : byte {
+    public enum FragmentCategory : byte {
         Unknown = 0b0,
         Regular = 0b1,
         WrapPoint = 0b10,
-        Whitespace = 0b100,
-        NonPrintable = 0b1000,
+        Box = 0b100,
+        Whitespace = 0b1000,
+        NonPrintable = 0b10000,
     }
 
     public struct Line {
@@ -49,10 +51,10 @@ namespace Squared.Render.TextLayout2 {
     }
 
     public struct Fragment {
-        public uint LineIndex;
+        public uint LineIndex, BoxIndex;
         public uint FirstDrawCall, DrawCallCount;
         public float Left, Width, Height, Baseline;
-        public CharacterCategory Category;
+        public FragmentCategory Category;
         public bool WasSuppressed;
         public bool WasFullySuppressed {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -60,14 +62,13 @@ namespace Squared.Render.TextLayout2 {
         }
         public bool ContainsContent {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => Category < CharacterCategory.Whitespace;
+            get => Category < FragmentCategory.Whitespace;
         }
     }
 
     public struct Box {
-        public Vector2 Size, Margin;
-        public float? HardHorizontalAlignment;
-        public float BaselineAlignment;
+        public Bounds Bounds;
+        public uint FragmentIndex;
         // Optional
         public uint DrawCallIndex;
     }
@@ -76,7 +77,7 @@ namespace Squared.Render.TextLayout2 {
         void Initializing (ref StringLayoutEngine2 engine);
         void RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture);
         void Finishing (ref StringLayoutEngine2 engine);
-        void Finished (ref StringLayoutEngine2 engine, uint spanCount, uint lineCount, ref StringLayout result);
+        void Finished (ref StringLayoutEngine2 engine, ref StringLayout result);
     }
 
     public struct StringLayoutEngine2 : IDisposable {
@@ -170,7 +171,8 @@ namespace Squared.Render.TextLayout2 {
         float Y;
         Vector2 UnconstrainedSize, UnconstrainedLineSize;
         uint ColIndex, LineIndex, CharIndex, 
-            DrawCallIndex, SpanIndex, FragmentIndex;
+            DrawCallIndex, SpanIndex, FragmentIndex,
+            BoxIndex;
         bool SuppressUntilEnd;
 
         StagingBuffers Buffers;
@@ -348,6 +350,17 @@ namespace Squared.Render.TextLayout2 {
             );
             return true;
         }
+
+        public bool TryGetBoxBounds (uint index, out Bounds bounds) {
+            if (index >= BoxIndex) {
+                bounds = default;
+                return false;
+            }
+
+            ref var box = ref Buffers.Box(index);
+            bounds = box.Bounds;
+            return true;
+        }
         
         public ref Span BeginSpan (bool push) {
             // HACK: Split whitespace fragments when beginning a span,
@@ -454,16 +467,16 @@ namespace Squared.Render.TextLayout2 {
                     out deadGlyph, out Glyph glyph, out float glyphLineSpacing, out float glyphBaseline
                 );
 
-                if (category == CharacterCategory.NonPrintable) {
+                if (category == FragmentCategory.NonPrintable) {
                     ;
                 } else {
-                    if (CurrentFragment.Category == CharacterCategory.Unknown)
+                    if (CurrentFragment.Category == FragmentCategory.Unknown)
                         CurrentFragment.Category = category;
 
                     if (category != CurrentFragment.Category)
                         FinishFragment();
 
-                    if (CurrentFragment.Category == CharacterCategory.Unknown)
+                    if (CurrentFragment.Category == FragmentCategory.Unknown)
                         CurrentFragment.Category = category;
                 }
 
@@ -535,7 +548,7 @@ namespace Squared.Render.TextLayout2 {
                 if (
                     !deadGlyph && 
                     !suppressThisCharacter && 
-                    (category < CharacterCategory.Whitespace)
+                    (category < FragmentCategory.Whitespace)
                 ) {
                     if (MeasureOnly) {
                         // HACK: There is code that uses DrawCallCount != 0 to make decisions,
@@ -573,7 +586,7 @@ namespace Squared.Render.TextLayout2 {
                     }
                 }
 
-                if (suppressThisCharacter && !deadGlyph && (category < CharacterCategory.Whitespace)) {
+                if (suppressThisCharacter && !deadGlyph && (category < FragmentCategory.Whitespace)) {
                     fragment.WasSuppressed = true;
                     AnyCharactersSuppressed = true;
                 }
@@ -683,22 +696,23 @@ namespace Squared.Render.TextLayout2 {
             float baselineAdjustment = line.Baseline - fragment.Baseline;
 
             switch (fragment.Category) {
-                case CharacterCategory.Regular:
+                case FragmentCategory.Regular:
+                case FragmentCategory.Box:
                     line.Width += fragment.Width + line.TrailingWhitespace;
                     line.TrailingWhitespace = 0f;
                     break;
-                case CharacterCategory.WrapPoint:
+                case FragmentCategory.WrapPoint:
                     if (SplitAtWrapCharactersOnly)
                         line.GapCount++;
                     line.Width += fragment.Width + line.TrailingWhitespace;
                     line.TrailingWhitespace = 0f;
                     break;
-                case CharacterCategory.Whitespace:
+                case FragmentCategory.Whitespace:
                     if (!SplitAtWrapCharactersOnly)
                         line.GapCount++;
                     line.TrailingWhitespace += fragment.Width;
                     break;
-                case CharacterCategory.NonPrintable:
+                case FragmentCategory.NonPrintable:
                     line.Width += fragment.Width;
                     break;
             }
@@ -749,36 +763,62 @@ namespace Squared.Render.TextLayout2 {
             }
         }
 
-        public void CreateEmptyBox (float width, float height, Vector2 margins) {
-            // FIXME
-        }
+        public void CreateEmptyBox (float width, float height) {
+            FinishFragment();
 
-        public void Advance (
-            float width, float height, 
-            // FIXME
-            bool doNotAdjustLineSpacing = false, bool considerBoxes = true
-        ) {
-            ref var line = ref CurrentLine;
-            line.Width += width;
-            line.Height = Math.Max(CurrentLine.Height, height);
-            UnconstrainedLineSize.X += width;
-            UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, height);
+            var boxIndex = BoxIndex++;
+
+            ref var fragment = ref CurrentFragment;
+            fragment.BoxIndex = boxIndex;
+            fragment.Category = FragmentCategory.Box;
+            fragment.Width = width;
+            fragment.Height = height;
+
+            ref var box = ref Buffers.Box(boxIndex);
+            box = new Box {
+                FragmentIndex = FragmentIndex,
+                DrawCallIndex = uint.MaxValue,
+            };
+
+            FinishFragment();
         }
 
         public void AppendImage (ref RichImage image) {
-            // FIXME
+            FinishFragment();
+
+            var drawCallIndex = DrawCallIndex;
+            var drawCall = new BitmapDrawCall(
+                new TextureSet(image.Texture), Vector2.Zero
+            ) {
+                ScaleF = image.Scale,
+            };
+            var bounds = drawCall.EstimateDrawBounds();
+            if (!MeasureOnly)
+                AppendDrawCall() = drawCall;
+
+            var boxIndex = BoxIndex++;
+            ref var fragment = ref CurrentFragment;
+            fragment.BoxIndex = BoxIndex;
+            fragment.Category = FragmentCategory.Box;
+            fragment.Width = bounds.Size.X;
+            fragment.Height = image.DoNotAdjustLineSpacing ? CurrentLine.Height : bounds.Size.Y;
+
+            ref var box = ref Buffers.Box(boxIndex);
+            box = new Box {
+                FragmentIndex = FragmentIndex,
+                DrawCallIndex = drawCallIndex,
+            };
+
+            FinishFragment();
         }
 
-        private void ArrangeFragments (float totalWidth) {
+        private void ArrangeFragments (Vector2 constrainedSize) {
             var gapCategory = SplitAtWrapCharactersOnly 
-                ? CharacterCategory.WrapPoint 
-                : CharacterCategory.Whitespace;
+                ? FragmentCategory.WrapPoint 
+                : FragmentCategory.Whitespace;
 
             for (uint i = 0; i <= LineIndex; i++) {
                 ref var line = ref Buffers.Line(i);
-                if (line.DrawCallCount == 0)
-                    continue;
-
                 int gapCount = (int)line.GapCount;
                 if (line.FragmentCount > 1) {
                     ref var lastFragment = ref Buffers.Fragment(line.FirstFragmentIndex + line.FragmentCount - 1);
@@ -788,6 +828,20 @@ namespace Squared.Render.TextLayout2 {
                         if (!SplitAtWrapCharactersOnly)
                             gapCount -= 1;
                         lastFragment.Width = 0f;
+                    }
+                }
+
+                float totalWidth = constrainedSize.X, inset = 0f;
+                for (uint b = 0; b < BoxIndex; b++) {
+                    ref var box = ref Buffers.Box(b);
+                    if (box.FragmentIndex >= line.FirstFragmentIndex)
+                        break;
+
+                    if (box.Bounds.TopLeft.X <= 0) {
+                        inset += box.Bounds.Size.X;
+                        totalWidth -= box.Bounds.Size.X;
+                    } else if (box.Bounds.BottomRight.X >= totalWidth) {
+                        totalWidth -= box.Bounds.Size.X;
                     }
                 }
 
@@ -823,24 +877,37 @@ namespace Squared.Render.TextLayout2 {
 
                 line.Location.X += whitespace;
                 line.Width += (gapWhitespace * gapCount);
+                if (line.FragmentCount == 0)
+                    continue;
 
-                float x = Position.X + line.Location.X,
-                    y = Position.Y + line.Location.Y,
-                    cws = 0;
+                float x = Position.X + line.Location.X + inset,
+                    y = Position.Y + line.Location.Y;
 
                 for (uint f = line.FirstFragmentIndex, f2 = f + line.FragmentCount - 1; f <= f2; f++) {
                     ref var fragment = ref Buffers.Fragment(f);
                     float fragmentY = y + (line.Baseline - fragment.Baseline);
                     fragment.Left = x;
 
-                    if (fragment.Category == gapCategory)
-                        x += gapWhitespace;
+                    if (fragment.Category == FragmentCategory.Box) {
+                        ref var box = ref Buffers.Box(fragment.BoxIndex);
+                        if (box.DrawCallIndex != uint.MaxValue) {
+                            ref var drawCall = ref Buffers.DrawCall(box.DrawCallIndex);
+                            var estimatedBounds = drawCall.EstimateDrawBounds();
+                            box.Bounds = Bounds.FromPositionAndSize(x, y, estimatedBounds.Size.X, estimatedBounds.Size.Y);
+                            drawCall.Position = new Vector2(x, y);
+                        } else {
+                            box.Bounds = Bounds.FromPositionAndSize(x, y, fragment.Width, fragment.Height);
+                        }
+                    } else {
+                        if (fragment.Category == gapCategory)
+                            x += gapWhitespace;
 
-                    if (fragment.DrawCallCount > 0) {
-                        for (uint dc = fragment.FirstDrawCall, dc2 = dc + fragment.DrawCallCount - 1; dc <= dc2; dc++) {
-                            ref var drawCall = ref Buffers.DrawCall(dc);
-                            drawCall.Position.X += x;
-                            drawCall.Position.Y += fragmentY;
+                        if (fragment.DrawCallCount > 0) {
+                            for (uint dc = fragment.FirstDrawCall, dc2 = dc + fragment.DrawCallCount - 1; dc <= dc2; dc++) {
+                                ref var drawCall = ref Buffers.DrawCall(dc);
+                                drawCall.Position.X += x;
+                                drawCall.Position.Y += fragmentY;
+                            }
                         }
                     }
 
@@ -867,7 +934,10 @@ namespace Squared.Render.TextLayout2 {
             constrainedSize.X = Math.Max(constrainedSize.X, DesiredWidth);
         }
 
-        public int DrawCallCount => (int)DrawCallIndex;
+        public uint DrawCallCount => DrawCallIndex;
+        public uint LineCount => LineIndex;
+        public uint BoxCount => BoxIndex;
+        public uint SpanCount => SpanIndex;
 
         public unsafe void Finish (ArraySegment<BitmapDrawCall> buffer, out StringLayout result) {
             UpdateMarkedRange();
@@ -883,8 +953,11 @@ namespace Squared.Render.TextLayout2 {
 
             Listener?.Finishing(ref this);
 
+            // First, scan all the lines to compute our actual constrained size
             ComputeConstrainedSize(out var constrainedSize);
-            ArrangeFragments(constrainedSize.X);
+            // Now scan through and sequentially arrange all our fragments.
+            // Boxes are attached to fragments, so those will get arranged as we go too.
+            ArrangeFragments(constrainedSize);
 
             var lastDrawCallIndex = DrawCallIndex > 0 ? DrawCallIndex - 1 : 0;
             if (MeasureOnly) {
@@ -911,7 +984,7 @@ namespace Squared.Render.TextLayout2 {
                 /* FIXME */ 0, (int)LineIndex
             );
 
-            Listener?.Finished(ref this, SpanIndex, LineIndex, ref result);
+            Listener?.Finished(ref this, ref result);
         }
 
         public void Desuppress () {
@@ -919,7 +992,7 @@ namespace Squared.Render.TextLayout2 {
             BreakLimit = CharacterLimit = LineLimit = null;
         }
 
-        private void AnalyzeWhitespace (char ch1, uint codepoint, out bool lineBreak, out bool deadGlyph, out CharacterCategory category) {
+        private void AnalyzeWhitespace (char ch1, uint codepoint, out bool lineBreak, out bool deadGlyph, out FragmentCategory category) {
             bool isWhitespace = Unicode.IsWhiteSpace(codepoint) && !MaskCodepoint.HasValue,
                 isWordWrapPoint = false, isNonPrintable = codepoint < 32;
             lineBreak = false;
@@ -963,22 +1036,22 @@ namespace Squared.Render.TextLayout2 {
 
             if (SplitAtWrapCharactersOnly) {
                 if (isWordWrapPoint)
-                    category = CharacterCategory.WrapPoint;
+                    category = FragmentCategory.WrapPoint;
                 else if (isNonPrintable)
-                    category = CharacterCategory.NonPrintable;
+                    category = FragmentCategory.NonPrintable;
                 else if (isWhitespace)
-                    category = CharacterCategory.Whitespace;
+                    category = FragmentCategory.Whitespace;
                 else
-                    category = CharacterCategory.Regular;
+                    category = FragmentCategory.Regular;
             } else {
                 if (isNonPrintable)
-                    category = CharacterCategory.NonPrintable;
+                    category = FragmentCategory.NonPrintable;
                 else if (isWhitespace)
-                    category = CharacterCategory.Whitespace;
+                    category = FragmentCategory.Whitespace;
                 else if (isWordWrapPoint)
-                    category = CharacterCategory.WrapPoint;
+                    category = FragmentCategory.WrapPoint;
                 else
-                    category = CharacterCategory.Regular;
+                    category = FragmentCategory.Regular;
             }
         }
 

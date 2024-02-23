@@ -228,7 +228,7 @@ namespace PRGUI.Demo {
                                 Texture = TextureLoader.Load("ghost"),
                                 Scale = 0.4f,
                                 Margin = new Vector2(0, -2),
-                                VerticalAlignment = 1f
+                                Alignment = new Vector2(0.5f, 1f),
                             }
                         }
                     },

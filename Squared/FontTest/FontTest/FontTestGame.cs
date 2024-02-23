@@ -52,6 +52,7 @@ namespace FontTest {
         PressableKey HideOverflow = new PressableKey(Keys.D);
 
         Texture2D[] Images = new Texture2D[4];
+        List<Bounds> Boxes = new List<Bounds>();
 
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
@@ -180,11 +181,10 @@ namespace FontTest {
 
         private AsyncRichImage Text_ImageProvider (AbstractString arg, RichTextConfiguration config) {
             int i;
-            float x;
-            float? y;
+            float x = 0.5f,
+                y = 0.5f;
             if (arg == "img:left") {
                 x = 0f;
-                y = null;
                 i = 0;
             } else if (arg == "img:bottomleft") {
                 x = 0f;
@@ -203,12 +203,9 @@ namespace FontTest {
             var tex = Images[i];
             var ri = new RichImage {
                 Texture = tex,
-                HardHorizontalAlignment = x,
-                HardVerticalAlignment = y,
+                Alignment = new Vector2(x, y),
                 DoNotAdjustLineSpacing = true,
                 Margin = Vector2.One * 3f,
-                CreateBox = true,
-                VerticalAlignment = y ?? 0f
             };
             return new AsyncRichImage(ref ri);
         }
@@ -349,14 +346,19 @@ namespace FontTest {
         void IStringLayoutListener.Finishing (ref StringLayoutEngine2 engine) {
         }
 
-        void IStringLayoutListener.Finished (ref StringLayoutEngine2 engine, uint spanCount, uint lineCount, ref StringLayout result) {
+        void IStringLayoutListener.Finished (ref StringLayoutEngine2 engine, ref StringLayout result) {
+            Boxes.Clear();
+            for (int i = 0; i < engine.BoxCount; i++) {
+                if (engine.TryGetBoxBounds((uint)i, out var bounds))
+                    Boxes.Add(bounds);
+            }
         }
 
         public string[] TestStrings = new[] {
             // FIXME: The bounding box for 'dogs' is wrong unless there's a trailing space inside the marked region
-            "$<img:topright>$<img:bottomright>The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs )" +
-            "\r\n$<img:bottomleft>$<img:left>この体は、無限のチェイサーで出来ていた $(marked)" +
-            "\r\n\r\nEmpty line before this one $(marked)\r\n$(rich substring)",
+            "$<img:left>The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs )$<img:topright>" +
+            "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
+            "\r\n\r\nEmpty line before this one $(marked)\r\n$<img:bottomleft>$(rich substring)$<img:bottomright>",
 
             "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z" +
             "\r\nはいはい！おつかれさまでした！" +

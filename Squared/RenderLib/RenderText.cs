@@ -22,8 +22,6 @@ namespace Squared.Render.Text {
         public readonly Bounds LastCharacterBounds;
         public ArraySegment<BitmapDrawCall> DrawCalls;
         public DenseList<AbstractTextureReference> UsedTextures;
-        // TODO: Find a smaller representation for these, because this makes DynamicStringLayout big
-        public DenseList<Bounds> Boxes;
         public readonly int WordCount, LineCount;
         public readonly bool WasLineLimited;
 
@@ -41,7 +39,6 @@ namespace Squared.Render.Text {
             LastCharacterBounds = lastCharacter;
             DrawCalls = drawCalls;
             WasLineLimited = wasLineLimited;
-            Boxes = default;
             UsedTextures = default;
             WordCount = wordCount;
             LineCount = lineCount;
