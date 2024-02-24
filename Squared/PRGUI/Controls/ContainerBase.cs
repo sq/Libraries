@@ -347,7 +347,8 @@ namespace Squared.PRGUI.Controls {
             if ((context.HiddenCount <= 0) && Visible)
                 GenerateDynamicContent(DynamicContentIsInvalid);
 
-            ColumnKeys.Clear();
+            if (!existingKey.HasValue)
+                ColumnKeys.Clear();
 
             if (multiColumn) {
                 if (!existingKey.HasValue)

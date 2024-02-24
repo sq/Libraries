@@ -174,7 +174,7 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<TControl> Image<TControl> (AbstractTextureReference texture, AbstractTooltipContent tooltip = default, ControlFlags? layoutFlags = null)
-            where TControl : Control, new() {
+            where TControl : StaticImage, new() {
             var result = New<TControl>(layoutFlags);
             result.SetImage(texture);
             if (tooltip != default)
@@ -540,11 +540,6 @@ namespace Squared.PRGUI.Imperative {
                 cast.ContainerFlags = value;
             return this;
         }
-        public ControlBuilder<TControl> SetClipChildren (bool value) {
-            if (Control is IControlContainer cast)
-                cast.ClipChildren = value;
-            return this;
-        }
         public ControlBuilder<TControl> SetScrollable (bool value) {
             if (Control is IScrollableControl cast)
                 cast.Scrollable = value;
@@ -595,11 +590,6 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
-        public ControlBuilder<TControl> SetImage (AbstractTextureReference value) {
-            if (Control is StaticImage si)
-                si.Image = value;
-            return this;
-        }
         public ControlBuilder<TControl> SetAlignment (Vector2 value) {
             if (Control is StaticImage si)
                 si.Alignment = value;
@@ -710,24 +700,6 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
-        public ControlBuilder<TControl> SetClampToRange (bool value)
-        {
-            if (Control is IParameterEditor cast1) {
-                cast1.ClampToMinimum = value;
-                cast1.ClampToMaximum = value;
-            }
-            return this;
-        }
-
-        public ControlBuilder<TControl> SetClampToRange (bool min = true, bool max = true)
-        {
-            if (Control is IParameterEditor cast1) {
-                cast1.ClampToMinimum = min;
-                cast1.ClampToMaximum = max;
-            }
-            return this;
-        }
-
         public ControlBuilder<TControl> SetRange<TValue> (TValue? min = null, TValue? max = null, bool? clamp = null)
             where TValue : struct, IComparable<TValue>
         {
@@ -832,6 +804,22 @@ namespace Squared.PRGUI.Imperative {
     }
 
     public static class ControlBuilderExtensions {
+        public static ControlBuilder<T> SetClampToRange<T> (this ControlBuilder<T> self, bool value)
+            where T : Control, IParameterEditor
+        {
+            self.Control.ClampToMinimum = value;
+            self.Control.ClampToMaximum = value;
+            return self;
+        }        
+
+        public static ControlBuilder<T> SetClampToRange<T> (this ControlBuilder<T> self, bool min = true, bool max = true)
+            where T : Control, IParameterEditor
+        {
+            self.Control.ClampToMinimum = min;
+            self.Control.ClampToMaximum = max;
+            return self;
+        }        
+
         public static ControlBuilder<T> SetDescription<T> (this ControlBuilder<T> self, string value)
             where T : Control, IHasDescription
         {
@@ -857,6 +845,13 @@ namespace Squared.PRGUI.Imperative {
             where T : Slider
         {
             self.Control.KeyboardSpeed = value;
+            return self;
+        }
+        
+        public static ControlBuilder<T> SetImage<T> (this ControlBuilder<T> self, AbstractTextureReference value)
+            where T : StaticImage
+        {
+            self.Control.Image = value;
             return self;
         }
         
@@ -996,6 +991,13 @@ namespace Squared.PRGUI.Imperative {
             where T : ContainerBase 
         {
             self.Control.ColumnCount = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetClipChildren<T> (this ControlBuilder<T> self, bool value)
+            where T : Control, IControlContainer
+        {
+            self.Control.ClipChildren = value;
             return self;
         }
 

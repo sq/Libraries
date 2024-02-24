@@ -93,7 +93,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected float DisclosureArrowSize => (float)Math.Round(
-            Math.Max(MinDisclosureArrowSize, MostRecentTitleBox.Height * DisclosureArrowSizeMultiplier), 
+            Math.Max(MinDisclosureArrowSize, MostRecentHeaderHeight * DisclosureArrowSizeMultiplier), 
             MidpointRounding.AwayFromZero
         );
         protected float DisclosureArrowPadding => DisclosureArrowSize + DisclosureArrowMargin;
@@ -181,7 +181,7 @@ namespace Squared.PRGUI.Controls {
         protected bool DisclosureArrowHitTest (Vector2 localPosition) {
             if (localPosition.X > DisclosureArrowPadding)
                 return false;
-            if (localPosition.Y > MostRecentTitleBox.Height)
+            if (localPosition.Y > MostRecentHeaderHeight)
                 return false;
             if ((localPosition.X < 0) || (localPosition.Y < 0))
                 return false;
@@ -244,7 +244,7 @@ namespace Squared.PRGUI.Controls {
             if (Title.Length == 0 && !existingKey.HasValue && Collapsible) {
                 ref var spacer = ref context.Engine.Create();
                 spacer.OldFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak;
-                spacer.FixedSize = new Vector2(DisclosureArrowPadding, MostRecentTitleBox.Height);
+                spacer.FixedSize = new Vector2(DisclosureArrowPadding, MostRecentHeaderHeight);
                 context.Engine.InsertAtStart(result, spacer.Key);
             }
             return ref result;
@@ -264,7 +264,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        private float GetTitleHeightForConstraints (ref UIOperationContext context) {
+        private float GetTitleHeight (ref UIOperationContext context) {
             if (MostRecentTitleBox != default(RectF))
                 return MostRecentTitleBox.Height;
             var decorations = GetTitleDecorator(context.DecorationProvider);
@@ -289,7 +289,7 @@ namespace Squared.PRGUI.Controls {
                 UpdateTitle(ref context, default(ControlStates), ref cb, out Material temp, ref color);
             }
 
-            var thfc = GetTitleHeightForConstraints(ref context);
+            var thfc = GetTitleHeight(ref context);
             float collapsedHeight = input.HasValue ? Math.Min(input.Value, thfc) : thfc;
             float expandedHeight = input.HasValue ? Math.Min(input.Value, MostRecentFullSize.Value.Height) : MostRecentFullSize.Value.Height;
             return (float)Math.Floor(Arithmetic.Lerp(collapsedHeight, expandedHeight, level));
@@ -336,16 +336,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
-            base.OnRasterize(ref context, ref passSet, settings, decorations);
-
             IDecorator titleDecorator;
             Color? titleColor = null;
             if (
                 (titleDecorator = UpdateTitle(ref context, settings.State, ref settings.ContentBox, out Material titleMaterial, ref titleColor)) != null
             ) {
-                if (Collapsible)
-                    RasterizeDisclosureArrow(ref context, ref passSet.Above, settings);
-
                 var layout = TitleLayout.Get();
                 var titleBox = settings.Box;
                 MostRecentTitleHeight = (layout.DrawCalls.Count > 0) ? layout.Size.Y : (float?)null;
@@ -361,6 +356,11 @@ namespace Squared.PRGUI.Controls {
                 }
                 // FIXME: Compute this somewhere else, like in OnLayoutComplete
                 MostRecentTitleBox = titleBox;
+
+                if (Collapsible)
+                    RasterizeDisclosureArrow(ref context, ref passSet.Above, settings);
+
+                base.OnRasterize(ref context, ref passSet, settings, decorations);
 
                 var titleContentBox = titleBox;
                 titleContentBox.Left += titleDecorator.Padding.Left;
@@ -392,6 +392,8 @@ namespace Squared.PRGUI.Controls {
                         material: titleMaterial
                     );
                 }
+            } else {
+                base.OnRasterize(ref context, ref passSet, settings, decorations);
             }
         }
 
@@ -403,9 +405,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         private void RasterizeDisclosureArrow (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
-            var pad = (DisclosureArrowPadding - DisclosureArrowSize) / 2f;
-            var ySpace = ((MostRecentTitleBox.Height - DisclosureArrowSize) / 2f);
-            var centering = (float)(Math.Round(DisclosureArrowSize * 0.5f, MidpointRounding.AwayFromZero));
+            float pad = (DisclosureArrowPadding - DisclosureArrowSize) / 2f,
+                titleHeight = GetTitleHeight(ref context),
+                ySpace = ((titleHeight - DisclosureArrowSize) / 2f),
+                centering = (float)(Math.Round(DisclosureArrowSize * 0.5f, MidpointRounding.AwayFromZero));
             ySpace = (float)Math.Floor(ySpace);
             settings.Box.SnapAndInset(out Vector2 tl, out Vector2 temp);
             Vector2 a = Vector2.One * -centering, b = new Vector2(DisclosureArrowSize, DisclosureArrowSize) + a, c = new Vector2((a.X + b.X) / 2f, b.Y);
@@ -445,7 +448,7 @@ namespace Squared.PRGUI.Controls {
             const float shrink = 2;
             var disclosureArrowBox = new RectF(
                 thisControl.Rect.Left + shrink, thisControl.Rect.Top + shrink,
-                DisclosureArrowPadding - (shrink * 2), MostRecentTitleBox.Height - (shrink * 2)
+                DisclosureArrowPadding - (shrink * 2), MostRecentHeaderHeight - (shrink * 2)
             );
             if (!thisControl.ClippedRect.Intersection(in disclosureArrowBox, out RectF clippedArrowBox))
                 return 0;

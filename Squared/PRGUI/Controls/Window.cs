@@ -202,14 +202,14 @@ namespace Squared.PRGUI.Controls {
             CloseButtonSizeMultiplier = 0.36f;
 
         protected float CloseButtonSize => (float)Math.Round(
-            Math.Max(MinCloseButtonSize, MostRecentTitleBox.Height * CloseButtonSizeMultiplier), 
+            Math.Max(MinCloseButtonSize, MostRecentHeaderHeight * CloseButtonSizeMultiplier), 
             MidpointRounding.AwayFromZero
         );
         protected float CloseButtonPadding => CloseButtonSize + CloseButtonMargin;
 
         private void RasterizeCloseButton (ref UIOperationContext context, ref ImperativeRenderer renderer, DecorationSettings settings) {
             float pad = (CloseButtonPadding - CloseButtonSize) / 2f,
-                ySpace = ((MostRecentTitleBox.Height - CloseButtonSize) / 2f),
+                ySpace = ((MostRecentHeaderHeight - CloseButtonSize) / 2f),
                 centering = (float)(Math.Round(CloseButtonSize * 0.5f, MidpointRounding.AwayFromZero)),
                 size = CloseButtonSize * 0.5f;
             ySpace = (float)Math.Floor(ySpace);
@@ -256,7 +256,7 @@ namespace Squared.PRGUI.Controls {
         protected bool CloseButtonHitTest (Vector2 localPosition) {
             if (localPosition.X < MostRecentTitleBox.Width - CloseButtonPadding)
                 return false;
-            if (localPosition.Y > MostRecentTitleBox.Height)
+            if (localPosition.Y > MostRecentHeaderHeight)
                 return false;
             if ((localPosition.X > MostRecentTitleBox.Width) || (localPosition.Y < 0))
                 return false;
