@@ -380,7 +380,7 @@ namespace Squared.Render.Basis {
         }
     }
 
-    public unsafe sealed class ImageLevel {
+    public unsafe struct ImageLevel {
         public readonly BasisFile File;
         public readonly Image Image;
         public readonly uint Index;

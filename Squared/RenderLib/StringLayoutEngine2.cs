@@ -210,7 +210,7 @@ namespace Squared.Render.TextLayout2 {
         // FIXME: Not implemented
         public int CharacterSkipCount;
         // FIXME: Not implemented
-        public int? CharacterLimit, 
+        public int CharacterLimit, 
             // FIXME: These seem buggy
             LineLimit, 
             BreakLimit;
@@ -250,9 +250,9 @@ namespace Squared.Render.TextLayout2 {
         bool IsInitialized;
         public bool IsTruncated =>
             // FIXME: < 0 instead of <= 0?
-            ((LineLimit ?? int.MaxValue) <= 0) ||
-            ((BreakLimit ?? int.MaxValue) <= 0) ||
-            ((CharacterLimit ?? int.MaxValue) <= 0);
+            (LineLimit <= 0) ||
+            (BreakLimit <= 0) ||
+            (CharacterLimit <= 0);
 
         public void Initialize () {
             // FIXME
@@ -279,9 +279,10 @@ namespace Squared.Render.TextLayout2 {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref BitmapDrawCall AppendDrawCall () {
-            if (CurrentFragment.FirstDrawCall == uint.MaxValue)
-                CurrentFragment.FirstDrawCall = DrawCallIndex;
-            CurrentFragment.DrawCallCount++;
+            ref var fragment = ref CurrentFragment;
+            if (fragment.FirstDrawCall == uint.MaxValue)
+                fragment.FirstDrawCall = DrawCallIndex;
+            fragment.DrawCallCount++;
             return ref Buffers.DrawCall(DrawCallIndex++);
         }
 
@@ -459,11 +460,12 @@ namespace Squared.Render.TextLayout2 {
                 (uint)(FragmentIndex + (text.Length / 8))
             );
 
-            var effectiveScale = Scale * (1.0f / glyphSource.DPIScaleFactor);
+            Vector2 effectiveScale = Scale * (1.0f / glyphSource.DPIScaleFactor),
+                effectiveSpacing = Spacing;
             float defaultLineSpacing = glyphSource.LineSpacing * effectiveScale.Y;
 
             for (int i = 0, l = text.Length; i < l; i++) {
-                if (LineLimit.HasValue && LineLimit.Value <= 0)
+                if (LineLimit <= 0)
                     SuppressLayoutForLimit();
                 else if (Y > MaximumHeight)
                     SuppressLayoutForLimit();
@@ -478,23 +480,39 @@ namespace Squared.Render.TextLayout2 {
                     ch1, codepoint, out bool lineBreak, out bool deadGlyph, out var category
                 );
 
-                BuildGlyphInformation(
-                    // FIXME: This will be wrong after recalc
-                    glyphSource, effectiveScale, Spacing, ch1, codepoint, CurrentLine.DrawCallCount == 0,
-                    out deadGlyph, out Glyph glyph, out float glyphLineSpacing, out float glyphBaseline
-                );
+
+                deadGlyph = !glyphSource.GetGlyph(codepoint, out var glyph);
+
+                float glyphLineSpacing = glyph.LineSpacing * effectiveScale.Y;
+                glyphLineSpacing += AdditionalLineSpacing;
+                float glyphBaseline = glyph.Baseline * effectiveScale.Y;
+
+                float leftSideDelta = 0;
+                if (effectiveSpacing.X >= 0)
+                    glyph.LeftSideBearing *= effectiveSpacing.X;
+                else
+                    leftSideDelta = Math.Abs(glyph.LeftSideBearing * effectiveSpacing.X);
+                glyph.RightSideBearing *= effectiveSpacing.X;
+                glyph.RightSideBearing -= leftSideDelta;
 
                 if (category == FragmentCategory.NonPrintable) {
                     ;
                 } else {
-                    if (CurrentFragment.Category == FragmentCategory.Unknown)
-                        CurrentFragment.Category = category;
+                    {
+                        ref var cf = ref CurrentFragment;
+                        if (cf.Category == FragmentCategory.Unknown)
+                            cf.Category = category;
 
-                    if (category != CurrentFragment.Category)
-                        FinishFragment();
+                        if (category != cf.Category)
+                            FinishFragment();
+                    }
 
-                    if (CurrentFragment.Category == FragmentCategory.Unknown)
-                        CurrentFragment.Category = category;
+                    {
+                        ref var cf = ref CurrentFragment;
+
+                        if (cf.Category == FragmentCategory.Unknown)
+                            cf.Category = category;
+                    }
                 }
 
                 // FIXME: Kerning across multiple AppendText calls
@@ -524,10 +542,12 @@ namespace Squared.Render.TextLayout2 {
 
                 bool allowBreaking = true;
 
-            recalc:
+recalc:
+                ref var line = ref CurrentLine;
+
                 float w = (glyph.WidthIncludingBearing * effectiveScale.X) + (glyph.CharacterSpacing * effectiveScale.X),
                     h = glyphLineSpacing,
-                    xBasis = CurrentLine.Location.X + CurrentLine.ActualWidth,
+                    xBasis = line.Location.X + line.ActualWidth,
                     x1 = xBasis + FragmentOffset.X,
                     x2 = x1 + w,
                     y2 = Y + h;
@@ -546,6 +566,13 @@ namespace Squared.Render.TextLayout2 {
                     }
                 }
 
+                // MonoGame#1355 rears its ugly head: If a character with negative left-side bearing is at the start of a line,
+                //  we need to compensate for the bearing to prevent the character from extending outside of the layout bounds
+                if (line.DrawCallCount == 0) {
+                    if (glyph.LeftSideBearing < 0)
+                        glyph.LeftSideBearing = 0;
+                }
+
                 if (HideOverflow) {
                     if (overflowY)
                         SuppressLayoutForLimit();
@@ -553,9 +580,8 @@ namespace Squared.Render.TextLayout2 {
 
                 ref var fragment = ref CurrentFragment;
                 if (glyphBaseline > fragment.Baseline)
-                    IncreaseBaseline(glyphBaseline);
+                    IncreaseBaseline(ref fragment, glyphBaseline);
 
-                float alignmentToBaseline = fragment.Baseline - glyphBaseline;
                 bool suppressThisCharacter = SuppressUntilEnd || (overflowX && HideOverflow);
 
 #if TRACK_CODEPOINTS
@@ -570,9 +596,9 @@ namespace Squared.Render.TextLayout2 {
                     if (MeasureOnly) {
                         // HACK: There is code that uses DrawCallCount != 0 to make decisions,
                         //  so we need to maintain a fake draw call counter in order to keep that working
-                        if (CurrentFragment.FirstDrawCall == uint.MaxValue)
-                            CurrentFragment.FirstDrawCall = DrawCallIndex;
-                        CurrentFragment.DrawCallCount++;
+                        if (fragment.FirstDrawCall == uint.MaxValue)
+                            fragment.FirstDrawCall = DrawCallIndex;
+                        fragment.DrawCallCount++;
 
                         if (fragment.WasSuppressed)
                             fragment.WasSuppressed = false;
@@ -582,6 +608,7 @@ namespace Squared.Render.TextLayout2 {
                         float x = FragmentOffset.X + (glyph.XOffset * effectiveScale.X) + (glyph.LeftSideBearing * effectiveScale.X),
                             // Used to compute bounding box offsets
                             wx = xBasis + x,
+                            alignmentToBaseline = fragment.Baseline - glyphBaseline,
                             y = FragmentOffset.Y + (glyph.YOffset * effectiveScale.Y) + alignmentToBaseline;
                         drawCall = new BitmapDrawCall {
                             MultiplyColor = OverrideColor 
@@ -602,8 +629,7 @@ namespace Squared.Render.TextLayout2 {
                             MostRecentTexture = glyph.Texture;
                         }
 
-                        if (fragment.WasSuppressed)
-                            fragment.WasSuppressed = false;
+                        fragment.WasSuppressed = false;
                     }
                 }
 
@@ -632,8 +658,7 @@ namespace Squared.Render.TextLayout2 {
             }
         }
 
-        private void IncreaseBaseline (float newBaseline) {
-            ref var fragment = ref CurrentFragment;
+        private void IncreaseBaseline (ref Fragment fragment, float newBaseline) {
             float adjustment = newBaseline - fragment.Baseline;
             fragment.Baseline = newBaseline;
             if (fragment.DrawCallCount == 0)
@@ -807,11 +832,9 @@ namespace Squared.Render.TextLayout2 {
                 FirstFragmentIndex = FragmentIndex,
             };
 
-            if (LineLimit.HasValue) {
-                LineLimit--;
-                if (LineLimit.Value <= 0)
-                    SuppressLayoutForLimit();
-            }
+            LineLimit--;
+            if (LineLimit <= 0)
+                SuppressLayoutForLimit();
         }
 
         public void CreateEmptyBox (
@@ -823,22 +846,23 @@ namespace Squared.Render.TextLayout2 {
 
             var boxIndex = BoxIndex++;
 
+            ref var line = ref CurrentLine;
             ref var fragment = ref CurrentFragment;
             fragment.BoxIndex = boxIndex;
             fragment.Category = FragmentCategory.Box;
             fragment.Width = width;
-            fragment.Height = doNotAdjustLineSpacing ? CurrentLine.Height : height;
+            fragment.Height = doNotAdjustLineSpacing ? line.Height : height;
 
             switch (alignment) {
                 case ImageHorizontalAlignment.Inline:
                     fragment.Width += (margin.X * 2);
-                    CurrentLine.Width += fragment.Width;
+                    line.Width += fragment.Width;
                     break;
                 case ImageHorizontalAlignment.Left:
-                    CurrentLine.Inset += width + margin.X;
+                    line.Inset += width + margin.X;
                     break;
                 case ImageHorizontalAlignment.Right:
-                    CurrentLine.Crush += width + margin.X;
+                    line.Crush += width + margin.X;
                     break;
             }
 
@@ -850,7 +874,7 @@ namespace Squared.Render.TextLayout2 {
                 HorizontalAlignment = alignment,
                 // FIXME
                 Margin = margin,
-                Bounds = Bounds.FromPositionAndSize(0f, CurrentLine.Location.Y, width, height),
+                Bounds = Bounds.FromPositionAndSize(0f, line.Location.Y, width, height),
             };
 
             FinishFragment();
@@ -884,6 +908,7 @@ namespace Squared.Render.TextLayout2 {
                 AppendDrawCall() = drawCall;
 
             var boxIndex = BoxIndex++;
+            ref var line = ref CurrentLine;
             ref var fragment = ref CurrentFragment;
             fragment.BoxIndex = boxIndex;
             fragment.Category = FragmentCategory.Box;
@@ -891,17 +916,18 @@ namespace Squared.Render.TextLayout2 {
             switch (image.HorizontalAlignment) {
                 case ImageHorizontalAlignment.Inline:
                     fragment.Width += (image.Margin.X * 2);
-                    CurrentLine.Width += fragment.Width;
+                    line.Width += fragment.Width;
+                    UnconstrainedLineSize.X += fragment.Width;
                     break;
                 case ImageHorizontalAlignment.Left:
-                    CurrentLine.Inset += fragment.Width + image.Margin.X;
+                    line.Inset += fragment.Width + image.Margin.X;
                     break;
                 case ImageHorizontalAlignment.Right:
-                    CurrentLine.Crush += fragment.Width + image.Margin.X;
+                    line.Crush += fragment.Width + image.Margin.X;
                     break;
             }
             fragment.Height = image.DoNotAdjustLineSpacing 
-                ? CurrentLine.Height 
+                ? line.Height 
                 : bounds.Size.Y;
 
             ref var box = ref Buffers.Box(boxIndex);
@@ -912,7 +938,7 @@ namespace Squared.Render.TextLayout2 {
                 BaselineAlignment = image.BaselineAlignment,
                 Margin = image.Margin,
                 // FIXME: Baseline alignment
-                Bounds = Bounds.FromPositionAndSize(0f, CurrentLine.Location.Y, bounds.Size.X, bounds.Size.Y),
+                Bounds = Bounds.FromPositionAndSize(0f, line.Location.Y, bounds.Size.X, bounds.Size.Y),
             };
 
             FinishFragment();
@@ -1129,12 +1155,12 @@ namespace Squared.Render.TextLayout2 {
 
         public void Desuppress () {
             SuppressUntilEnd = false;
-            BreakLimit = CharacterLimit = LineLimit = null;
+            BreakLimit = CharacterLimit = LineLimit = int.MaxValue;
         }
 
         private void AnalyzeWhitespace (char ch1, uint codepoint, out bool lineBreak, out bool deadGlyph, out FragmentCategory category) {
             bool isWhitespace = Unicode.IsWhiteSpace(codepoint) && !MaskCodepoint.HasValue,
-                isWordWrapPoint = false, isNonPrintable = codepoint < 32;
+                isWordWrapPoint, isNonPrintable = codepoint < 32;
             lineBreak = false;
             deadGlyph = false;
 
@@ -1154,23 +1180,20 @@ namespace Squared.Render.TextLayout2 {
                     isNonPrintable = true;
                 else if (uniCategory == UnicodeCategory.Format)
                     isNonPrintable = true;
-            }
-            // Wrapping and justify expansion should never occur for a non-breaking space
-            if (codepoint == 0x00A0)
+            } else if (codepoint == 0x00A0) {
+                // Wrapping and justify expansion should never occur for a non-breaking space
                 isWordWrapPoint = false;
-
-            if (ch1 == '\n')
+                isNonPrintable = true;
+            } else if (ch1 == '\n')
                 lineBreak = true;
 
             if (lineBreak) {
-                if (BreakLimit.HasValue) {
-                    BreakLimit--;
-                    if (BreakLimit.Value <= 0)
-                        SuppressLayoutForLimit();
-                }
+                BreakLimit--;
+                if (BreakLimit <= 0)
+                    SuppressLayoutForLimit();
                 if (!SuppressUntilEnd && IncludeTrailingWhitespace)
                     NewLinePending = true;
-            } else if (LineLimit.HasValue && LineLimit.Value <= 0) {
+            } else if (LineLimit <= 0) {
                 SuppressLayoutForLimit();
             }
 
@@ -1215,57 +1238,6 @@ namespace Squared.Render.TextLayout2 {
             }
 
             codepoint = MaskCodepoint ?? codepoint;
-        }
-
-        private void BuildGlyphInformation<TGlyphSource> (
-            in TGlyphSource font, Vector2 scale, Vector2 spacing, 
-            char ch1, uint codepoint, bool startOfLine, 
-            out bool deadGlyph, out Glyph glyph, 
-            out float glyphLineSpacing, out float glyphBaseline
-        ) where TGlyphSource : IGlyphSource {
-            deadGlyph = !font.GetGlyph(codepoint, out glyph);
-
-            glyphLineSpacing = glyph.LineSpacing * scale.Y;
-            glyphLineSpacing += AdditionalLineSpacing;
-            glyphBaseline = glyph.Baseline * scale.Y;
-            if (deadGlyph) {
-                // FIXME
-                /*
-                if (currentLineSpacing > 0) {
-                    glyphLineSpacing = currentLineSpacing;
-                    glyphBaseline = currentBaseline;
-                } else {
-                    Glyph space;
-                    if (font.GetGlyph(' ', out space)) {
-                        glyphLineSpacing = space.LineSpacing * effectiveScale;
-                        glyphLineSpacing += additionalLineSpacing;
-                        glyphBaseline = space.Baseline * effectiveScale;
-                    }
-                }
-                */
-            }
-
-            // glyph.LeftSideBearing *= effectiveSpacing;
-            float leftSideDelta = 0;
-            if (spacing.X >= 0)
-                glyph.LeftSideBearing *= spacing.X;
-            else
-                leftSideDelta = Math.Abs(glyph.LeftSideBearing * spacing.X);
-            glyph.RightSideBearing *= spacing.X;
-            glyph.RightSideBearing -= leftSideDelta;
-
-            /*
-            if (initialLineSpacing <= 0)
-                initialLineSpacing = glyphLineSpacing;
-            ProcessLineSpacingChange(buffer, glyphLineSpacing, glyphBaseline);
-            */
-
-            // MonoGame#1355 rears its ugly head: If a character with negative left-side bearing is at the start of a line,
-            //  we need to compensate for the bearing to prevent the character from extending outside of the layout bounds
-            if (startOfLine) {
-                if (glyph.LeftSideBearing < 0)
-                    glyph.LeftSideBearing = 0;
-            }
         }
 
         public void Dispose () {

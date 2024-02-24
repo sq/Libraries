@@ -165,6 +165,9 @@ namespace Squared.PRGUI.Controls {
 
         public bool[] ColumnExpansion;
 
+        protected DenseList<ControlKey> ColumnKeys;
+        protected bool NeedToInvalidateChildLayout;
+
         /// <summary>
         /// Splits the container into multiple columns arranged left-to-right.
         /// Children will automatically be distributed across the columns, and
@@ -313,9 +316,6 @@ namespace Squared.PRGUI.Controls {
             // context.Engine.SetContainerFlags(parent, );
             return result.Key;
         }
-
-        protected ControlKey[] ColumnKeys;
-        protected bool NeedToInvalidateChildLayout;
         
         protected override ref BoxRecord OnGenerateLayoutTree (ref UIOperationContext context, ControlKey parent, ControlKey? existingKey) {
             var wasInvalid = IsLayoutInvalid;
@@ -347,15 +347,14 @@ namespace Squared.PRGUI.Controls {
             if ((context.HiddenCount <= 0) && Visible)
                 GenerateDynamicContent(DynamicContentIsInvalid);
 
-            if (ColumnCount != (ColumnKeys?.Length ?? 0))
-                ColumnKeys = new ControlKey[ColumnCount];
+            ColumnKeys.Clear();
 
             if (multiColumn) {
                 if (!existingKey.HasValue)
                     for (int i = 0; i < ColumnCount; i++)
-                        ColumnKeys[i] = CreateColumn(ref context, result, i);
+                        ColumnKeys.Add(CreateColumn(ref context, result, i));
             } else {
-                ColumnKeys[0] = result;
+                ColumnKeys.Add(result);
             }
 
             var adoc = AbsoluteDisplayOffsetOfChildren;
