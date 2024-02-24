@@ -240,6 +240,11 @@ namespace Squared.PRGUI.Controls {
         }
 
         private Control _DefaultCreateControlForValue (ref T value, Control existingControl) {
+            if (!typeof(T).IsValueType) {
+                if (value is Control c)
+                    return c;
+            }
+
             var st = (existingControl as StaticText) ?? new StaticText();
             var text =
                 (FormatValue != null)
