@@ -242,10 +242,9 @@ namespace Squared.Render.Text {
     public struct AsyncRichImage {
         public Future<Texture2D> Future;
         public RichImage? Value;
-        public float? Width, Height, MaxWidthPercent;
+        public float? Width, Height, MaxWidthPercent, BaselineAlignment;
         public Vector2 Margin;
         public ImageHorizontalAlignment HorizontalAlignment;
-        public float BaselineAlignment;
         public float Scale;
         public bool DoNotAdjustLineSpacing;
         public readonly bool Dead;
@@ -344,18 +343,12 @@ namespace Squared.Render.Text {
         public Bounds? Bounds;
         public Vector2 Margin;
         public ImageHorizontalAlignment HorizontalAlignment;
-        private float BaselineAlignmentMinusOne;
-        public float? OverrideWidth, OverrideHeight, MaxWidthPercent;
+        public float? OverrideWidth, OverrideHeight, MaxWidthPercent, BaselineAlignment;
         public bool DoNotAdjustLineSpacing;
 
         private float ScaleMinusOne;
 
         public readonly bool Dead;
-
-        public float BaselineAlignment {
-            get => BaselineAlignmentMinusOne + 1;
-            set => BaselineAlignmentMinusOne = value - 1;
-        }
 
         public float Scale {
             get => ScaleMinusOne + 1;

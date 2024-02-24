@@ -227,9 +227,9 @@ namespace PRGUI.Demo {
                             "ghost", new RichImage {
                                 Texture = TextureLoader.Load("ghost"),
                                 Scale = 0.4f,
-                                Margin = new Vector2(0, -2),
+                                Margin = new Vector2(-2, -2),
                                 HorizontalAlignment = ImageHorizontalAlignment.Inline,
-                                BaselineAlignment = 1f,
+                                BaselineAlignment = 0.9f,
                             }
                         }
                     },

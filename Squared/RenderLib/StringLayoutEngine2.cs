@@ -802,6 +802,9 @@ recalc:
             float inset = 0f, crush = 0f;
             for (uint b = 0; b < BoxIndex; b++) {
                 ref var box = ref Buffers.Box(b);
+                if (box.HorizontalAlignment == ImageHorizontalAlignment.Inline)
+                    continue;
+
                 var boxInterval = box.Bounds.Y;
                 boxInterval.Min -= box.Margin.Y;
                 boxInterval.Max += box.Margin.Y;
@@ -895,7 +898,7 @@ recalc:
             var drawCall = new BitmapDrawCall(
                 new TextureSet(image.Texture), Vector2.Zero
             ) {
-                ScaleF = effectiveScale,
+                Scale = effectiveScale * Scale,
                 TextureRegion = image.Bounds ?? Bounds.Unit,
                 // HACK: Pass through an image flag to the text material
                 UserData = new Vector4(0f, 0f, 1f, 0f),
@@ -915,6 +918,7 @@ recalc:
             fragment.Width = bounds.Size.X;
             switch (image.HorizontalAlignment) {
                 case ImageHorizontalAlignment.Inline:
+                    // FIXME: Y margin for inline images
                     fragment.Width += (image.Margin.X * 2);
                     line.Width += fragment.Width;
                     UnconstrainedLineSize.X += fragment.Width;
@@ -929,14 +933,16 @@ recalc:
             fragment.Height = image.DoNotAdjustLineSpacing 
                 ? line.Height 
                 : bounds.Size.Y;
-            fragment.Baseline = fragment.Height * image.BaselineAlignment;
+
+            var baselineAlignment = image.BaselineAlignment ?? ((image.HorizontalAlignment == ImageHorizontalAlignment.Inline) ? 1.0f : 0.0f);
+            fragment.Baseline = fragment.Height * baselineAlignment;
 
             ref var box = ref Buffers.Box(boxIndex);
             box = new Box {
                 FragmentIndex = FragmentIndex,
                 DrawCallIndex = drawCallIndex,
                 HorizontalAlignment = image.HorizontalAlignment,
-                BaselineAlignment = image.BaselineAlignment,
+                BaselineAlignment = baselineAlignment,
                 Margin = image.Margin,
                 // FIXME: Baseline alignment
                 Bounds = Bounds.FromPositionAndSize(0f, line.Location.Y, bounds.Size.X, bounds.Size.Y),
@@ -1016,47 +1022,55 @@ recalc:
                     if (fragment.Category == FragmentCategory.Box) {
                         ref var box = ref Buffers.Box(fragment.BoxIndex);
 
-                        float boxX = x;
+                        float boxX = x, boxBaseline = box.Bounds.Size.Y * box.BaselineAlignment,
+                            alignmentToBaseline = line.Baseline - boxBaseline;
                         if (MeasureOnly) {
                             // We don't have draw call information so we can only align the existing box.
                             // Its size should be fairly accurate though.
                             switch (box.HorizontalAlignment) {
                                 case ImageHorizontalAlignment.Left:
                                     boxX = Position.X;
+                                    alignmentToBaseline = 0f;
                                     break;
                                 case ImageHorizontalAlignment.Right:
                                     constrainedSize.X = boxRightEdge; // :(
                                     boxX = boxRightEdge - box.Bounds.Size.X + Position.X;
+                                    alignmentToBaseline = 0f;
                                     break;
                             }
-                            box.Bounds = Bounds.FromPositionAndSize(boxX, y, box.Bounds.Size.X, box.Bounds.Size.Y);
+                            box.Bounds = Bounds.FromPositionAndSize(boxX, y + alignmentToBaseline, box.Bounds.Size.X, box.Bounds.Size.Y);
                         } else if (box.DrawCallIndex != uint.MaxValue) {
                             ref var drawCall = ref Buffers.DrawCall(box.DrawCallIndex);
                             var estimatedBounds = drawCall.EstimateDrawBounds();
                             switch (box.HorizontalAlignment) {
                                 case ImageHorizontalAlignment.Left:
                                     boxX = Position.X;
+                                    alignmentToBaseline = 0f;
                                     break;
                                 case ImageHorizontalAlignment.Right:
                                     constrainedSize.X = boxRightEdge; // :(
                                     boxX = boxRightEdge - estimatedBounds.Size.X + Position.X;
+                                    alignmentToBaseline = 0f;
+                                    break;
+                                case ImageHorizontalAlignment.Inline:
+                                    boxX += box.Margin.X;
                                     break;
                             }
-                            // FIXME: Baseline alignment
-                            box.Bounds = Bounds.FromPositionAndSize(boxX, y, estimatedBounds.Size.X, estimatedBounds.Size.Y);
-                            drawCall.Position = new Vector2(boxX, y);
+                            box.Bounds = Bounds.FromPositionAndSize(boxX, y + alignmentToBaseline, estimatedBounds.Size.X, estimatedBounds.Size.Y);
+                            drawCall.Position = new Vector2(boxX, y + alignmentToBaseline);
                         } else {
                             switch (box.HorizontalAlignment) {
                                 case ImageHorizontalAlignment.Left:
                                     boxX = Position.X;
+                                    alignmentToBaseline = 0f;
                                     break;
                                 case ImageHorizontalAlignment.Right:
                                     constrainedSize.X = boxRightEdge; // :(
                                     boxX = boxRightEdge - fragment.Width + Position.X;
+                                    alignmentToBaseline = 0f;
                                     break;
                             }
-                            // FIXME: Baseline alignment
-                            box.Bounds = Bounds.FromPositionAndSize(boxX, y, fragment.Width, fragment.Height);
+                            box.Bounds = Bounds.FromPositionAndSize(boxX, y + alignmentToBaseline, fragment.Width, fragment.Height);
                         }
 
                         constrainedSize.Y = Math.Max(constrainedSize.Y, box.Bounds.BottomRight.Y - Position.Y);
