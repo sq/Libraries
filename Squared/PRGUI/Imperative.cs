@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.PRGUI.Controls;
+using Squared.PRGUI.Controls.SpecialInterfaces;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render;
@@ -182,7 +183,7 @@ namespace Squared.PRGUI.Imperative {
         }
 
         public ControlBuilder<TControl> Text<TControl> (AbstractString text, AbstractTooltipContent tooltip = default, ControlFlags? layoutFlags = null)
-            where TControl : Control, new() {
+            where TControl : Control, IHasText, new() {
             var result = New<TControl>(layoutFlags);
             result.SetText(text);
             if (tooltip != default)
@@ -329,8 +330,8 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
-        public ControlBuilder<Control> Properties {
-            get => new ControlBuilder<Control>(Control, IsNewInstance);
+        public ControlBuilder<ContainerBase> Properties {
+            get => new ControlBuilder<ContainerBase>((ContainerBase)Control, IsNewInstance);
         }
 
         public bool GetEvent<TSource> (string eventName, out TSource source)
@@ -690,29 +691,6 @@ namespace Squared.PRGUI.Imperative {
             Control.DebugLabel = value;
             return this;
         }
-
-        public ControlBuilder<TControl> SetDescription (string value) {
-            if (Control is IHasDescription cast)
-                cast.Description = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetAllowCopy (bool value) {
-            if (Control is EditableText cast)
-                cast.AllowCopy = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetPassword (bool value) {
-            if (Control is EditableText cast)
-                cast.Password = value;
-            return this;
-        }
-
-        public ControlBuilder<TControl> SetKeyboardSpeed(float value) {
-            if (Control is Slider cast1)
-                cast1.KeyboardSpeed = value;
-            // FIXME: Parameter editor
-            return this;
-        }
         public ControlBuilder<TControl> SetIntegral (bool value) {
             if (Control is Slider cast1)
                 cast1.Integral = value;
@@ -720,6 +698,7 @@ namespace Squared.PRGUI.Imperative {
                 cast2.IntegerOnly = value;
             return this;
         }
+
         public ControlBuilder<TControl> SetIncrement<TValue> (TValue value)
             where TValue : struct, IComparable<TValue>
         {
@@ -730,6 +709,7 @@ namespace Squared.PRGUI.Imperative {
             }
             return this;
         }
+
         public ControlBuilder<TControl> SetClampToRange (bool value)
         {
             if (Control is IParameterEditor cast1) {
@@ -738,6 +718,7 @@ namespace Squared.PRGUI.Imperative {
             }
             return this;
         }
+
         public ControlBuilder<TControl> SetClampToRange (bool min = true, bool max = true)
         {
             if (Control is IParameterEditor cast1) {
@@ -746,6 +727,7 @@ namespace Squared.PRGUI.Imperative {
             }
             return this;
         }
+
         public ControlBuilder<TControl> SetRange<TValue> (TValue? min = null, TValue? max = null, bool? clamp = null)
             where TValue : struct, IComparable<TValue>
         {
@@ -771,10 +753,12 @@ namespace Squared.PRGUI.Imperative {
                 ivc.Value = value;
             return this;
         }
+
         public bool Value<TValue> (ref TValue value) {
             Value(ref value, out bool temp);
             return temp;
         }
+
         public ControlBuilder<TControl> Value<TValue> (ref TValue value, out bool changed) {
             var cast = (Control as IValueControl<TValue>);
             if (cast == null) {
@@ -804,33 +788,10 @@ namespace Squared.PRGUI.Imperative {
                 cast.Value = value;
             return this;
         }
+
         public ControlBuilder<TControl> GetValue<TValue> (out TValue value) {
             var cast = (IValueControl<TValue>)Control;
             value = cast.Value;
-            return this;
-        }
-
-        public ControlBuilder<TControl> SetText (string value) {
-            var cast1 = (Control as StaticTextBase);
-            var cast2 = (Control as EditableText);
-            cast1?.SetTextInternal((ImmutableAbstractString)value, true);
-            cast2?.SetText(value, false);
-            return this;
-        }
-
-        public ControlBuilder<TControl> SetText (AbstractString value) {
-            var cast1 = (Control as StaticTextBase);
-            var cast2 = (Control as EditableText);
-            cast1?.SetTextInternal(value, true);
-            cast2?.SetText(value, false);
-            return this;
-        }
-
-        public ControlBuilder<TControl> SetText (ImmutableAbstractString value) {
-            var cast1 = (Control as StaticTextBase);
-            var cast2 = (Control as EditableText);
-            cast1?.SetTextInternal(value, true);
-            cast2?.SetText(value.Value, false);
             return this;
         }
 
@@ -846,6 +807,7 @@ namespace Squared.PRGUI.Imperative {
             }
             return this;
         }
+
         public ControlBuilder<TControl> Text (ref AbstractString value, out bool changed) {
             var cast1 = (Control as StaticTextBase);
             var cast2 = (Control as EditableText);
@@ -858,23 +820,6 @@ namespace Squared.PRGUI.Imperative {
             }
             return this;
         }
-        public ControlBuilder<TControl> GetText (StringBuilder result) {
-            result.Clear();
-            if (Control is EditableText cast2)
-                cast2.GetText(result);
-            else if (Control is StaticTextBase cast1)
-                cast1.Text.CopyTo(result);
-            return this;
-        }
-        public ControlBuilder<TControl> GetText (out AbstractString value) {
-            if (Control is EditableText cast2)
-                value = cast2.Text;
-            else if (Control is StaticTextBase cast1)
-                value = cast1.Text;
-            else
-                value = default(AbstractString);
-            return this;
-        }
 
         public ControlBuilder<TControl> SetGlyphSource (IGlyphSource value) {
             Control.Appearance.GlyphSource = value;
@@ -884,129 +829,204 @@ namespace Squared.PRGUI.Imperative {
             Control.Appearance.GlyphSourceProvider = provider;
             return this;
         }
-        public ControlBuilder<TControl> SetRichText (bool value) {
-            if (Control is StaticTextBase stb)
-                stb.RichText = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetRichText (bool value, RichTextConfiguration rtc) {
-            if (Control is StaticText st)
-                st.RichTextConfiguration = rtc;
-            else if (Control is HyperText ht)
-                ht.RichTextConfiguration = rtc;
+    }
 
-            if (Control is StaticTextBase stb)
-                stb.RichText = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetTextAlignment (HorizontalAlignment value) {
-            if (Control is StaticTextBase stb)
-                stb.TextAlignment = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetScaleToFit (bool value) {
-            if (Control is StaticText stb)
-                stb.ScaleToFit = value;
-            else if (Control is StaticImage si)
-                si.ScaleToFit = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetScale (float value) {
-            if (Control is StaticTextBase stb)
-                stb.Scale = value;
-            else if (Control is StaticImage si)
-                si.Scale = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetWrap (bool value) {
-            if (Control is StaticText stb)
-                stb.Wrap = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetWrap (bool wordWrap, bool characterWrap) {
-            if (Control is StaticText stb) {
-                stb.Content.WordWrap = wordWrap;
-                stb.Content.CharacterWrap = characterWrap;
-            }
-            return this;
-        }
-        public ControlBuilder<TControl> SetMultiline (bool value) {
-            if (Control is StaticText stb)
-                stb.Multiline = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetAutoSize (bool value) {
-            if (Control is StaticTextBase stb)
-                stb.AutoSize = value;
-            // FIXME
-            /*
-            else if (Control is StaticImage si)
-                si.AutoSize = value;
-            */
-            return this;
-        }
-        public ControlBuilder<TControl> SetAutoSize (bool width, bool height) {
-            if (Control is StaticTextBase stb) {
-                stb.AutoSizeWidth = width;
-                stb.AutoSizeHeight = height;
-            // FIXME
-            /*
-            } else if (Control is StaticImage si) {
-                si.AutoSizeWidth = width;
-                si.AutoSizeHeight = height;
-            */
-            }
-            return this;
+    public static class ControlBuilderExtensions {
+        public static ControlBuilder<T> SetDescription<T> (this ControlBuilder<T> self, string value)
+            where T : Control, IHasDescription
+        {
+            self.Control.Description = value;
+            return self;
         }
 
-        public ControlBuilder<TControl> SetVirtual (bool value) {
-            if (Control is IListBox lb)
-                lb.Virtual = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetSelectedIndex (int value) {
-            if (Control is IListBox lb)
-                lb.SelectedIndex = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetSelectedItem<T> (T value) {
-            if (Control is ListBox<T> lb)
-                lb.SelectedItem = value;
-            else if (Control is IListBox ilb)
-                ilb.SelectedItem = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetCreateControlForValue<T> (CreateControlForValueDelegate<T> value) {
-            if (Control is ListBox<T> lb)
-                lb.CreateControlForValue = value;
-            return this;
+        public static ControlBuilder<T> SetAllowCopy<T> (this ControlBuilder<T> self, bool value)
+            where T : EditableText
+        {
+            self.Control.AllowCopy = value;
+            return self;
         }
 
-        public ControlBuilder<TControl> InvalidateDynamicContent () {
-            if (Control is ContainerBase c)
-                c.InvalidateDynamicContent();
-            return this;
-        }
-        public ControlBuilder<TControl> SetCacheDynamicContent (bool value) {
-            if (Control is ContainerBase c)
-                c.CacheDynamicContent = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetDynamicContents (ContainerContentsDelegate value) {
-            if (Control is ContainerBase c)
-                c.DynamicContents = value;
-            return this;
-        }
-        public ControlBuilder<TControl> SetColumnCount (int value) {
-            if (Control is ContainerBase c)
-                c.ColumnCount = value;
-            return this;
+        public static ControlBuilder<T> SetPassword<T> (this ControlBuilder<T> self, bool value)
+            where T : EditableText
+        {
+            self.Control.Password = value;
+            return self;
         }
 
-        public ControlBuilder<TControl> AddChildren (params Control[] children) {
-            var cast = (IControlContainer)Control;
-            cast.Children.AddRange(children);
-            return this;
+        public static ControlBuilder<T> SetKeyboardSpeed<T> (this ControlBuilder<T> self, float value)
+            where T : Slider
+        {
+            self.Control.KeyboardSpeed = value;
+            return self;
+        }
+        
+        public static ControlBuilder<T> SetText<T> (this ControlBuilder<T> self, AbstractString value)
+            where T : Control, IHasText 
+        {
+            self.Control.SetText(value);
+            return self;
+        }
+
+        public static ControlBuilder<T> SetText<T> (this ControlBuilder<T> self, ImmutableAbstractString value, bool onlyIfTextChanged)
+            where T : Control, IHasText 
+        {
+            self.Control.SetText(value, onlyIfTextChanged);
+            return self;
+        }
+
+        public static ControlBuilder<T> GetText<T> (this ControlBuilder<T> self, StringBuilder output)
+            where T : Control, IHasText 
+        {
+            output.Clear();
+            self.Control.GetText(output);
+            return self;
+        }
+
+        public static ControlBuilder<T> GetText<T> (this ControlBuilder<T> self, out AbstractString result)
+            where T : Control, IHasText 
+        {
+            result = self.Control.GetText();
+            return self;
+        }
+
+        public static ControlBuilder<T> SetRichText<T> (this ControlBuilder<T> self, bool value)
+            where T : StaticTextBase
+        {
+            self.Control.RichText = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetRichText<T> (this ControlBuilder<T> self, bool value, RichTextConfiguration configuration)
+            where T : StaticTextBase
+        {
+            self.Control.RichText = value;
+            if (self.Control is StaticText st)
+                st.RichTextConfiguration = configuration;
+            else if (self.Control is HyperText ht)
+                ht.RichTextConfiguration = configuration;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetTextAlignment<T> (this ControlBuilder<T> self, HorizontalAlignment value)
+            where T : StaticTextBase
+        {
+            self.Control.TextAlignment = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetScaleToFit<T> (this ControlBuilder<T> self, bool value)
+            where T : Control, IHasScaleToFit
+        {
+            self.Control.ScaleToFit = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetScale<T> (this ControlBuilder<T> self, float value)
+            where T : Control, IHasScale
+        {
+            self.Control.Scale = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetWrap<T> (this ControlBuilder<T> self, bool value)
+            where T : StaticText
+        {
+            self.Control.Wrap = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetWrap<T> (this ControlBuilder<T> self, bool wordWrap, bool characterWrap)
+            where T : StaticText
+        {
+            self.Control.Content.WordWrap = wordWrap;
+            self.Control.Content.CharacterWrap = characterWrap;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetMultiline<T> (this ControlBuilder<T> self, bool value)
+            where T : StaticText
+        {
+            self.Control.Multiline = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetAutoSize<T> (this ControlBuilder<T> self, bool value)
+            where T : StaticTextBase 
+        {
+            self.Control.AutoSizeWidth = value;
+            self.Control.AutoSizeHeight = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetAutoSize<T> (this ControlBuilder<T> self, bool width, bool height)
+            where T : StaticTextBase 
+        {
+            self.Control.AutoSizeWidth = width;
+            self.Control.AutoSizeHeight = height;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetCreateControlForValue<T, U> (this ControlBuilder<T> self, CreateControlForValueDelegate<U> value)
+            where T : Control, IHasCreateControlForValueProperty<U>
+        {
+            self.Control.CreateControlForValue = value;
+            return self;
+        }
+
+        public static ControlBuilder<ListBox<T>> SetSelectedItem<T> (this ControlBuilder<ListBox<T>> self, T value) {
+            self.Control.SelectedItem = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetSelectedIndex<T> (this ControlBuilder<T> self, int value)
+            where T : Control, IListBox
+        {
+            self.Control.SelectedIndex = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetVirtual<T> (this ControlBuilder<T> self, bool value)
+            where T : Control, IListBox
+        {
+            self.Control.Virtual = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetColumnCount<T> (this ControlBuilder<T> self, int value)
+            where T : ContainerBase 
+        {
+            self.Control.ColumnCount = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetDynamicContents<T> (this ControlBuilder<T> self, ContainerContentsDelegate value, bool? cached = null)
+            where T : ContainerBase 
+        {
+            self.Control.DynamicContents = value;
+            if (cached.HasValue)
+                self.Control.CacheDynamicContent = cached.Value;
+            return self;
+        }
+
+        public static ControlBuilder<T> SetCacheDynamicContent<T> (this ControlBuilder<T> self, bool value)
+            where T : ContainerBase 
+        {
+            self.Control.CacheDynamicContent = value;
+            return self;
+        }
+
+        public static ControlBuilder<T> InvalidateDynamicContent<T> (this ControlBuilder<T> self)
+            where T : ContainerBase 
+        {
+            self.Control.InvalidateDynamicContent();
+            return self;
+        }
+
+        public static ControlBuilder<T> AddChildren<T> (this ControlBuilder<T> self, IEnumerable<Control> children)
+            where T : Control, IControlContainer
+        {
+            self.Control.Children.AddRange(children);
+            return self;
         }
     }
 }

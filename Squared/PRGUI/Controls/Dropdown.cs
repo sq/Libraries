@@ -13,11 +13,20 @@ using Squared.Render.Convenience;
 using Squared.Util;
 using Squared.Util.Text;
 
+namespace Squared.PRGUI.Controls.SpecialInterfaces {
+    public interface IHasCreateControlForValueProperty<T> {
+        public CreateControlForValueDelegate<T> CreateControlForValue { get; set; }
+    }
+}
+
 namespace Squared.PRGUI.Controls {
     public delegate Control CreateControlForValueDelegate<T> (ref T value, Control existingControl);
     public delegate Control CreateControlForValueDelegate<T, TUserData> (ref T value, Control existingControl, ref TUserData userData);
 
-    public class Dropdown<T> : StaticTextBase, Accessibility.IReadingTarget, IMenuListener, IValueControl<T>, IHasDescription {
+    public class Dropdown<T> : StaticTextBase, Accessibility.IReadingTarget, 
+        IMenuListener, IValueControl<T>, IHasDescription, 
+        SpecialInterfaces.IHasCreateControlForValueProperty<T>
+    {
         private readonly Menu ItemsMenu = new Menu {
             DeselectOnMouseLeave = false
         };
@@ -30,7 +39,7 @@ namespace Squared.PRGUI.Controls {
         public string Description { get; set; }
 
         public string Label;
-        public CreateControlForValueDelegate<T> CreateControlForValue = null;
+        public CreateControlForValueDelegate<T> CreateControlForValue { get; set; }
         public Func<T, AbstractString> FormatValue = null;
         private CreateControlForValueDelegate<T> DefaultCreateControlForValue;
 

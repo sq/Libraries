@@ -38,7 +38,7 @@ namespace Squared.PRGUI.Controls {
 
     public class ListBox<T> : 
         Container, ICustomTooltipTarget, Accessibility.IReadingTarget, Accessibility.IAcceleratorSource, 
-        IValueControl<T>, ISelectionBearer, IListBox,
+        IValueControl<T>, ISelectionBearer, IListBox, SpecialInterfaces.IHasCreateControlForValueProperty<T>,
         IPartiallyIntangibleControl, IFuzzyHitTestTarget, IHasDescription
     {
         public ControlAppearance DefaultChildAppearance;

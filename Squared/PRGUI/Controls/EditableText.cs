@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Squared.Game;
 using Squared.PRGUI.Accessibility;
+using Squared.PRGUI.Controls.SpecialInterfaces;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.PRGUI.NewEngine;
@@ -20,7 +21,7 @@ using Squared.Util.Text;
 namespace Squared.PRGUI.Controls {
     public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget, 
         IValueControl<string>, IAcceleratorSource, ISelectionBearer, IHasDescription, 
-        IClippedRasterizationControl
+        IClippedRasterizationControl, IHasText
     {
         internal struct HistoryEntry {
             public ArraySegment<char> Text;
@@ -1429,6 +1430,12 @@ namespace Squared.PRGUI.Controls {
             if (!Password)
                 sb.Append(Text);
         }
+
+        AbstractString IHasText.GetText () => Text;
+        void IHasText.GetText (StringBuilder output) => GetText(output);
+
+        void IHasText.SetText (AbstractString text) => SetText(text, false);
+        void IHasText.SetText (ImmutableAbstractString text, bool onlyIfTextChanged) => SetText(text.Value, false);
 
         Vector2 IScrollableControl.ScrollOffset => ScrollOffset;
         bool IScrollableControl.Scrollable {

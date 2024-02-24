@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.PRGUI.Controls.SpecialInterfaces;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.PRGUI.NewEngine;
@@ -13,6 +14,15 @@ using Squared.Render;
 using Squared.Render.Convenience;
 using Squared.Threading;
 using Squared.Util;
+
+namespace Squared.PRGUI.Controls.SpecialInterfaces {
+    public interface IHasScale {
+        public float Scale { get; set; }
+    }    
+    public interface IHasScaleToFit {
+        public bool ScaleToFit { get; set; }
+    }
+}
 
 namespace Squared.PRGUI.Controls {
     [Flags]
@@ -49,9 +59,12 @@ namespace Squared.PRGUI.Controls {
         CustomMaterial
     }
 
-    public class StaticImage : Control, IPostLayoutListener {
+    public class StaticImage : 
+        Control, IPostLayoutListener, 
+        IHasScale, IHasScaleToFit
+    {
         public Vector2 Alignment = new Vector2(0.5f, 0.5f);
-        public float Scale = 1.0f;
+        public float Scale { get; set; } = 1.0f;
         public RasterizePasses Pass = RasterizePasses.Content;
         /// <summary>
         /// The auto-selected scale ratio will never be below this value.

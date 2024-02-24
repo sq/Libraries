@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Game;
 using Squared.PRGUI.Accessibility;
+using Squared.PRGUI.Controls.SpecialInterfaces;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.PRGUI.NewEngine;
@@ -17,8 +18,19 @@ using Squared.Render.Text;
 using Squared.Util;
 using Squared.Util.Text;
 
+namespace Squared.PRGUI.Controls.SpecialInterfaces {
+    public interface IHasText {
+        AbstractString GetText ();
+        void GetText (StringBuilder output);
+        void SetText (AbstractString text);
+        void SetText (ImmutableAbstractString text, bool onlyIfTextChanged);
+    }
+}
+
 namespace Squared.PRGUI.Controls {
-    public class StaticTextBase : Control, IPostLayoutListener, Accessibility.IReadingTarget {
+    public class StaticTextBase : Control, IPostLayoutListener, 
+        IReadingTarget, IHasText, IHasScale
+    {
         [Flags]
         private enum StaticTextStateFlags : ushort {
             AutoSizeWidth                  = 0b1,
@@ -954,11 +966,17 @@ namespace Squared.PRGUI.Controls {
         ) {
             OnLayoutComplete(ref context, ref relayoutRequested);
         }
+
+        AbstractString IHasText.GetText () => Text;
+        void IHasText.GetText (StringBuilder output) => Text.CopyTo(output);
+
+        void IHasText.SetText (AbstractString text) => SetTextInternal(text);
+        void IHasText.SetText (ImmutableAbstractString text, bool onlyIfTextChanged) => SetTextInternal(text, onlyIfTextChanged);
     }
 
     public delegate void StringLayoutFilter (StaticTextBase control, ref StringLayout layout);
 
-    public class StaticText : StaticTextBase {
+    public class StaticText : StaticTextBase, IHasScaleToFit {
         new public DynamicStringLayout Content => base.Content;
         new public AbstractString Text {
             get => base.Text;
