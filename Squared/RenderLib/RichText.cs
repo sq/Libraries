@@ -344,13 +344,18 @@ namespace Squared.Render.Text {
         public Bounds? Bounds;
         public Vector2 Margin;
         public ImageHorizontalAlignment HorizontalAlignment;
-        public float BaselineAlignment;
+        private float BaselineAlignmentMinusOne;
         public float? OverrideWidth, OverrideHeight, MaxWidthPercent;
         public bool DoNotAdjustLineSpacing;
 
         private float ScaleMinusOne;
 
         public readonly bool Dead;
+
+        public float BaselineAlignment {
+            get => BaselineAlignmentMinusOne + 1;
+            set => BaselineAlignmentMinusOne = value - 1;
+        }
 
         public float Scale {
             get => ScaleMinusOne + 1;

@@ -51,13 +51,14 @@ namespace FontTest {
         PressableKey Kerning = new PressableKey(Keys.K);
         PressableKey HideOverflow = new PressableKey(Keys.D);
 
-        Texture2D[] Images = new Texture2D[4];
+        Texture2D[] Images = new Texture2D[5];
         List<Bounds> Boxes = new List<Bounds>();
 
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
             Graphics.PreferredBackBufferWidth = 1024;
             Graphics.PreferredBackBufferHeight = 1024;
+            Graphics.SynchronizeWithVerticalRetrace = false;
             IsMouseVisible = true;
         }
 
@@ -199,6 +200,11 @@ namespace FontTest {
                 x = ImageHorizontalAlignment.Right;
                 y = 0f;
                 i = 2;
+            } else if (arg.StartsWith("img:inline@")) {
+                int offset = arg.IndexOf("@");
+                x = ImageHorizontalAlignment.Inline;
+                arg.Substring(offset + 1).TryParse(out y);
+                i = 4;
             } else
                 return default;
             var tex = Images[i];
@@ -206,7 +212,7 @@ namespace FontTest {
                 Texture = tex,
                 HorizontalAlignment = x,
                 BaselineAlignment = y,
-                DoNotAdjustLineSpacing = true,
+                DoNotAdjustLineSpacing = (x != ImageHorizontalAlignment.Inline),
                 Margin = Vector2.One * 16f,
             };
             return new AsyncRichImage(ref ri);
@@ -360,6 +366,7 @@ namespace FontTest {
             // FIXME: The bounding box for 'dogs' is wrong unless there's a trailing space inside the marked region
             "$<img:left>$<img:topright>The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs )" +
             "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
+            "\r\nTesting$<img:inline@0.0>baseline$<img:inline@0.5>alignment$<img:inline@1.0>" +
             "\r\n\r\nEmpty line before this one $(marked)\r\n$<img:bottomleft>$<img:bottomright>$(rich substring)",
 
             "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z" +

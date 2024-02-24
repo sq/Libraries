@@ -929,6 +929,7 @@ recalc:
             fragment.Height = image.DoNotAdjustLineSpacing 
                 ? line.Height 
                 : bounds.Size.Y;
+            fragment.Baseline = fragment.Height * image.BaselineAlignment;
 
             ref var box = ref Buffers.Box(boxIndex);
             box = new Box {
