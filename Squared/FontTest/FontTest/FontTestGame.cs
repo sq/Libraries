@@ -49,6 +49,7 @@ namespace FontTest {
         PressableKey Expand = new PressableKey(Keys.E);
         PressableKey LimitExpansion = new PressableKey(Keys.X);
         PressableKey Kerning = new PressableKey(Keys.K);
+        PressableKey Ligatures = new PressableKey(Keys.L);
         PressableKey HideOverflow = new PressableKey(Keys.D);
 
         Texture2D[] Images = new Texture2D[5];
@@ -117,6 +118,15 @@ namespace FontTest {
                 ftf.Invalidate();
                 ftf = (FreeTypeFont)UniFont;
                 ftf.EnableKerning = !ftf.EnableKerning;
+                ftf.Invalidate();
+                Text.Invalidate();
+            };            
+            Ligatures.Pressed += (s, e) => {
+                var ftf = (FreeTypeFont)LatinFont;
+                ftf.EnableLigatures = !ftf.EnableLigatures;
+                ftf.Invalidate();
+                ftf = (FreeTypeFont)UniFont;
+                ftf.EnableLigatures = !ftf.EnableLigatures;
                 ftf.Invalidate();
                 Text.Invalidate();
             };
@@ -270,6 +280,7 @@ namespace FontTest {
             Expand.Update(ref ks);
             LimitExpansion.Update(ref ks);
             Kerning.Update(ref ks);
+            Ligatures.Update(ref ks);
             HideOverflow.Update(ref ks);
 
             if (!Text.Text.TextEquals(SelectedString)) {
@@ -340,7 +351,7 @@ namespace FontTest {
                 }
             }
 
-            var state = $"align {Text.Alignment} char-wrap {Text.CharacterWrap} word-wrap {Text.WordWrap} expand {Expand.Value} hint {Hinting.Value} kern {Kerning.Value}";
+            var state = $"a:{Text.Alignment} cw:{Text.CharacterWrap} ww:{Text.WordWrap} ex:{Expand.Value} hint:{Hinting.Value} kern:{Kerning.Value} lig:{Ligatures.Value}";
             var stateLayout = Text.GlyphSource.LayoutString(state);
             ir.DrawMultiple(stateLayout, new Vector2(0, 1024 - stateLayout.UnconstrainedSize.Y));
         }
@@ -366,6 +377,7 @@ namespace FontTest {
             // FIXME: The bounding box for 'dogs' is wrong unless there's a trailing space inside the marked region
             "$<img:left>$<img:topright>The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs )" +
             "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
+            "\r\nThis fish flowed off the office desk looking baffled." +
             "\r\nTesting$<img:inline@0.0>baseline$<img:inline@0.5>alignment$<img:inline@1.0>" +
             "\r\n\r\nEmpty line before this one $(marked)\r\n$<img:bottomleft>$<img:bottomright>$(rich substring)",
 

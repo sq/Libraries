@@ -445,7 +445,8 @@ namespace Squared.Render.TextLayout2 {
             if (!IsInitialized)
                 throw new InvalidOperationException("Call Initialize first");
 
-            if (!typeof(TGlyphSource).IsValueType) {
+            var t = typeof(TGlyphSource);
+            if (!t.IsValueType) {
                 if (glyphSource == null)
                     throw new ArgumentNullException(nameof(glyphSource));
             }
@@ -473,13 +474,15 @@ namespace Squared.Render.TextLayout2 {
                 UpdateMarkedRange();
 
                 DecodeCodepoint(text, ref i, l, out char ch1, out int currentCodepointSize, out uint codepoint);
+                if (currentCodepointSize == 2)
+                    CharIndex++;
                 if (codepoint == TerminatorCodepoint)
                     SuppressLayoutForLimit();
+                codepoint = MaskCodepoint ?? codepoint;
 
                 AnalyzeWhitespace(
                     ch1, codepoint, out bool lineBreak, out bool deadGlyph, out var category
                 );
-
 
                 deadGlyph = !glyphSource.GetGlyph(codepoint, out var glyph);
 
@@ -515,8 +518,20 @@ namespace Squared.Render.TextLayout2 {
                     }
                 }
 
+                bool appliedLigature = false;
+                if (glyph.LigatureProvider != null) {
+                    var charsConsumed = glyph.LigatureProvider.TryGetLigature(ref glyph, text, i);
+                    if (charsConsumed > 0) {
+                        appliedLigature = true;
+                        // Advance our decoding offset based on the number of chars consumed by the ligature
+                        i += charsConsumed;
+                        // FIXME: Carry-over kerning from the previous glyph isn't valid due to the ligature
+                        hasKerningNow = hasKerningNext = false;
+                    }
+                }
+
                 // FIXME: Kerning across multiple AppendText calls
-                if ((glyph.KerningProvider != null) && (i < l - 2)) {
+                if (!appliedLigature && (glyph.KerningProvider != null) && (i < l - 2)) {
                     var temp = i + 1;
                     DecodeCodepoint(text, ref temp, l, out _, out _, out var codepoint2);
                     // FIXME: Also do adjustment for next glyph!
@@ -1233,7 +1248,7 @@ recalc:
             }
         }
 
-        private void DecodeCodepoint (in AbstractString text, ref int i, int l, out char ch1, out int currentCodepointSize, out uint codepoint) {
+        public static void DecodeCodepoint (in AbstractString text, ref int i, int l, out char ch1, out int currentCodepointSize, out uint codepoint) {
             char ch2 = i < (l - 1)
                     ? text[i + 1]
                     : '\0';
@@ -1241,18 +1256,14 @@ recalc:
             currentCodepointSize = 1;
             if (Unicode.DecodeSurrogatePair(ch1, ch2, out codepoint)) {
                 currentCodepointSize = 2;
-                CharIndex++;
                 i++;
             } else if (ch1 == '\r') {
                 if (ch2 == '\n') {
                     currentCodepointSize = 2;
                     ch1 = ch2;
                     i++;
-                    CharIndex++;
                 }
             }
-
-            codepoint = MaskCodepoint ?? codepoint;
         }
 
         public void Dispose () {

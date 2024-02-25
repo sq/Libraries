@@ -1309,7 +1309,7 @@ namespace Squared.Render.Text {
     }
 
     public interface IGlyphSource {
-        bool GetGlyph (uint ch, out Glyph result);
+        bool GetGlyph (uint codepoint, out Glyph result);
         float LineSpacing { get; }
         float DPIScaleFactor { get; }
         bool IsDisposed { get; }
@@ -1324,6 +1324,17 @@ namespace Squared.Render.Text {
 
     public interface IKerningProvider {
         bool TryGetKerning (uint glyphId, uint nextGlyphId, ref KerningData thisGlyph, ref KerningData nextGlyph);
+    }
+
+    public interface ILigatureProvider {
+        /// <summary>
+        /// Attempts to replace the provided glyph with its ligature by scanning forward in the input string.
+        /// </summary>
+        /// <param name="glyph">The first glyph</param>
+        /// <param name="text">The input string</param>
+        /// <param name="startOffset">The decoding offset inside the input string</param>
+        /// <returns>The number of additional characters (not codepoints) that were consumed by the ligature, if any</returns>
+        int TryGetLigature (ref Glyph glyph, AbstractString text, int startOffset);
     }
 
     public static class TextUtils {
@@ -1676,6 +1687,7 @@ namespace Squared.Render.Text {
         }
         public Color? DefaultColor;
         public IKerningProvider KerningProvider;
+        public ILigatureProvider LigatureProvider;
 
         public float WidthIncludingBearing {
             get {

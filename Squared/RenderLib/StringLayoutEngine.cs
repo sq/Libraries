@@ -844,6 +844,7 @@ namespace Squared.Render.Text {
                     suppress = true;
 
                 DecodeCodepoint(text, ref i, l, out char ch1, out int currentCodepointSize, out uint codepoint);
+                if (currentCodepointSize > 1)
 
                 if (codepoint == terminatorCodepoint)
                     suppress = true;
