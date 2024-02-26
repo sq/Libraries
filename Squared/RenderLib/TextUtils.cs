@@ -960,7 +960,7 @@ namespace Squared.Render.Text {
                 BreakLimit = (measureOnly.HasValue ? measureOnly.Value.LineBreakLimit : _LineBreakLimit) ?? int.MaxValue,
                 TabSize = _TabSize,
                 MeasureOnly = measureOnly.HasValue || MeasureOnly,
-                MaskCodepoint = _ReplacementCharacter,
+                MaskCodepoint = (uint)(_ReplacementCharacter ?? '\0'),
                 SplitAtWrapCharactersOnly = SplitAtWrapCharactersOnly,
                 IncludeTrailingWhitespace = IncludeTrailingWhitespace,
                 WrapCharacters = _WordWrapCharacterTable,
@@ -1083,6 +1083,7 @@ namespace Squared.Render.Text {
                 _Satellite?.Dependencies.Clear();
 
                 try {
+                    le2.EnsureCapacity(Math.Max((uint)Text.Length, 16), Math.Max((uint)Text.Length / 7, 4));
                     le2.Initialize();
                     if (RichText) {
                         rls = new RichTextLayoutState(ref le2, glyphSource);

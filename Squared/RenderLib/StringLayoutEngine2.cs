@@ -231,7 +231,7 @@ namespace Squared.Render.TextLayout2 {
         public DrawCallSortKey SortKey;
 
         public HorizontalAlignment Alignment;
-        public uint? MaskCodepoint;
+        public uint MaskCodepoint;
         public uint? TerminatorCodepoint;
 
         public float InitialIndentation, BreakIndentation, WrapIndentation;
@@ -454,6 +454,10 @@ namespace Squared.Render.TextLayout2 {
             }
         }
 
+        public void EnsureCapacity (uint drawCalls, uint fragments) {
+            Buffers.EnsureCapacity(drawCalls, fragments);
+        }
+
         public void AppendText<TGlyphSource> (
             TGlyphSource glyphSource, AbstractString text            
         ) where TGlyphSource : IGlyphSource {
@@ -473,7 +477,7 @@ namespace Squared.Render.TextLayout2 {
             bool hasKerningNow = false, hasKerningNext = false;
             Buffers.EnsureCapacity(
                 MeasureOnly ? 0 : (uint)(DrawCallIndex + text.Length),
-                (uint)(FragmentIndex + (text.Length / 8))
+                (uint)(FragmentIndex + (text.Length / 7))
             );
 
             Vector2 effectiveScale = Scale * (1.0f / glyphSource.DPIScaleFactor),
@@ -493,7 +497,8 @@ namespace Squared.Render.TextLayout2 {
                     CharIndex++;
                 if (codepoint == TerminatorCodepoint)
                     SuppressLayoutForLimit();
-                codepoint = MaskCodepoint ?? codepoint;
+                if (MaskCodepoint > 0)
+                    codepoint = MaskCodepoint;
 
                 var isTab = ch1 == '\t';
                 AnalyzeCharacter(
@@ -694,7 +699,6 @@ recalc:
                 }
 
                 UnconstrainedLineSize.X += w;
-                UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, h);
 
                 if (!suppressThisCharacter && !lineBreak)
                     ColIndex++;
@@ -835,6 +839,7 @@ recalc:
         }
 
         private void IncreaseLineHeight (ref Line line, ref Fragment fragment) {
+            UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, fragment.Height);
             if (line.Height >= fragment.Height)
                 return;
 
@@ -1143,7 +1148,7 @@ recalc:
 
         public void ComputeConstrainedSize (out Vector2 constrainedSize) {
             constrainedSize = Vector2.Zero;
-            for (uint i = 0; i <= LineIndex; i++) {
+            for (uint i = 0; i < LineIndex; i++) {
                 ref var line = ref Buffers.Line(i);
                 // Omit trailing whitespace.
                 float w = line.Width + line.Inset + line.Crush;
@@ -1223,7 +1228,7 @@ recalc:
         }
 
         private void AnalyzeCharacter (char ch1, uint codepoint, out bool lineBreak, out bool deadGlyph, out FragmentCategory category) {
-            bool isWhitespace = Unicode.IsWhiteSpace(codepoint) && !MaskCodepoint.HasValue,
+            bool isWhitespace = Unicode.IsWhiteSpace(codepoint) && (MaskCodepoint == 0),
                 isWordWrapPoint, isNonPrintable = codepoint < 32;
             lineBreak = false;
             deadGlyph = false;
@@ -1232,7 +1237,7 @@ recalc:
                 isWordWrapPoint = WrapCharacters.BinarySearchNonRef(codepoint, UintComparer.Instance) >= 0;
             else
                 isWordWrapPoint = isWhitespace || char.IsSeparator(ch1) ||
-                    MaskCodepoint.HasValue || WrapCharacters.BinarySearchNonRef(codepoint, UintComparer.Instance) >= 0;
+                    (MaskCodepoint != 0) || WrapCharacters.BinarySearchNonRef(codepoint, UintComparer.Instance) >= 0;
 
             if (codepoint > 255) {
                 // HACK: Attempt to word-wrap at "other" punctuation in non-western character sets, which will include things like commas

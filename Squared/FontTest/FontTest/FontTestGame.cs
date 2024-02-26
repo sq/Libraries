@@ -184,6 +184,8 @@ namespace FontTest {
                     '\\', '/', ':', ','
                 },
                 Listener = this,
+                ExtraLineBreakSpacing = -12f,
+                MaxExpansionPerSpace = 8f,
             };
 
             for (int i = 0; i < Images.Length; i++)
@@ -404,7 +406,7 @@ namespace FontTest {
             "Test Test A$(bc)d\n" +
             "Test Test Test $(Abcd)",
 
-            "Trailing whitespace should extend the bounding box      ",
+            "100!\r\n$[scale:0.45]CRITICAL$[]\r\n",
 
             @"In Congress, July 4, 1776
 

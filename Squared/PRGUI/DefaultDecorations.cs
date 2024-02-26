@@ -125,18 +125,43 @@ namespace Squared.PRGUI {
                 UpdateScaledSizes();
             }
         }
+
+        private Vector2 _SpacingScaleRatio,
+            _PaddingScaleRatio,
+            _MarginScaleRatio,
+            _EffectivePaddingScaleRatio,
+            _EffectiveMarginScaleRatio;
+
         /// <summary>
         /// Sets a global scale factor for both padding and margins
         /// </summary>
-        public Vector2 SpacingScaleRatio;
+        public Vector2 SpacingScaleRatio {
+            get => _SpacingScaleRatio;
+            set {
+                _SpacingScaleRatio = value;
+                RecalcScaleRatios();
+            }
+        }
         /// <summary>
         /// Sets an additional scale factor for padding
         /// </summary>
-        public Vector2 PaddingScaleRatio;
+        public Vector2 PaddingScaleRatio {
+            get => _PaddingScaleRatio;
+            set {
+                _PaddingScaleRatio = value;
+                RecalcScaleRatios();
+            }
+        }
         /// <summary>
         /// Sets an additional scale factor for margins
         /// </summary>
-        public Vector2 MarginScaleRatio;
+        public Vector2 MarginScaleRatio {
+            get => _MarginScaleRatio;
+            set {
+                _MarginScaleRatio = value;
+                RecalcScaleRatios();
+            }
+        }
         /// <summary>
         /// Sets a scale factor for outline thickness
         /// </summary>
@@ -2164,9 +2189,14 @@ namespace Squared.PRGUI {
             return true;
         }
 
+        private void RecalcScaleRatios () {
+            _EffectiveMarginScaleRatio = _SpacingScaleRatio * _MarginScaleRatio;
+            _EffectivePaddingScaleRatio = _SpacingScaleRatio * _PaddingScaleRatio;
+        }
+
         public void ComputeScaleRatios (out Vector2 margins, out Vector2 padding) {
-            margins = SpacingScaleRatio * MarginScaleRatio;
-            padding = SpacingScaleRatio * PaddingScaleRatio;
+            margins = _EffectiveMarginScaleRatio;
+            padding = _EffectivePaddingScaleRatio;
         }
     }
 
