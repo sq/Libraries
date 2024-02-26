@@ -40,9 +40,12 @@ namespace Squared.Render.Text.OpenType {
                 var offset = (&LookupList->FirstLookupOffset)[i];
                 var table = (GSUBLookupTable*)(((byte*)LookupList) + offset);
                 switch (table->LookupType) {
-                    case LookupTypes.Ligature:
-                        temp.Add(new GSUBLigatureLookup(table));
+                    case LookupTypes.Ligature: {
+                        var lookup = new GSUBLigatureLookup(table);
+                        if (lookup.SubTables.Length > 0)
+                            temp.Add(lookup);
                         continue;
+                    }
                     default:
                         continue;
                 }

@@ -410,7 +410,7 @@ namespace FontTest {
             "Test Test A$(bc)d\n" +
             "Test Test Test $(Abcd)",
 
-            "\u2007109!\r\n$[scale:0.45]CRITICAL$[]",
+            "\u2007109!\n$[scale:0.45]CRITICAL$[]",
 
             @"In Congress, July 4, 1776
 

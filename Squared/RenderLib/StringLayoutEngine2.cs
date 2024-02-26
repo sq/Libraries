@@ -511,6 +511,11 @@ namespace Squared.Render.TextLayout2 {
                     codepoint = ch1 = ' ';
 
                 deadGlyph = !glyphSource.GetGlyph(codepoint, out var glyph);
+                // HACK: In some cases we will end up with size metrics and stuff for \r or \n.
+                // We don't want to actually treat them like characters, it screws up layout.
+                // So just erase all their data.
+                if (lineBreak)
+                    glyph = default;
 
                 float glyphLineSpacing = glyph.LineSpacing * effectiveScale.Y;
                 glyphLineSpacing += AdditionalLineSpacing;
