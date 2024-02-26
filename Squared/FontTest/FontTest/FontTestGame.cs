@@ -167,6 +167,7 @@ namespace FontTest {
                 ReverseOrder = true,
                 RichText = true,
                 HideOverflow = false,
+                IncludeTrailingWhitespace = true,
                 RichTextConfiguration = new RichTextConfiguration {
                     MarkedStringProcessor = ProcessMarkedString,
                     Styles = new ImmutableAbstractStringLookup<RichStyle> {
@@ -403,8 +404,7 @@ namespace FontTest {
             "Test Test A$(bc)d\n" +
             "Test Test Test $(Abcd)",
 
-            "BA BC BG BM BO BQ BS BT BV BY BZ\n" +
-            "WA WB WC WE WG WM WO WQ WS WT WV WY WZ",
+            "Trailing whitespace should extend the bounding box      ",
 
             @"In Congress, July 4, 1776
 

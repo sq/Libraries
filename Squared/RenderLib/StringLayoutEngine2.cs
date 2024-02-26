@@ -376,7 +376,7 @@ namespace Squared.Render.TextLayout2 {
             ref var line = ref Buffers.Line(index);
             bounds = Bounds.FromPositionAndSize(
                 line.Location.X + Position.X, line.Location.Y + Position.Y, 
-                line.Width, line.Height
+                line.Width + (IncludeTrailingWhitespace ? line.TrailingWhitespace : 0f), line.Height
             );
             return true;
         }
@@ -1146,11 +1146,14 @@ recalc:
             for (uint i = 0; i <= LineIndex; i++) {
                 ref var line = ref Buffers.Line(i);
                 // Omit trailing whitespace.
-                constrainedSize.X = Math.Max(constrainedSize.X, line.Width + line.Inset + line.Crush);
+                float w = line.Width + line.Inset + line.Crush;
+                if (IncludeTrailingWhitespace)
+                    w += line.TrailingWhitespace;
+                constrainedSize.X = Math.Max(constrainedSize.X, w);
 
                 // HACK: Fixes a single-line size overhang from line limiting
                 // FIXME: This will break trailing whitespace from extra line breaks.
-                if ((line.DrawCallCount == 0) && (line.Width <= 0))
+                if ((line.DrawCallCount == 0) && (w <= 0))
                     continue;
 
                 // We have to use Max here because of things like ExtraBreakSpacing that don't

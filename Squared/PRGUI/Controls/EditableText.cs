@@ -114,6 +114,7 @@ namespace Squared.PRGUI.Controls {
         };
         protected DynamicStringLayout DynamicLayout = new DynamicStringLayout {
             HideOverflow = false,
+            IncludeTrailingWhitespace = true,
         };
         protected StringBuilder Builder = new StringBuilder();
         protected Margins CachedPadding;

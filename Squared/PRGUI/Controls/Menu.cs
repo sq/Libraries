@@ -464,7 +464,8 @@ namespace Squared.PRGUI.Controls {
 
             var options = new HitTestOptions();
             var item = ChildFromGlobalPosition(args.RelativeGlobalPosition, options);
-            var clickedFilterBox = (item != null) && (item == FilterBox);
+            var clickedFilterBox = ((item != null) && (item == FilterBox)) ||
+                (args.MouseOver == FilterBox);
             if (clickedFilterBox)
                 item = null;
 
