@@ -536,11 +536,8 @@ namespace Squared.Render.TextLayout2 {
                     DecodeCodepoint(text, ref temp, l, out _, out _, out var codepoint2);
                     // FIXME: Also do adjustment for next glyph!
                     // FIXME: Cache the result of this GetGlyph call and use it next iteration to reduce CPU usage
-                    if (
-                        glyphSource.GetGlyph(codepoint2, out var glyph2) &&
-                        (glyph2.KerningProvider == glyph.KerningProvider)
-                    ) {
-                        hasKerningNow = hasKerningNext = glyph.KerningProvider.TryGetKerning(glyph.GlyphId, glyph2.GlyphId, ref thisKerning, ref nextKerning);
+                    if (glyphSource.GetGlyphId(codepoint2, out var glyphId2)) {
+                        hasKerningNow = hasKerningNext = glyph.KerningProvider.TryGetKerning(glyph.GlyphId, glyphId2, ref thisKerning, ref nextKerning);
                     }
                 }
 
