@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Game;
+using Squared.Render.Text;
 using Squared.Util;
 using Squared.Util.Text;
 
@@ -49,7 +50,7 @@ namespace Squared.Render {
                     return;
 
                 var result = new List<KeyValuePair<string, Color>>();
-                _ByValue = new Dictionary<uint, string>();
+                _ByValue = new Dictionary<uint, string>(UintComparer.Instance);
                 foreach (var prop in typeof(Color).GetProperties(BindingFlags.Public | BindingFlags.Static)) {
                     if (prop.PropertyType != typeof(Color))
                         continue;

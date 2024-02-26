@@ -42,12 +42,18 @@ namespace Squared.Render.Text.OpenType {
                 var offset = (&LookupList->FirstLookupOffset)[i];
                 var table = (GPOSLookupTable*)(((byte*)LookupList) + offset);
                 switch (table->LookupType) {
-                    case LookupTypes.Single:
-                        temp.Add(new GPOSSingleLookup(table));
+                    case LookupTypes.Single: {
+                        var lookup = new GPOSSingleLookup(table);
+                        if (lookup.SubTables.Length > 0)
+                            temp.Add(lookup);
                         continue;
-                    case LookupTypes.Pair:
-                        temp.Add(new GPOSPairLookup(table));
+                    }
+                    case LookupTypes.Pair: {
+                        var lookup = new GPOSPairLookup(table);
+                        if (lookup.SubTables.Length > 0)
+                            temp.Add(lookup);
                         continue;
+                    }
                     default:
                         continue;
                 }
@@ -122,7 +128,9 @@ namespace Squared.Render.Text.OpenType {
                     throw new NotImplementedException();
             }
 
-            TempSubTables.Add(new Subtable<GPOSValueRecord>(coverage, values));
+            // HACK: Omit empty subtables, there's no point in keeping them
+            if (values.Length > 0)
+                TempSubTables.Add(new Subtable<GPOSValueRecord>(coverage, values));
         }
 
         internal override bool HasAnyEntriesForGlyph (uint glyphId) {
@@ -186,7 +194,9 @@ namespace Squared.Render.Text.OpenType {
                     throw new NotImplementedException();
             }
 
-            TempSubTables.Add(new Subtable<PairValueRecord[]>(coverage, values));
+            // HACK: Omit empty subtables, there's no point in keeping them
+            if (values.Length > 0)
+                TempSubTables.Add(new Subtable<PairValueRecord[]>(coverage, values));
         }
 
         internal override bool HasAnyEntriesForGlyph (uint glyphId) {

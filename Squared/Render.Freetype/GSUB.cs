@@ -97,6 +97,9 @@ namespace Squared.Render.Text.OpenType {
 
         internal unsafe override void DecodeSubtable (UInt16 format, Coverage coverage, FTUInt16 *subtable, FTUInt16* data) {
             var setCount = data[0].Value;
+            if (setCount == 0)
+                return;
+
             var sets = new LigatureSubst[setCount];
             for (uint i = 0; i < setCount; i++) {
                 var offset = data[1 + i];

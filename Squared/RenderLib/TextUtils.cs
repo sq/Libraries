@@ -11,6 +11,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
 using Squared.Render.TextLayout2;
+using Squared.Task;
 using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Hash;
@@ -1257,6 +1258,16 @@ namespace Squared.Render.Text {
             return false;
         }
 
+        public bool GetGlyphId (uint codepoint, out uint glyphId) {
+            foreach (var item in Sources) {
+                if (item.GetGlyphId(codepoint, out glyphId))
+                    return true;
+            }
+
+            glyphId = 0;
+            return false;
+        }
+
         void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) {
             throw new InvalidOperationException("Nesting FallbackGlyphSources is not supported");
         }
@@ -1309,6 +1320,7 @@ namespace Squared.Render.Text {
     }
 
     public interface IGlyphSource {
+        bool GetGlyphId (uint codepoint, out uint glyphId);
         bool GetGlyph (uint codepoint, out Glyph result);
         float LineSpacing { get; }
         float DPIScaleFactor { get; }
@@ -1433,6 +1445,8 @@ namespace Squared.Render.Text {
                 return Source.GetGlyph(ch, Scale, LineSpacing, out result);
             }
 
+            public bool GetGlyphId (uint codepoint, out uint glyphId) => Source.GetGlyphId(codepoint, out glyphId);
+
             void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) =>
                 ((IGlyphSource)Source).RegisterForChangeNotification(listener);
         }
@@ -1452,7 +1466,7 @@ namespace Squared.Render.Text {
 
         private bool NeedIncrementVersion = true;
         private readonly Dictionary<uint, AtlasGlyph> Registry = 
-            new Dictionary<uint, AtlasGlyph>();
+            new Dictionary<uint, AtlasGlyph>(UintComparer.Instance);
         private DenseList<WeakReference<IGlyphSourceChangeListener>> ChangeListeners;
 
         void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) {
@@ -1465,6 +1479,17 @@ namespace Squared.Render.Text {
             OwnsAtlas = ownsAtlas;
             LineSpacing = atlas.CellHeight;
             DPIScaleFactor = 1.0f;
+        }
+
+        public bool GetGlyphId (uint codepoint, out uint glyphId) {
+            if (!Registry.TryGetValue(codepoint, out var glyph)) {
+                glyphId = 0;
+                return false;
+            }
+
+            // HACK
+            glyphId = (uint)(glyph.Index ?? (glyph.X + (Atlas.WidthInCells * glyph.Y)));
+            return true;
         }
 
         public bool GetGlyph (uint ch, out Glyph result) => GetGlyph(ch, 1.0f, null, out result);
@@ -1646,6 +1671,17 @@ namespace Squared.Render.Text {
             }
 
             MakeGlyphForCharacter(ch, characterIndex, out result);
+            return true;
+        }
+
+        public bool GetGlyphId (uint codepoint, out uint glyphId) {
+            var characterIndex = Fields.Characters.BinarySearch((char)codepoint);
+            if (characterIndex < 0) {
+                glyphId = 0;
+                return false;
+            }
+
+            glyphId = (uint)characterIndex;
             return true;
         }
 

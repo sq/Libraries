@@ -261,7 +261,7 @@ namespace Squared.Render.TextLayout2 {
 
             IsInitialized = false;
 
-            WrapCharacters.SortNonRef(StringLayoutEngine.UintComparer.Instance);
+            WrapCharacters.SortNonRef(UintComparer.Instance);
 
             Listener?.Initializing(ref this);
 
@@ -411,7 +411,7 @@ namespace Squared.Render.TextLayout2 {
         }
 
         public ref Span EndSpanByIndex (uint index) {
-            var offset = SpanStack.IndexOf(index, StringLayoutEngine.UintComparer.Instance);
+            var offset = SpanStack.IndexOf(index, UintComparer.Instance);
             if (offset < 0)
                 throw new Exception("Span not active");
 
@@ -1195,10 +1195,10 @@ recalc:
             deadGlyph = false;
 
             if (SplitAtWrapCharactersOnly)
-                isWordWrapPoint = WrapCharacters.BinarySearchNonRef(codepoint, StringLayoutEngine.UintComparer.Instance) >= 0;
+                isWordWrapPoint = WrapCharacters.BinarySearchNonRef(codepoint, UintComparer.Instance) >= 0;
             else
                 isWordWrapPoint = isWhitespace || char.IsSeparator(ch1) ||
-                    MaskCodepoint.HasValue || WrapCharacters.BinarySearchNonRef(codepoint, StringLayoutEngine.UintComparer.Instance) >= 0;
+                    MaskCodepoint.HasValue || WrapCharacters.BinarySearchNonRef(codepoint, UintComparer.Instance) >= 0;
 
             if (codepoint > 255) {
                 // HACK: Attempt to word-wrap at "other" punctuation in non-western character sets, which will include things like commas

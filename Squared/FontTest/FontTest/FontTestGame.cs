@@ -403,6 +403,9 @@ namespace FontTest {
             "Test Test A$(bc)d\n" +
             "Test Test Test $(Abcd)",
 
+            "BA BC BG BM BO BQ BS BT BV BY BZ\n" +
+            "WA WB WC WE WG WM WO WQ WS WT WV WY WZ",
+
             @"In Congress, July 4, 1776
 
 The unanimous Declaration of the thirteen united States of America, When in the Course of human events, it becomes necessary for one people to dissolve the political bands which have connected them with another, and to assume among the powers of the earth, the separate and equal station to which the Laws of Nature and of Nature's God entitle them, a decent respect to the opinions of mankind requires that they should declare the causes which impel them to the separation.

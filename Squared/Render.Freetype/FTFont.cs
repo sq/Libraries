@@ -52,7 +52,7 @@ namespace Squared.Render.Text {
             internal List<IDynamicAtlas> Atlases = new List<IDynamicAtlas>();
             internal FreeTypeFont Font;
             internal SrGlyph[] LowCacheByCodepoint = new SrGlyph[LowCacheSize];
-            internal Dictionary<uint, SrGlyph> CacheByGlyphId = new Dictionary<uint, SrGlyph>();
+            internal Dictionary<uint, SrGlyph> CacheByGlyphId = new Dictionary<uint, SrGlyph>(UintComparer.Instance);
             internal float _SizePoints;
             internal int _Version;
             internal bool? _SDF;
@@ -394,6 +394,8 @@ namespace Squared.Render.Text {
                 return PopulateGlyphCache(codepoint, nullableDefaultColor, out glyph);
             }
 
+            public bool GetGlyphId (uint codepoint, out uint glyphId) => Font.GetGlyphId(codepoint, out glyphId);
+
             private void BuildGlyph (
                 uint index, uint codepoint, Color? defaultColor, out Glyph glyph
             ) {
@@ -648,7 +650,7 @@ namespace Squared.Render.Text {
         private uint _CachedResolution;
         private Face _CachedFace;
         private FTSize _CachedSize;
-        private Dictionary<uint, uint> _GlyphIdForCodepointCache = new Dictionary<uint, uint>();
+        private Dictionary<uint, uint> _GlyphIdForCodepointCache = new Dictionary<uint, uint>(UintComparer.Instance);
 
         private FTSize GetFTSize (float sizePoints, uint resolution) {
             if (
@@ -753,7 +755,7 @@ namespace Squared.Render.Text {
         private MipGenerator.WithGammaRamp MipGen;
         private HashSet<FontSize> Sizes = new HashSet<FontSize>(new ReferenceComparer<FontSize>());
 
-        public Dictionary<uint, Color> DefaultGlyphColors = new Dictionary<uint, Color>();
+        public Dictionary<uint, Color> DefaultGlyphColors = new Dictionary<uint, Color>(UintComparer.Instance);
 
         public float VerticalOffset;
 

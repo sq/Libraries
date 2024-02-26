@@ -12,25 +12,25 @@ using Squared.Util;
 using Squared.Util.Text;
 
 namespace Squared.Render.Text {
-    public struct StringLayoutEngine : IDisposable {
-        internal sealed class UintComparer : IComparer<uint>, IEqualityComparer<uint> {
-            public static readonly UintComparer Instance = new UintComparer();
+    public sealed class UintComparer : IComparer<uint>, IEqualityComparer<uint> {
+        public static readonly UintComparer Instance = new UintComparer();
 
-            public int Compare (uint x, uint y) {
-                unchecked {
-                    return (int)x - (int)y;
-                }
-            }
-
-            public bool Equals (uint x, uint y) {
-                return x == y;
-            }
-
-            public int GetHashCode (uint obj) {
-                return obj.GetHashCode();
+        public int Compare (uint x, uint y) {
+            unchecked {
+                return (int)x - (int)y;
             }
         }
 
+        public bool Equals (uint x, uint y) {
+            return x == y;
+        }
+
+        public int GetHashCode (uint obj) {
+            return obj.GetHashCode();
+        }
+    }
+    
+    public struct StringLayoutEngine : IDisposable {
         public DenseList<LayoutMarker> Markers;
         public DenseList<LayoutHitTest> HitTests;
         public DenseList<uint> WordWrapCharacters;
@@ -882,12 +882,9 @@ namespace Squared.Render.Text {
                     var temp = i + 1;
                     DecodeCodepoint(text, ref temp, l, out _, out _, out var codepoint2);
                     // FIXME: Also do adjustment for next glyph!
-                    // FIXME: Cache the result of this GetGlyph call and use it next iteration to reduce CPU usage
-                    if (
-                        font.GetGlyph(codepoint2, out var glyph2) &&
-                        (glyph2.KerningProvider == glyph.KerningProvider)
-                    ) {
-                        hasKerningNow = hasKerningNext = glyph.KerningProvider.TryGetKerning(glyph.GlyphId, glyph2.GlyphId, ref thisKerning, ref nextKerning);
+                    if (font.GetGlyphId(codepoint2, out var glyphId2)) {
+                        hasKerningNow = hasKerningNext = 
+                            glyph.KerningProvider.TryGetKerning(glyph.GlyphId, glyphId2, ref thisKerning, ref nextKerning);
                     }
                 }
 
