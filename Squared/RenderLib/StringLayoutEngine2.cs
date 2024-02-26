@@ -240,7 +240,18 @@ namespace Squared.Render.TextLayout2 {
         public float MaximumHeight;
         public float MaxExpansionPerSpace;
 
-        public Pair<int>? MarkedRange;
+        private Pair<int> _MarkedRange;
+        public Pair<int>? MarkedRange {
+            get => _MarkedRange.First == int.MaxValue
+                ? null
+                : _MarkedRange;
+            set {
+                if (value == null)
+                    _MarkedRange = new Pair<int>(int.MaxValue, int.MaxValue);
+                else
+                    _MarkedRange = value.Value;
+            }
+        }
         public Vector2? HitTestLocation;
 
         // Output
@@ -429,10 +440,13 @@ namespace Squared.Render.TextLayout2 {
         }
 
         private void UpdateMarkedRange () {
-            if (MarkedRange?.First == CharIndex)
+            if (_MarkedRange.First == int.MaxValue)
+                return;
+
+            if (_MarkedRange.First == CharIndex)
                 MarkedRangeSpanIndex = BeginSpan(true).Index;
 
-            if (MarkedRange?.Second == CharIndex) {
+            if (_MarkedRange.Second == CharIndex) {
                 if (MarkedRangeSpanIndex != uint.MaxValue) {
                     EndSpan(MarkedRangeSpanIndex);
                     SpanStack.Remove(MarkedRangeSpanIndex);
@@ -474,18 +488,18 @@ namespace Squared.Render.TextLayout2 {
 
                 UpdateMarkedRange();
 
-                DecodeCodepoint(text, ref i, l, out char ch1, out int currentCodepointSize, out uint codepoint);
+                var codepoint = DecodeCodepoint(text, ref i, l, out char ch1, out int currentCodepointSize);
                 if (currentCodepointSize == 2)
                     CharIndex++;
                 if (codepoint == TerminatorCodepoint)
                     SuppressLayoutForLimit();
                 codepoint = MaskCodepoint ?? codepoint;
 
-                var isTab = (ch1 == '\t');
+                var isTab = ch1 == '\t';
                 if (isTab)
                     codepoint = ch1 = ' ';
 
-                AnalyzeWhitespace(
+                AnalyzeCharacter(
                     ch1, codepoint, out bool lineBreak, out bool deadGlyph, out var category
                 );
 
@@ -538,7 +552,7 @@ namespace Squared.Render.TextLayout2 {
                 // FIXME: Kerning across multiple AppendText calls
                 if (!appliedLigature && (glyph.KerningProvider != null) && (i < l - 2)) {
                     var temp = i + 1;
-                    DecodeCodepoint(text, ref temp, l, out _, out _, out var codepoint2);
+                    var codepoint2 = DecodeCodepoint(text, ref temp, l, out _, out _);
                     // FIXME: Also do adjustment for next glyph!
                     // FIXME: Cache the result of this GetGlyph call and use it next iteration to reduce CPU usage
                     var glyphId2 = glyphSource.GetGlyphIndex(codepoint2);
@@ -1196,7 +1210,7 @@ recalc:
             BreakLimit = CharacterLimit = LineLimit = int.MaxValue;
         }
 
-        private void AnalyzeWhitespace (char ch1, uint codepoint, out bool lineBreak, out bool deadGlyph, out FragmentCategory category) {
+        private void AnalyzeCharacter (char ch1, uint codepoint, out bool lineBreak, out bool deadGlyph, out FragmentCategory category) {
             bool isWhitespace = Unicode.IsWhiteSpace(codepoint) && !MaskCodepoint.HasValue,
                 isWordWrapPoint, isNonPrintable = codepoint < 32;
             lineBreak = false;
@@ -1211,6 +1225,7 @@ recalc:
             if (codepoint > 255) {
                 // HACK: Attempt to word-wrap at "other" punctuation in non-western character sets, which will include things like commas
                 // This is less than ideal but .NET does not appear to expose the classification tables needed to do this correctly
+                // FIXME: This won't work for surrogate pairs, no public API is exposed for them
                 var uniCategory = CharUnicodeInfo.GetUnicodeCategory(ch1);
                 if (uniCategory == UnicodeCategory.OtherPunctuation)
                     isWordWrapPoint = true;
@@ -1256,22 +1271,31 @@ recalc:
             }
         }
 
-        public static void DecodeCodepoint (in AbstractString text, ref int i, int l, out char ch1, out int currentCodepointSize, out uint codepoint) {
+        public static uint DecodeCodepoint (in AbstractString text, ref int i, int l, out char ch1, out int currentCodepointSize) {
             char ch2 = i < (l - 1)
                     ? text[i + 1]
                     : '\0';
             ch1 = text[i];
             currentCodepointSize = 1;
-            if (Unicode.DecodeSurrogatePair(ch1, ch2, out codepoint)) {
+
+            if (char.IsHighSurrogate(ch1)) {
+                // FIXME: Detect missing low surrogate and generate replacement char
                 currentCodepointSize = 2;
                 i++;
-            } else if (ch1 == '\r') {
+                return (uint)char.ConvertToUtf32(ch1, ch2);
+            } else if (char.IsLowSurrogate(ch1))
+                // Corrupt text: unpaired low surrogate
+                return 0xFFFD;
+
+            if (ch1 == '\r') {
                 if (ch2 == '\n') {
                     currentCodepointSize = 2;
                     ch1 = ch2;
                     i++;
                 }
             }
+
+            return ch1;
         }
 
         public void Dispose () {

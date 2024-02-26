@@ -98,6 +98,8 @@ namespace Squared.Render.Text {
                 Font = font;
                 SizePoints = sizePoints;
                 Font.Sizes.Add(this);
+                for (int i = 0; i < LowCacheByCodepoint.Length; i++)
+                    LowCacheByCodepoint[i].GlyphIndex = uint.MaxValue;
             }
 
 
@@ -331,7 +333,7 @@ namespace Squared.Render.Text {
                 float maxWidth = -1;
 
                 for (uint i = FirstDigit; i <= LastDigit; i++) {
-                    if (LowCacheByCodepoint[i].Texture.IsInitialized)
+                    if (LowCacheByCodepoint[i].GlyphIndex < uint.MaxValue)
                         continue;
                     if (Font.DefaultGlyphColors.TryGetValue(i, out defaultColor))
                         nullableDefaultColor = defaultColor;
@@ -370,11 +372,11 @@ namespace Squared.Render.Text {
                 }
 
                 if (codepoint < LowCacheSize) {
-                    if (LowCacheByCodepoint[codepoint].Texture.IsInitialized) {
+                    glyph = LowCacheByCodepoint[codepoint];
+                    if (glyph.GlyphIndex < uint.MaxValue) {
                         if (NeedNormalization)
                             ApplyWidthNormalization(Font.EqualizeNumberWidths);
 
-                        glyph = LowCacheByCodepoint[codepoint];
                         return true;
                     }
                 } else if ((codepoint == 0x2007) && NeedNormalization)
@@ -524,6 +526,8 @@ namespace Squared.Render.Text {
                     atlas.Clear();
 
                 Array.Clear(LowCacheByCodepoint, 0, LowCacheSize);
+                for (int i = 0; i < LowCacheByCodepoint.Length; i++)
+                    LowCacheByCodepoint[i].GlyphIndex = uint.MaxValue;
                 CacheByGlyphId.Clear();
 
                 _LineSpacing = null;
@@ -554,6 +558,9 @@ namespace Squared.Render.Text {
 
                 Font.Sizes.Remove(this);
                 Array.Clear(LowCacheByCodepoint, 0, LowCacheSize);
+                for (int i = 0; i < LowCacheByCodepoint.Length; i++)
+                    LowCacheByCodepoint[i].GlyphIndex = uint.MaxValue;
+
                 CacheByGlyphId.Clear();
                 foreach (var atlas in Atlases)
                     atlas.Dispose();
@@ -599,7 +606,7 @@ namespace Squared.Render.Text {
                     if (i < l) {
                         // Record codepoint sizes so we know how many characters we ate once we find
                         //  a ligature, if any
-                        StringLayoutEngine2.DecodeCodepoint(text, ref i, l, out _, out codepointSizes[k], out var codepoint);
+                        var codepoint = StringLayoutEngine2.DecodeCodepoint(text, ref i, l, out _, out codepointSizes[k]);
                         glyphs[k] = Font.GetGlyphIndex(codepoint);
                     } else {
                         glyphs[k] = 0;
@@ -909,6 +916,7 @@ namespace Squared.Render.Text {
             (GetGlyphIndex('a') <= 0) && 
             (GetGlyphIndex('A') <= 0);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public uint GetGlyphIndex (uint codepoint) {
             if (codepoint < 256)
                 return _GlyphIdForCodepointLowCache[codepoint];
@@ -916,7 +924,11 @@ namespace Squared.Render.Text {
             if (_GlyphIdForCodepointCache.TryGetValue(codepoint, out var glyphId))
                 return glyphId;
 
-            glyphId = Face.GetCharIndex(codepoint);
+            return GetGlyphIndex_Slow(codepoint);
+        }
+
+        private uint GetGlyphIndex_Slow (uint codepoint) {
+            var glyphId = Face.GetCharIndex(codepoint);
             _GlyphIdForCodepointCache[codepoint] = glyphId;
             return glyphId;
         }
