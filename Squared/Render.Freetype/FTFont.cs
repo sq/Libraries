@@ -320,6 +320,8 @@ namespace Squared.Render.Text {
             const uint FirstDigit = '0', LastDigit = '9';
             private bool NeedNormalization = true;
             private SizeMetrics _CachedMetrics;
+            private float _CachedXDesignUnitsToPx,
+                _CachedYDesignUnitsToPx;
 
             private void ApplyWidthNormalization (bool normalizeNumberWidths) {
                 NeedNormalization = false;
@@ -343,10 +345,13 @@ namespace Squared.Render.Text {
 
                 // Figure space (specified to be the same size as a number)
                 if (PopulateGlyphCache(0x2007, null, out var figureSpace)) {
-                    var padding = maxWidth - figureSpace.WidthIncludingBearing;
-                    figureSpace.LeftSideBearing += (padding / 2f);
-                    figureSpace.RightSideBearing += (padding / 2f);
-                    CacheByGlyphId[figureSpace.GlyphId] = figureSpace;
+                    var glyphIdForRegularSpace = GetGlyphIndex(' ');
+                    if (glyphIdForRegularSpace != figureSpace.GlyphIndex) {
+                        var padding = maxWidth - figureSpace.WidthIncludingBearing;
+                        figureSpace.LeftSideBearing += (padding / 2f);
+                        figureSpace.RightSideBearing += (padding / 2f);
+                        CacheByGlyphId[figureSpace.GlyphIndex] = figureSpace;
+                    }
                 }
 
                 if (normalizeNumberWidths) {
@@ -385,8 +390,8 @@ namespace Squared.Render.Text {
                     return false;
                 }
 
-                Font.GetGlyphId(codepoint, out var glyphId);
-                if (CacheByGlyphId.TryGetValue(glyphId, out glyph)) {
+                var glyphIndex = Font.GetGlyphIndex(codepoint);
+                if (CacheByGlyphId.TryGetValue(glyphIndex, out glyph)) {
                     glyph.DefaultColor = nullableDefaultColor;
                     return true;
                 }
@@ -394,7 +399,7 @@ namespace Squared.Render.Text {
                 return PopulateGlyphCache(codepoint, nullableDefaultColor, out glyph);
             }
 
-            public bool GetGlyphId (uint codepoint, out uint glyphId) => Font.GetGlyphId(codepoint, out glyphId);
+            public uint GetGlyphIndex (uint codepoint) => Font.GetGlyphIndex(codepoint);
 
             private void BuildGlyph (
                 uint index, uint codepoint, Color? defaultColor, out Glyph glyph
@@ -421,6 +426,8 @@ namespace Squared.Render.Text {
                 );
 
                 var sizeMetrics = _CachedMetrics = size.Metrics;
+                _CachedXDesignUnitsToPx = _CachedMetrics.ScaleX.ToSingle() / 64f;
+                _CachedYDesignUnitsToPx = _CachedMetrics.ScaleY.ToSingle() / 64f;
 
                 Font.Face.RenderGlyphEXT(ActualSDF ? RenderMode.VerticalLcd + 1 : RenderMode.Normal);
                 var ftgs = Font.Face.Glyph;
@@ -434,8 +441,6 @@ namespace Squared.Render.Text {
                 var ascender = sizeMetrics.Ascender.ToSingle();
                 var glyphMetrics = ftgs.Metrics;
                 var advance = glyphMetrics.HorizontalAdvance.ToSingle();
-                if (codepoint == '\t')
-                    advance *= Font.TabSize;
 
                 var scaleFactor = 100f / Font.DPIPercent;
 
@@ -455,7 +460,7 @@ namespace Squared.Render.Text {
                         Font.GSUB.HasAnyEntriesForGlyph(index)
                         ? this 
                         : null,
-                    GlyphId = index,
+                    GlyphIndex = index,
                     Character = codepoint,
                     Width = widthMetric,
                     LeftSideBearing = bearingXMetric,
@@ -482,10 +487,7 @@ namespace Squared.Render.Text {
             private bool PopulateGlyphCache (uint codepoint, Color? defaultColor, out Glyph glyph) {
                 uint glyphId;
 
-                if (codepoint == '\t')
-                    glyphId = Font.Face.GetCharIndex(' ');
-                else
-                    glyphId = Font.Face.GetCharIndex(codepoint);
+                glyphId = Font.Face.GetCharIndex(codepoint);
 
                 if (glyphId <= 0) {
                     glyph = default(Glyph);
@@ -569,14 +571,12 @@ namespace Squared.Render.Text {
                 }
 
                 if (found) {
-                    float scaleX = _CachedMetrics.ScaleX.ToSingle() / 64f,
-                        scaleY = _CachedMetrics.ScaleY.ToSingle() / 64f;
-                    thisGlyph.RightSideBearing = value1.XAdvance * scaleX;
-                    thisGlyph.XOffset = value1.XPlacement * scaleX;
-                    thisGlyph.YOffset = value1.YPlacement * scaleY;
-                    nextGlyph.RightSideBearing = value2.XAdvance * scaleX;
-                    nextGlyph.XOffset = value2.XPlacement * scaleX;
-                    nextGlyph.YOffset = value2.YPlacement * scaleY;
+                    thisGlyph.RightSideBearing = value1.XAdvance * _CachedXDesignUnitsToPx;
+                    thisGlyph.XOffset = value1.XPlacement * _CachedXDesignUnitsToPx;
+                    thisGlyph.YOffset = value1.YPlacement * _CachedYDesignUnitsToPx;
+                    nextGlyph.RightSideBearing = value2.XAdvance * _CachedXDesignUnitsToPx;
+                    nextGlyph.XOffset = value2.XPlacement * _CachedXDesignUnitsToPx;
+                    nextGlyph.YOffset = value2.YPlacement * _CachedYDesignUnitsToPx;
                 }
 
                 return found;
@@ -593,14 +593,14 @@ namespace Squared.Render.Text {
                 var codepointSizes = stackalloc int[glyphLimit];
 
                 // Perform a single forward scan to decode following codepoints into our stack buffers
-                glyphs[0] = glyph.GlyphId;
+                glyphs[0] = glyph.GlyphIndex;
                 int i = startOffset + 1;
                 for (var k = 1; k < glyphLimit; k++) {
                     if (i < l) {
                         // Record codepoint sizes so we know how many characters we ate once we find
                         //  a ligature, if any
                         StringLayoutEngine2.DecodeCodepoint(text, ref i, l, out _, out codepointSizes[k], out var codepoint);
-                        Font.GetGlyphId(codepoint, out glyphs[k]);
+                        glyphs[k] = Font.GetGlyphIndex(codepoint);
                     } else {
                         glyphs[k] = 0;
                     }
@@ -609,7 +609,7 @@ namespace Squared.Render.Text {
 
                 foreach (var lookup in gsub.Lookups) {
                     foreach (var st in lookup.SubTables) {
-                        if (!st.TryGetValue((int)glyph.GlyphId, ref subst))
+                        if (!st.TryGetValue((int)glyph.GlyphIndex, ref subst))
                             continue;
 
                         for (var j = 0; j < subst.LigatureCount; j++) {
@@ -650,6 +650,7 @@ namespace Squared.Render.Text {
         private uint _CachedResolution;
         private Face _CachedFace;
         private FTSize _CachedSize;
+        private uint[] _GlyphIdForCodepointLowCache = new uint[256];
         private Dictionary<uint, uint> _GlyphIdForCodepointCache = new Dictionary<uint, uint>(UintComparer.Instance);
 
         private FTSize GetFTSize (float sizePoints, uint resolution) {
@@ -706,7 +707,6 @@ namespace Squared.Render.Text {
             }
         }
         public bool SDF;
-        public int TabSize { get; set; }
 
         /// <summary>
         /// If enabled, the 0-9 digits will have padding added to make them the same width
@@ -839,12 +839,13 @@ namespace Squared.Render.Text {
             MipMapping = true;
             GlyphMargin = 0;
             DefaultSize = new FontSize(this, 12);
-            TabSize = 4;
             sRGB = false;
 
             if (Face.GlyphCount <= 0)
                 throw new Exception("Loaded font contains no glyphs or is corrupt.");
 
+            for (uint i = 0; i < _GlyphIdForCodepointLowCache.Length; i++)
+                _GlyphIdForCodepointLowCache[i] = Face.GetCharIndex(i);
         }
 
         public IEnumerable<uint> SupportedCodepoints {
@@ -903,16 +904,21 @@ namespace Squared.Render.Text {
         }
 
         public bool IsIconFont =>
-            !GetGlyphId((uint)'0', out _) && !GetGlyphId((uint)'9', out _) &&
-            !GetGlyphId((uint)'a', out _) && !GetGlyphId((uint)'A', out _);
+            (GetGlyphIndex('0') <= 0) && 
+            (GetGlyphIndex('9') <= 0) &&
+            (GetGlyphIndex('a') <= 0) && 
+            (GetGlyphIndex('A') <= 0);
 
-        public bool GetGlyphId (uint codepoint, out uint glyphId) {
-            if (_GlyphIdForCodepointCache.TryGetValue(codepoint, out glyphId))
-                return glyphId > 0;
+        public uint GetGlyphIndex (uint codepoint) {
+            if (codepoint < 256)
+                return _GlyphIdForCodepointLowCache[codepoint];
+
+            if (_GlyphIdForCodepointCache.TryGetValue(codepoint, out var glyphId))
+                return glyphId;
 
             glyphId = Face.GetCharIndex(codepoint);
             _GlyphIdForCodepointCache[codepoint] = glyphId;
-            return (glyphId > 0);
+            return glyphId;
         }
 
         public bool GetGlyph (uint ch, out SrGlyph glyph) {

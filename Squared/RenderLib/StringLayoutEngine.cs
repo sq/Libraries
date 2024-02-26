@@ -882,10 +882,9 @@ namespace Squared.Render.Text {
                     var temp = i + 1;
                     DecodeCodepoint(text, ref temp, l, out _, out _, out var codepoint2);
                     // FIXME: Also do adjustment for next glyph!
-                    if (font.GetGlyphId(codepoint2, out var glyphId2)) {
-                        hasKerningNow = hasKerningNext = 
-                            glyph.KerningProvider.TryGetKerning(glyph.GlyphId, glyphId2, ref thisKerning, ref nextKerning);
-                    }
+                    var glyphId2 = font.GetGlyphIndex(codepoint2);
+                    hasKerningNow = hasKerningNext = 
+                        glyph.KerningProvider.TryGetKerning(glyph.GlyphIndex, glyphId2, ref thisKerning, ref nextKerning);
                 }
 
                 if (hasKerningNow) {

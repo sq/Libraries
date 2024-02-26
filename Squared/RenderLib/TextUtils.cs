@@ -99,6 +99,7 @@ namespace Squared.Render.Text {
         private byte _Alignment;
         private int _LineLimit;
         private int _LineBreakLimit;
+        private int _TabSize;
         private char? _ReplacementCharacter;
         private char? _TerminatorCharacter;
         private uint[] _WordWrapCharacters;
@@ -177,6 +178,7 @@ namespace Squared.Render.Text {
             ReverseOrder = false;
             LineLimit = int.MaxValue;
             LineBreakLimit = int.MaxValue;
+            TabSize = 4;
             MeasureOnly = false;
             RichText = false;
             HideOverflow = false;
@@ -596,6 +598,18 @@ namespace Squared.Render.Text {
         }
 
         /// <summary>
+        /// Tab characters (\t) will have a width of this many spaces
+        /// </summary>
+        public int TabSize {
+            get {
+                return _TabSize;
+            }
+            set {
+                InvalidatingValueAssignment(ref _TabSize, value);
+            }
+        }
+
+        /// <summary>
         /// After this many lines (after wrapping) are laid out, any further text will be hidden
         /// </summary>
         public int LineLimit {
@@ -944,6 +958,7 @@ namespace Squared.Render.Text {
                 Alignment = (HorizontalAlignment)_Alignment,
                 LineLimit = (measureOnly.HasValue ? measureOnly.Value.LineLimit : _LineLimit) ?? int.MaxValue,
                 BreakLimit = (measureOnly.HasValue ? measureOnly.Value.LineBreakLimit : _LineBreakLimit) ?? int.MaxValue,
+                TabSize = _TabSize,
                 MeasureOnly = measureOnly.HasValue || MeasureOnly,
                 MaskCodepoint = _ReplacementCharacter,
                 SplitAtWrapCharactersOnly = SplitAtWrapCharactersOnly,
@@ -1258,14 +1273,14 @@ namespace Squared.Render.Text {
             return false;
         }
 
-        public bool GetGlyphId (uint codepoint, out uint glyphId) {
+        public uint GetGlyphIndex (uint codepoint) {
             foreach (var item in Sources) {
-                if (item.GetGlyphId(codepoint, out glyphId))
-                    return true;
+                var result = item.GetGlyphIndex(codepoint);
+                if (result > 0)
+                    return result;
             }
 
-            glyphId = 0;
-            return false;
+            return 0;
         }
 
         void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) {
@@ -1320,7 +1335,7 @@ namespace Squared.Render.Text {
     }
 
     public interface IGlyphSource {
-        bool GetGlyphId (uint codepoint, out uint glyphId);
+        uint GetGlyphIndex (uint codepoint);
         bool GetGlyph (uint codepoint, out Glyph result);
         float LineSpacing { get; }
         float DPIScaleFactor { get; }
@@ -1445,7 +1460,7 @@ namespace Squared.Render.Text {
                 return Source.GetGlyph(ch, Scale, LineSpacing, out result);
             }
 
-            public bool GetGlyphId (uint codepoint, out uint glyphId) => Source.GetGlyphId(codepoint, out glyphId);
+            public uint GetGlyphIndex (uint codepoint) => Source.GetGlyphIndex(codepoint);
 
             void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) =>
                 ((IGlyphSource)Source).RegisterForChangeNotification(listener);
@@ -1481,15 +1496,13 @@ namespace Squared.Render.Text {
             DPIScaleFactor = 1.0f;
         }
 
-        public bool GetGlyphId (uint codepoint, out uint glyphId) {
-            if (!Registry.TryGetValue(codepoint, out var glyph)) {
-                glyphId = 0;
-                return false;
-            }
+        public uint GetGlyphIndex (uint codepoint) {
+            if (!Registry.TryGetValue(codepoint, out var glyph))
+                return 0;
 
             // HACK
-            glyphId = (uint)(glyph.Index ?? (glyph.X + (Atlas.WidthInCells * glyph.Y)));
-            return true;
+            var result = (uint)(glyph.Index ?? (glyph.X + (Atlas.WidthInCells * glyph.Y)) + 1);
+            return result;
         }
 
         public bool GetGlyph (uint ch, out Glyph result) => GetGlyph(ch, 1.0f, null, out result);
@@ -1512,7 +1525,7 @@ namespace Squared.Render.Text {
             scale *= glyph.Scale;
 
             result = new Glyph {
-                GlyphId = (uint)(glyph.Index ?? 0),
+                GlyphIndex = (uint)(glyph.Index ?? 0),
                 Texture = Atlas.Texture,
                 BoundsInTexture = cell.Bounds,
                 Character = glyph.Character,
@@ -1644,7 +1657,7 @@ namespace Squared.Render.Text {
             var rect = Fields.GlyphRectangles[characterIndex];
 
             glyph = new Glyph {
-                GlyphId = (uint)characterIndex,
+                GlyphIndex = (uint)characterIndex,
                 Character = ch,
                 Texture = Texture,
                 BoundsInTexture = Texture.BoundsFromRectangle(in rect),
@@ -1674,15 +1687,13 @@ namespace Squared.Render.Text {
             return true;
         }
 
-        public bool GetGlyphId (uint codepoint, out uint glyphId) {
+        public uint GetGlyphIndex (uint codepoint) {
             var characterIndex = Fields.Characters.BinarySearch((char)codepoint);
-            if (characterIndex < 0) {
-                glyphId = 0;
-                return false;
-            }
+            if (characterIndex < 0)
+                return 0;
 
-            glyphId = (uint)characterIndex;
-            return true;
+            // HACK: 1 offset since 0 is invalid according to freetype rules
+            return (uint)characterIndex + 1;
         }
 
         public SpriteFontGlyphSource (SpriteFont font) {
@@ -1705,7 +1716,7 @@ namespace Squared.Render.Text {
     }
 
     public struct Glyph {
-        public uint GlyphId;
+        public uint GlyphIndex;
         public AbstractTextureReference Texture;
         public uint Character;
         public Bounds BoundsInTexture;

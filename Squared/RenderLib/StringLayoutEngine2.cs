@@ -214,6 +214,7 @@ namespace Squared.Render.TextLayout2 {
             // FIXME: These seem buggy
             LineLimit, 
             BreakLimit;
+        public int TabSize;
 
         public Vector2 Position;
         private Vector2 SpacingMinusOne, ScaleMinusOne;
@@ -480,6 +481,10 @@ namespace Squared.Render.TextLayout2 {
                     SuppressLayoutForLimit();
                 codepoint = MaskCodepoint ?? codepoint;
 
+                var isTab = (ch1 == '\t');
+                if (isTab)
+                    codepoint = ch1 = ' ';
+
                 AnalyzeWhitespace(
                     ch1, codepoint, out bool lineBreak, out bool deadGlyph, out var category
                 );
@@ -536,9 +541,8 @@ namespace Squared.Render.TextLayout2 {
                     DecodeCodepoint(text, ref temp, l, out _, out _, out var codepoint2);
                     // FIXME: Also do adjustment for next glyph!
                     // FIXME: Cache the result of this GetGlyph call and use it next iteration to reduce CPU usage
-                    if (glyphSource.GetGlyphId(codepoint2, out var glyphId2)) {
-                        hasKerningNow = hasKerningNext = glyph.KerningProvider.TryGetKerning(glyph.GlyphId, glyphId2, ref thisKerning, ref nextKerning);
-                    }
+                    var glyphId2 = glyphSource.GetGlyphIndex(codepoint2);
+                    hasKerningNow = hasKerningNext = glyph.KerningProvider.TryGetKerning(glyph.GlyphIndex, glyphId2, ref thisKerning, ref nextKerning);
                 }
 
                 if (hasKerningNow) {
@@ -553,6 +557,13 @@ namespace Squared.Render.TextLayout2 {
                 hasKerningNext = false;
 
                 bool allowBreaking = true;
+
+                if (isTab) {
+                    glyph.LeftSideBearing *= TabSize;
+                    glyph.XOffset *= TabSize;
+                    glyph.Width *= TabSize;
+                    glyph.RightSideBearing *= TabSize;
+                }
 
 recalc:
                 ref var line = ref CurrentLine;
