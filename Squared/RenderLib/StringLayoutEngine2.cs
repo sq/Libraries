@@ -1031,7 +1031,7 @@ recalc:
                     }
                 }
 
-                float totalWidth = constrainedSize.X - line.Crush - line.Inset;
+                float totalWidth = constrainedSize.X - line.Crush - line.Inset - line.Location.X;
                 float y = Position.Y + line.Location.Y;
                 float whitespace = totalWidth - line.Width, gapWhitespace = 0f;
 
