@@ -319,6 +319,8 @@ namespace FontTest {
             Text.MaxExpansionPerSpace = LimitExpansion.Value ? 16 : (float?)null;
             Text.StopAtY = Text.HideOverflow ? BottomRight.Y - TopLeft.Y : null;
             Text.WrapIndentation = Indent.Value ? 64 : 0;
+            Text.XOffsetOfFirstLine = Indent.Value ? 16 : 0;
+            Text.XOffsetOfNewLine = Indent.Value ? 32 : 0;
 
             ir.RasterizeRectangle(TopLeft, BottomRight, 0f, 1f, Color.Transparent, Color.Transparent, Color.Red);
 
@@ -407,7 +409,7 @@ namespace FontTest {
             "Test Test A$(bc)d\n" +
             "Test Test Test $(Abcd)",
 
-            "100!\r\n$[scale:0.35]CRITICAL$[]\r\n",
+            "\u2007100!\r\n$[scale:0.35]CRITICAL$[]\r\n",
 
             @"In Congress, July 4, 1776
 

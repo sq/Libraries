@@ -282,6 +282,7 @@ namespace Squared.Render.TextLayout2 {
             CurrentLine = new Line {
                 Location = new Vector2(InitialIndentation, 0f),
             };
+            UnconstrainedLineSize = new Vector2(InitialIndentation, 0f);
             Y = 0f;
             CurrentFragment = default;
             MarkedRangeSpanIndex = uint.MaxValue;
@@ -1160,7 +1161,7 @@ recalc:
             for (uint i = 0; i < LineIndex; i++) {
                 ref var line = ref Buffers.Line(i);
                 // Omit trailing whitespace.
-                float w = line.Width + line.Inset + line.Crush;
+                float w = line.Location.X + line.Width + line.Inset + line.Crush;
                 if (IncludeTrailingWhitespace)
                     w += line.TrailingWhitespace;
                 constrainedSize.X = Math.Max(constrainedSize.X, w);
