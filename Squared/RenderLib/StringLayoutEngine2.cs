@@ -496,12 +496,13 @@ namespace Squared.Render.TextLayout2 {
                 codepoint = MaskCodepoint ?? codepoint;
 
                 var isTab = ch1 == '\t';
-                if (isTab)
-                    codepoint = ch1 = ' ';
-
                 AnalyzeCharacter(
                     ch1, codepoint, out bool lineBreak, out bool deadGlyph, out var category
                 );
+
+                // Do this after AnalyzeCharacter so that we don't break custom wrap characters
+                if (isTab)
+                    codepoint = ch1 = ' ';
 
                 deadGlyph = !glyphSource.GetGlyph(codepoint, out var glyph);
 
@@ -577,6 +578,10 @@ namespace Squared.Render.TextLayout2 {
                     glyph.XOffset *= TabSize;
                     glyph.Width *= TabSize;
                     glyph.RightSideBearing *= TabSize;
+                } else if (lineBreak) {
+                    // HACK: Suppress spacing for line breaks, some fonts have them and it messes up
+                    //  the position of text after a line break
+                    glyph = default;
                 }
 
 recalc:
@@ -605,7 +610,7 @@ recalc:
 
                 // MonoGame#1355 rears its ugly head: If a character with negative left-side bearing is at the start of a line,
                 //  we need to compensate for the bearing to prevent the character from extending outside of the layout bounds
-                if (line.DrawCallCount == 0) {
+                if (ColIndex <= 0) {
                     if (glyph.LeftSideBearing < 0)
                         glyph.LeftSideBearing = 0;
                 }
@@ -691,6 +696,8 @@ recalc:
                 UnconstrainedLineSize.X += w;
                 UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, h);
 
+                if (!suppressThisCharacter && !lineBreak)
+                    ColIndex++;
                 CharIndex++;
             }
         }
@@ -871,6 +878,8 @@ recalc:
                 Location = new Vector2(indentation, Y),
                 FirstFragmentIndex = FragmentIndex,
             };
+
+            ColIndex = 0;
 
             LineLimit--;
             if (LineLimit <= 0)
