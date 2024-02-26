@@ -184,8 +184,7 @@ namespace FontTest {
                     '\\', '/', ':', ','
                 },
                 Listener = this,
-                ExtraLineBreakSpacing = -12f,
-                MaxExpansionPerSpace = 8f,
+                // ExtraLineBreakSpacing = -12f,
             };
 
             for (int i = 0; i < Images.Length; i++)
@@ -295,9 +294,11 @@ namespace FontTest {
             newSize = Arithmetic.Clamp(9 + (ms.ScrollWheelValue / 100f), 4, 200);
             var font = ((FreeTypeFont)LatinFont);
             var sfont = ((FreeTypeFont.FontSize)SmallLatinFont);
+            var ufont = (FreeTypeFont)UniFont;
             if (newSize != font.SizePoints) {
                 font.SizePoints = newSize;
                 sfont.SizePoints = newSize * 0.75f;
+                ufont.SizePoints = newSize * 2.0f;
                 Text.Invalidate();
             }
 
@@ -319,7 +320,7 @@ namespace FontTest {
             Text.StopAtY = Text.HideOverflow ? BottomRight.Y - TopLeft.Y : null;
             Text.WrapIndentation = Indent.Value ? 64 : 0;
 
-            ir.OutlineRectangle(new Bounds(TopLeft, BottomRight), Color.Red);
+            ir.RasterizeRectangle(TopLeft, BottomRight, 0f, 1f, Color.Transparent, Color.Transparent, Color.Red);
 
             var layout = Text.Get();
 
@@ -339,8 +340,8 @@ namespace FontTest {
             m.Parameters.ShadowColor.SetValue(Color.Red.ToVector4());
             m.Parameters.ShadowOffset.SetValue(new Vector2(1f, 1f));
 
-            ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.Size), Color.Yellow * 0.75f);
-            ir.OutlineRectangle(Bounds.FromPositionAndSize(Text.Position, layout.UnconstrainedSize), Color.Blue * 0.75f);
+            ir.RasterizeRectangle(Text.Position, Text.Position + layout.Size, 0f, 1f, Color.Transparent, Color.Transparent,Color.Yellow * 0.75f);
+            ir.RasterizeRectangle(Text.Position, Text.Position + layout.UnconstrainedSize, 0f, 1f, Color.Transparent, Color.Transparent,Color.Blue * 0.75f);
             ir.DrawMultiple(layout, material: m, blendState: BlendState.NonPremultiplied, samplerState: RenderStates.Text, userData: new Vector4(0, 0, 0, 0.66f));
 
             if (true) {
@@ -406,7 +407,7 @@ namespace FontTest {
             "Test Test A$(bc)d\n" +
             "Test Test Test $(Abcd)",
 
-            "100!\r\n$[scale:0.45]CRITICAL$[]\r\n",
+            "100!\r\n$[scale:0.35]CRITICAL$[]\r\n",
 
             @"In Congress, July 4, 1776
 

@@ -176,8 +176,8 @@ namespace Squared.Render.TextLayout2 {
 
         // Internal state
         Vector2 FragmentOffset;
-        float Y;
-        Vector2 UnconstrainedSize, UnconstrainedLineSize;
+        float Y, UnconstrainedY, UnconstrainedMaxWidth, UnconstrainedMaxY;
+        Vector2 UnconstrainedLineSize;
         uint ColIndex, LineIndex, CharIndex, 
             DrawCallIndex, SpanIndex, FragmentIndex,
             BoxIndex;
@@ -698,8 +698,6 @@ recalc:
                     HitTestResult.LeaningRight = HitTestLocation.Value.X >= ((x1 + x2) * 0.5f);
                 }
 
-                UnconstrainedLineSize.X += w;
-
                 if (!suppressThisCharacter && !lineBreak)
                     ColIndex++;
                 CharIndex++;
@@ -748,13 +746,11 @@ recalc:
         }
 
         private void PerformLineBreak (float defaultLineSpacing) {
-            var height = UnconstrainedLineSize.Y == 0f ? defaultLineSpacing : UnconstrainedLineSize.Y;
-            UnconstrainedSize.X = Math.Max(UnconstrainedSize.X, UnconstrainedLineSize.X);
-            UnconstrainedSize.Y += height + ExtraBreakSpacing;
-            UnconstrainedLineSize = default;
             FinishFragment();
             if (CurrentLine.Height == 0f)
                 CurrentLine.Height = defaultLineSpacing;
+            if (UnconstrainedLineSize.Y == 0f)
+                UnconstrainedLineSize.Y = defaultLineSpacing;
             FinishLine(true);
         }
 
@@ -791,6 +787,7 @@ recalc:
 
             switch (fragment.Category) {
                 case FragmentCategory.Regular:
+                    UnconstrainedLineSize.X += fragment.Width; 
                     line.Width += fragment.Width + line.TrailingWhitespace;
                     line.TrailingWhitespace = 0f;
                     break;
@@ -800,15 +797,18 @@ recalc:
                 case FragmentCategory.WrapPoint:
                     if (SplitAtWrapCharactersOnly)
                         line.GapCount++;
+                    UnconstrainedLineSize.X += fragment.Width;
                     line.Width += fragment.Width + line.TrailingWhitespace;
                     line.TrailingWhitespace = 0f;
                     break;
                 case FragmentCategory.Whitespace:
                     if (!SplitAtWrapCharactersOnly)
                         line.GapCount++;
+                    UnconstrainedLineSize.X += fragment.Width;
                     line.TrailingWhitespace += fragment.Width;
                     break;
                 case FragmentCategory.NonPrintable:
+                    UnconstrainedLineSize.X += fragment.Width;
                     line.Width += fragment.Width;
                     break;
             }
@@ -840,6 +840,7 @@ recalc:
 
         private void IncreaseLineHeight (ref Line line, ref Fragment fragment) {
             UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, fragment.Height);
+
             if (line.Height >= fragment.Height)
                 return;
 
@@ -876,6 +877,13 @@ recalc:
             if (!SuppressUntilEnd)
                 Y += CurrentLine.Height + (forLineBreak ? ExtraBreakSpacing : 0f);
 
+            UnconstrainedMaxWidth = Math.Max(UnconstrainedLineSize.X, UnconstrainedMaxWidth);
+            if (forLineBreak) {
+                UnconstrainedMaxY = Math.Max(UnconstrainedMaxY, UnconstrainedY + UnconstrainedLineSize.Y);
+                UnconstrainedY += UnconstrainedLineSize.Y + ExtraBreakSpacing;
+                UnconstrainedLineSize = new Vector2(BreakIndentation, 0f);
+            }
+
             float indentation = forLineBreak ? BreakIndentation : WrapIndentation;
             LineIndex++;
             CurrentLine = new Line {
@@ -911,6 +919,7 @@ recalc:
                 case ImageHorizontalAlignment.Inline:
                     fragment.Width += (margin.X * 2);
                     line.Width += fragment.Width;
+                    UnconstrainedLineSize.X += fragment.Width;
                     break;
                 case ImageHorizontalAlignment.Left:
                     line.Inset += width + margin.X;
@@ -1181,9 +1190,8 @@ recalc:
                 EndCurrentSpan();
 
             FinishFragment();
-            UnconstrainedSize.X = Math.Max(UnconstrainedSize.X, UnconstrainedLineSize.X);
-            UnconstrainedSize.Y += UnconstrainedLineSize.Y;
             FinishLine(false);
+            UnconstrainedMaxY = Math.Max(UnconstrainedMaxY, UnconstrainedY + UnconstrainedLineSize.Y);
 
             Listener?.Finishing(ref this);
 
@@ -1210,7 +1218,7 @@ recalc:
             }
 
             result = new StringLayout(
-                Position, constrainedSize, UnconstrainedSize, 
+                Position, constrainedSize, new Vector2(UnconstrainedMaxWidth, UnconstrainedMaxY), 
                 Buffers.Line(0).Height,
                 MeasureOnly ? default : Buffers.DrawCall(0).EstimateDrawBounds(),
                 MeasureOnly ? default : Buffers.DrawCall(lastDrawCallIndex).EstimateDrawBounds(),
