@@ -377,8 +377,9 @@ namespace Squared.Render.Text {
                         if (NeedNormalization)
                             ApplyWidthNormalization(Font.EqualizeNumberWidths);
 
-                        return true;
-                    }
+                        return glyph.GlyphIndex > 0;
+                    } else
+                        ;
                 } else if ((codepoint == 0x2007) && NeedNormalization)
                     ApplyWidthNormalization(Font.EqualizeNumberWidths);
 
@@ -387,15 +388,10 @@ namespace Squared.Render.Text {
                 if (Font.DefaultGlyphColors.TryGetValue(codepoint, out defaultColor))
                     nullableDefaultColor = defaultColor;
 
-                if ((codepoint == '\r') || (codepoint == '\n') || (codepoint == '\0')) {
-                    glyph = default;
-                    return false;
-                }
-
                 var glyphIndex = Font.GetGlyphIndex(codepoint);
                 if (CacheByGlyphId.TryGetValue(glyphIndex, out glyph)) {
                     glyph.DefaultColor = nullableDefaultColor;
-                    return true;
+                    return glyph.GlyphIndex > 0;
                 }
 
                 return PopulateGlyphCache(codepoint, nullableDefaultColor, out glyph);
@@ -491,18 +487,17 @@ namespace Squared.Render.Text {
 
                 glyphId = Font.Face.GetCharIndex(codepoint);
 
-                if (glyphId <= 0) {
-                    glyph = default(Glyph);
-                    return false;
-                }
+                if (glyphId > 0) {
+                    BuildGlyph(glyphId, codepoint, defaultColor, out glyph);
 
-                BuildGlyph(glyphId, codepoint, defaultColor, out glyph);
-
-                // HACK
-                if (codepoint <= 0xCFFF) {
-                    // Some fonts have weirdly-sized space characters
-                    if (char.IsWhiteSpace((char)codepoint))
-                        glyph.RightSideBearing = (float)Math.Round(glyph.RightSideBearing);
+                    // HACK
+                    if (codepoint <= 0xCFFF) {
+                        // Some fonts have weirdly-sized space characters
+                        if (char.IsWhiteSpace((char)codepoint))
+                            glyph.RightSideBearing = (float)Math.Round(glyph.RightSideBearing);
+                    }
+                } else {
+                    glyph = default;
                 }
 
                 if (codepoint < LowCacheSize)
