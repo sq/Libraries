@@ -275,6 +275,9 @@ namespace Squared.PRGUI.Controls {
             Content.SetText(value, compareText);
             if (!compareText)
                 Content.Invalidate();
+            // HACK: Ensure that we reset autosize in corner cases when text is changed
+            if (!Content.IsValid)
+                ResetAutoSize();
             return true;
         }
 
@@ -288,6 +291,9 @@ namespace Squared.PRGUI.Controls {
                 if (!onlyIfTextChanged)
                     Content.Invalidate();
             }
+            // HACK: Ensure that we reset autosize in corner cases when text is changed
+            if (!Content.IsValid)
+                ResetAutoSize();
             return true;
         }
 
@@ -424,7 +430,6 @@ namespace Squared.PRGUI.Controls {
             // FIXME: If we start out constrained (by our parent size, etc) we will compute
             //  a compressed auto-size value here, and it will never be updated even if our parent
             //  gets bigger
-
             if (!AutoSizeWidth && !AutoSizeHeight) {
                 ResetAutoSize();
                 return;
@@ -576,6 +581,9 @@ namespace Squared.PRGUI.Controls {
                 currentWidth = MostRecentWidthForLineBreaking;
 
             if (!currentWidth.HasValue && !maxPx.HasValue)
+                return null;
+
+            if (!Content.WordWrap && !Content.CharacterWrap && !Content.HideOverflow)
                 return null;
 
             if (maxPx.HasValue) {

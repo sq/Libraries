@@ -52,7 +52,8 @@ namespace Squared.Render.Text {
             internal List<IDynamicAtlas> Atlases = new List<IDynamicAtlas>();
             internal FreeTypeFont Font;
             internal SrGlyph[] LowCacheByCodepoint = new SrGlyph[LowCacheSize];
-            internal Dictionary<uint, SrGlyph> CacheByGlyphId = new Dictionary<uint, SrGlyph>(UintComparer.Instance);
+            internal Dictionary<uint, SrGlyph> CacheByGlyphId = new Dictionary<uint, SrGlyph>(UintComparer.Instance),
+                CacheByCodepoint = new Dictionary<uint, SrGlyph>(UintComparer.Instance);
             internal float _SizePoints;
             internal int _Version;
             internal bool? _SDF;
@@ -346,19 +347,23 @@ namespace Squared.Render.Text {
                     return;
 
                 // Figure space (specified to be the same size as a number)
-                if (PopulateGlyphCache(0x2007, null, out var figureSpace)) {
-                    var glyphIdForRegularSpace = GetGlyphIndex(' ');
-                    if (glyphIdForRegularSpace != figureSpace.GlyphIndex) {
-                        var padding = maxWidth - figureSpace.WidthIncludingBearing;
-                        figureSpace.LeftSideBearing += (padding / 2f);
-                        figureSpace.RightSideBearing += (padding / 2f);
-                        CacheByGlyphId[figureSpace.GlyphIndex] = figureSpace;
-                    }
+                if (!PopulateGlyphCache(0x2007, null, out var figureSpace)) {
+                    // No figure space glyph, fake one
+                    BuildGlyph(GetGlyphIndex(' '), 0x2007, null, out figureSpace);
                 }
+
+                var glyphIdForRegularSpace = GetGlyphIndex(' ');
+                var padding = maxWidth - figureSpace.WidthIncludingBearing;
+                figureSpace.LeftSideBearing += (padding / 2f);
+                figureSpace.RightSideBearing += (padding / 2f);
+
+                CacheByCodepoint[0x2007] = figureSpace;
+                if ((figureSpace.GlyphIndex > 0) && (glyphIdForRegularSpace != figureSpace.GlyphIndex))
+                    CacheByGlyphId[figureSpace.GlyphIndex] = figureSpace;
 
                 if (normalizeNumberWidths) {
                     for (uint i = FirstDigit; i <= LastDigit; i++) {
-                        var padding = maxWidth - LowCacheByCodepoint[i].WidthIncludingBearing;
+                        padding = maxWidth - LowCacheByCodepoint[i].WidthIncludingBearing;
                         LowCacheByCodepoint[i].LeftSideBearing += padding / 2f;
                         LowCacheByCodepoint[i].RightSideBearing += padding / 2f;
                     }
@@ -381,6 +386,7 @@ namespace Squared.Render.Text {
                     } else
                         ;
                 } else if ((codepoint == 0x2007) && NeedNormalization)
+                    // Figure space should trigger width normalization since it's a number... ish
                     ApplyWidthNormalization(Font.EqualizeNumberWidths);
 
                 Color? nullableDefaultColor = null;
@@ -388,8 +394,7 @@ namespace Squared.Render.Text {
                 if (Font.DefaultGlyphColors.TryGetValue(codepoint, out defaultColor))
                     nullableDefaultColor = defaultColor;
 
-                var glyphIndex = Font.GetGlyphIndex(codepoint);
-                if (CacheByGlyphId.TryGetValue(glyphIndex, out glyph)) {
+                if (CacheByCodepoint.TryGetValue(codepoint, out glyph)) {
                     glyph.DefaultColor = nullableDefaultColor;
                     return glyph.GlyphIndex > 0;
                 }
@@ -483,6 +488,7 @@ namespace Squared.Render.Text {
             }
 
             private bool PopulateGlyphCache (uint codepoint, Color? defaultColor, out Glyph glyph) {
+                var result = true;
                 uint glyphId;
 
                 glyphId = Font.Face.GetCharIndex(codepoint);
@@ -498,16 +504,18 @@ namespace Squared.Render.Text {
                     }
                 } else {
                     glyph = default;
+                    result = false;
                 }
 
                 if (codepoint < LowCacheSize)
                     LowCacheByCodepoint[codepoint] = glyph;
                 CacheByGlyphId[glyphId] = glyph;
+                CacheByCodepoint[codepoint] = glyph;
 
                 if (NeedNormalization)
                     ApplyWidthNormalization(Font.EqualizeNumberWidths);
 
-                return true;
+                return result;
             }
 
             public void Invalidate () {
@@ -524,6 +532,7 @@ namespace Squared.Render.Text {
                 for (int i = 0; i < LowCacheByCodepoint.Length; i++)
                     LowCacheByCodepoint[i].GlyphIndex = uint.MaxValue;
                 CacheByGlyphId.Clear();
+                CacheByCodepoint.Clear();
 
                 _LineSpacing = null;
 
@@ -557,6 +566,8 @@ namespace Squared.Render.Text {
                     LowCacheByCodepoint[i].GlyphIndex = uint.MaxValue;
 
                 CacheByGlyphId.Clear();
+                CacheByCodepoint.Clear();
+
                 foreach (var atlas in Atlases)
                     atlas.Dispose();
                 Atlases.Clear();

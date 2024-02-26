@@ -142,7 +142,8 @@ namespace FontTest {
                 SizePoints = 40, DPIPercent = 200, GlyphMargin = margin, Gamma = 1.6,
                 DefaultGlyphColors = {
                     { (uint)'h', Color.Red }
-                }
+                },
+                EqualizeNumberWidths = true,
             };
             if (false)
                 LatinFont = new FreeTypeFont(RenderCoordinator, "cambria.ttc") {
@@ -409,7 +410,7 @@ namespace FontTest {
             "Test Test A$(bc)d\n" +
             "Test Test Test $(Abcd)",
 
-            "\u2007100!\r\n$[scale:0.35]CRITICAL$[]\r\n",
+            "\u2007109!\r\n$[scale:0.45]CRITICAL$[]",
 
             @"In Congress, July 4, 1776
 

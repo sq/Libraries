@@ -1249,16 +1249,24 @@ recalc:
                     (MaskCodepoint != 0) || WrapCharacters.BinarySearchNonRef(codepoint, UintComparer.Instance) >= 0;
 
             if (codepoint > 255) {
-                // HACK: Attempt to word-wrap at "other" punctuation in non-western character sets, which will include things like commas
-                // This is less than ideal but .NET does not appear to expose the classification tables needed to do this correctly
-                // FIXME: This won't work for surrogate pairs, no public API is exposed for them
-                var uniCategory = CharUnicodeInfo.GetUnicodeCategory(ch1);
-                if (uniCategory == UnicodeCategory.OtherPunctuation)
-                    isWordWrapPoint = true;
-                else if (uniCategory == UnicodeCategory.Control)
-                    isNonPrintable = true;
-                else if (uniCategory == UnicodeCategory.Format)
-                    isNonPrintable = true;
+                if (codepoint == '\u2007') {
+                    // Figure spaces should be treated as printable characters, not whitespace,
+                    //  since they're meant for use in numerical figures. No wrapping either.
+                    isWhitespace = false;
+                    isNonPrintable = false;
+                    isWordWrapPoint = false;
+                } else {
+                    // HACK: Attempt to word-wrap at "other" punctuation in non-western character sets, which will include things like commas
+                    // This is less than ideal but .NET does not appear to expose the classification tables needed to do this correctly
+                    // FIXME: This won't work for surrogate pairs, no public API is exposed for them
+                    var uniCategory = CharUnicodeInfo.GetUnicodeCategory(ch1);
+                    if (uniCategory == UnicodeCategory.OtherPunctuation)
+                        isWordWrapPoint = true;
+                    else if (uniCategory == UnicodeCategory.Control)
+                        isNonPrintable = true;
+                    else if (uniCategory == UnicodeCategory.Format)
+                        isNonPrintable = true;
+                }
             } else if (codepoint == 0x00A0) {
                 // Wrapping and justify expansion should never occur for a non-breaking space
                 isWordWrapPoint = false;
