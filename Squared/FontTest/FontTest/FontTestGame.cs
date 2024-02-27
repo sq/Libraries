@@ -400,7 +400,7 @@ namespace FontTest {
             "$<img:left>$<img:topright>The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs )" +
             "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
             "\r\nThis fish flowed off the office desk looking baffled." +
-            "\r\nTesting$<img:inline@0.0>baseline$<img:inline@0.5>alignment$<img:inline@1.0>" +
+            "\r\nTesting$<img:inline@0.0>Baseline$<img:inline@0.5>Alignment$<img:inline@1.0>" +
             "\r\n\r\nEmpty line before this one $(marked)\r\n$<img:bottomleft>$<img:bottomright>$(rich substring)",
 
             "\r\na b c d e f g h i j k l m n o p q r s t u v w x y z" +

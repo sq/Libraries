@@ -564,13 +564,14 @@ namespace Squared.Render.TextLayout2 {
                 }
 
                 // FIXME: Kerning across multiple AppendText calls
-                if (!appliedLigature && (glyph.KerningProvider != null) && (i < l - 2)) {
+                if (!hasKerningNow && (glyph.KerningProvider != null) && (i < l - 2)) {
                     var temp = i + 1;
                     var codepoint2 = DecodeCodepoint(text, ref temp, l, out _, out _);
                     // FIXME: Also do adjustment for next glyph!
                     // FIXME: Cache the result of this GetGlyph call and use it next iteration to reduce CPU usage
                     var glyphId2 = glyphSource.GetGlyphIndex(codepoint2);
-                    hasKerningNow = hasKerningNext = glyph.KerningProvider.TryGetKerning(glyph.GlyphIndex, glyphId2, ref thisKerning, ref nextKerning);
+                    hasKerningNow = glyph.KerningProvider.TryGetKerning(glyph.GlyphIndex, glyphId2, ref thisKerning, ref nextKerning);
+                    hasKerningNext = !nextKerning.Equals(default);
                 }
 
                 if (hasKerningNow) {

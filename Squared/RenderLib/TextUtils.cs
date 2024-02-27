@@ -1348,6 +1348,19 @@ namespace Squared.Render.Text {
 
     public struct KerningData {
         public float XOffset, YOffset, LeftSideBearing, RightSideBearing;
+
+        public bool Equals (KerningData rhs) =>
+            (XOffset == rhs.XOffset) &&
+            (YOffset == rhs.YOffset) &&
+            (LeftSideBearing == rhs.LeftSideBearing) &&
+            (RightSideBearing == rhs.RightSideBearing);
+
+        public override bool Equals (object obj) {
+            if (obj is KerningData kd)
+                return Equals(kd);
+            else
+                return false;
+        }
     }
 
     public interface IKerningProvider {
