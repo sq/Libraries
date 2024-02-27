@@ -484,7 +484,8 @@ namespace Squared.Render.TextLayout2 {
 
             Vector2 effectiveScale = Scale * (1.0f / glyphSource.DPIScaleFactor),
                 effectiveSpacing = Spacing;
-            float defaultLineSpacing = glyphSource.LineSpacing * effectiveScale.Y;
+            // HACK: GlyphSource.LineSpacing does not apply the DPI scaling like glyph metrics do.
+            float defaultLineSpacing = glyphSource.LineSpacing * Scale.Y;
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 if (LineLimit <= 0)
