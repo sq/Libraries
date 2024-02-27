@@ -58,7 +58,7 @@ namespace Squared.Render.TextLayout2 {
     public struct Fragment {
         public uint LineIndex, BoxIndex;
         public uint FirstDrawCall, DrawCallCount;
-        public float Left, Width, Height, Baseline;
+        public float Left, Width, Height, Baseline, Overhang;
         public FragmentCategory Category;
         public bool WasSuppressed;
         public bool WasFullySuppressed {
@@ -399,7 +399,7 @@ namespace Squared.Render.TextLayout2 {
             // HACK: Split whitespace fragments when beginning a span,
             //  so that relative positioning is accurate in justified mode.
             if (!CurrentFragment.ContainsContent && CurrentFragment.Width > 0)
-                FinishFragment();
+                FinishFragment(true);
 
             var index = SpanIndex++;
             if (push || SpanStack.Count == 0)
@@ -540,7 +540,7 @@ namespace Squared.Render.TextLayout2 {
                             cf.Category = category;
 
                         if (category != cf.Category)
-                            FinishFragment();
+                            FinishFragment(true);
                     }
 
                     {
@@ -551,11 +551,9 @@ namespace Squared.Render.TextLayout2 {
                     }
                 }
 
-                bool appliedLigature = false;
                 if (glyph.LigatureProvider != null) {
                     var charsConsumed = glyph.LigatureProvider.TryGetLigature(ref glyph, text, i);
                     if (charsConsumed > 0) {
-                        appliedLigature = true;
                         // Advance our decoding offset based on the number of chars consumed by the ligature
                         i += charsConsumed;
                         // FIXME: Carry-over kerning from the previous glyph isn't valid due to the ligature
@@ -568,7 +566,6 @@ namespace Squared.Render.TextLayout2 {
                     var temp = i + 1;
                     var codepoint2 = DecodeCodepoint(text, ref temp, l, out _, out _);
                     // FIXME: Also do adjustment for next glyph!
-                    // FIXME: Cache the result of this GetGlyph call and use it next iteration to reduce CPU usage
                     var glyphId2 = glyphSource.GetGlyphIndex(codepoint2);
                     hasKerningNow = glyph.KerningProvider.TryGetKerning(glyph.GlyphIndex, glyphId2, ref thisKerning, ref nextKerning);
                     hasKerningNext = !nextKerning.Equals(default);
@@ -601,14 +598,23 @@ namespace Squared.Render.TextLayout2 {
                     glyph = default;
                 }
 
+                // MonoGame#1355 rears its ugly head: If a character with negative left-side bearing is at the start of a line,
+                //  we need to compensate for the bearing to prevent the character from extending outside of the layout bounds
+                if (ColIndex <= 0) {
+                    if (glyph.LeftSideBearing < 0)
+                        glyph.LeftSideBearing = 0;
+                }
+
 recalc:
                 ref var line = ref CurrentLine;
 
-                float w = (glyph.WidthIncludingBearing * effectiveScale.X) + (glyph.CharacterSpacing * effectiveScale.X),
+                float glyphSpacing = glyph.CharacterSpacing * effectiveScale.X,
+                    inlineW = glyph.WidthIncludingBearing * effectiveScale.X,
+                    worstW = glyph.WorstCaseWidth * effectiveScale.X,
                     h = glyphLineSpacing,
                     xBasis = line.Location.X + line.ActualWidth,
                     x1 = xBasis + FragmentOffset.X,
-                    x2 = x1 + w,
+                    x2 = x1 + glyphSpacing + worstW,
                     y2 = Y + h;
                 bool overflowX = (x2 > MaximumWidth),
                     overflowY = (y2 > MaximumHeight);
@@ -621,16 +627,9 @@ recalc:
                         PerformLineBreak(defaultLineSpacing);
                         goto recalc;
                     } else if (overflowX) {
-                        if (PerformForcedWrap(w, MaximumWidth - line.Inset - line.Crush))
+                        if (PerformForcedWrap(worstW, MaximumWidth - line.Inset - line.Crush))
                             goto recalc;
                     }
-                }
-
-                // MonoGame#1355 rears its ugly head: If a character with negative left-side bearing is at the start of a line,
-                //  we need to compensate for the bearing to prevent the character from extending outside of the layout bounds
-                if (ColIndex <= 0) {
-                    if (glyph.LeftSideBearing < 0)
-                        glyph.LeftSideBearing = 0;
                 }
 
                 if (HideOverflow) {
@@ -698,9 +697,10 @@ recalc:
                     AnyCharactersSuppressed = true;
                 }
 
-                FragmentOffset.X += w;
+                FragmentOffset.X += inlineW;
                 if (!SuppressUntilEnd) {
-                    fragment.Width += w;
+                    fragment.Width += inlineW;
+                    fragment.Overhang = worstW - inlineW;
                     fragment.Height = Math.Max(fragment.Height, h);
                 }
 
@@ -740,7 +740,7 @@ recalc:
                 if (fragment.Width + characterWidth <= currentMaximumWidth) {
                 } else if (CharacterWrap) {
                     // We can't cleanly word wrap so we should try to character wrap instead.
-                    FinishFragment();
+                    FinishFragment(false);
                     FinishLine(false);
                     return (characterWidth <= currentMaximumWidth);
                 }
@@ -750,7 +750,7 @@ recalc:
             
             if (CharacterWrap) {
                 // Fragment wrapping didn't work, so split the fragment to a new line.
-                FinishFragment();
+                FinishFragment(false);
                 FinishLine(false);
                 return (characterWidth <= currentMaximumWidth);
             }
@@ -759,7 +759,7 @@ recalc:
         }
 
         private void PerformLineBreak (float defaultLineSpacing) {
-            FinishFragment();
+            FinishFragment(false);
             if (CurrentLine.Height == 0f)
                 CurrentLine.Height = defaultLineSpacing;
             if (UnconstrainedLineSize.Y == 0f)
@@ -788,7 +788,7 @@ recalc:
             fragment.DrawCallCount = 0;
         }
 
-        private void FinishFragment () {
+        private void FinishFragment (bool discardOverhang) {
             ref var fragment = ref CurrentFragment;
             fragment.LineIndex = LineIndex;
 
@@ -803,9 +803,18 @@ recalc:
                     UnconstrainedLineSize.X += fragment.Width; 
                     line.Width += fragment.Width + line.TrailingWhitespace;
                     line.TrailingWhitespace = 0f;
+                    if (!discardOverhang) {
+                        UnconstrainedLineSize.X += fragment.Overhang;
+                        line.Width += fragment.Overhang;
+                    }
                     break;
                 case FragmentCategory.Box:
-                    // This is implemented in AppendImage
+                    // HACK: Most of this is implemented in AppendImage
+                    // HACK: We invert the meaning of the overhang flag here, so that
+                    //  we can collapse image margins at the end of lines but not in the
+                    //  middle of lines.
+                    if (discardOverhang)
+                        line.Width += fragment.Overhang;
                     break;
                 case FragmentCategory.WrapPoint:
                     if (SplitAtWrapCharactersOnly)
@@ -813,16 +822,28 @@ recalc:
                     UnconstrainedLineSize.X += fragment.Width;
                     line.Width += fragment.Width + line.TrailingWhitespace;
                     line.TrailingWhitespace = 0f;
+                    if (!discardOverhang) {
+                        UnconstrainedLineSize.X += fragment.Overhang;
+                        line.Width += fragment.Overhang;
+                    }
                     break;
                 case FragmentCategory.Whitespace:
                     if (!SplitAtWrapCharactersOnly)
                         line.GapCount++;
                     UnconstrainedLineSize.X += fragment.Width;
                     line.TrailingWhitespace += fragment.Width;
+                    if (!discardOverhang) {
+                        UnconstrainedLineSize.X += fragment.Overhang;
+                        line.TrailingWhitespace += fragment.Overhang;
+                    }
                     break;
                 case FragmentCategory.NonPrintable:
                     UnconstrainedLineSize.X += fragment.Width;
                     line.Width += fragment.Width;
+                    if (!discardOverhang) {
+                        UnconstrainedLineSize.X += fragment.Overhang;
+                        line.Width += fragment.Overhang;
+                    }
                     break;
             }
 
@@ -924,7 +945,7 @@ recalc:
             Vector2 margin, ImageHorizontalAlignment alignment,
             bool doNotAdjustLineSpacing
         ) {
-            FinishFragment();
+            FinishFragment(true);
 
             var boxIndex = BoxIndex++;
 
@@ -937,7 +958,8 @@ recalc:
 
             switch (alignment) {
                 case ImageHorizontalAlignment.Inline:
-                    fragment.Width += (margin.X * 2);
+                    fragment.Width += margin.X;
+                    fragment.Overhang = margin.X;
                     line.Width += fragment.Width;
                     UnconstrainedLineSize.X += fragment.Width;
                     break;
@@ -960,21 +982,20 @@ recalc:
                 Bounds = Bounds.FromPositionAndSize(0f, line.Location.Y, width, height),
             };
 
-            FinishFragment();
+            FinishFragment(true);
         }
 
         public void AppendImage (ref RichImage image) {
             Listener?.RecordTexture(ref this, image.Texture);
 
-            FinishFragment();
+            FinishFragment(true);
 
             var drawCallIndex = DrawCallIndex;
             float maximumWidth = image.MaxWidthPercent.HasValue
                 ? Math.Max(MaximumWidth, DesiredWidth) * image.MaxWidthPercent.Value / 100f
                 : float.MaxValue,
                 maximumScale = Math.Min(1f, maximumWidth / image.Texture.Instance.Width),
-                effectiveScale = Math.Min(image.Scale, maximumScale),
-                xMargin2 = image.Margin.X * 2;
+                effectiveScale = Math.Min(image.Scale, maximumScale);
 
             var drawCall = new BitmapDrawCall(
                 new TextureSet(image.Texture), Vector2.Zero
@@ -993,11 +1014,7 @@ recalc:
                 float effectiveMaxWidth = MaximumWidth - line1.Inset - line1.Crush;
                 if (
                     (bounds.Size.X < effectiveMaxWidth) &&
-                    // Ideally we would use margin.x * 1 but that would not match the behavior
-                    //  for inline images below, where we add xMargin2. So it has to match
-                    // This means that images with margins will wrap 'too early', but the alternative
-                    //  is a too-big bounding box.
-                    (line1.ActualWidth + bounds.Size.X + xMargin2) >= effectiveMaxWidth
+                    (line1.ActualWidth + bounds.Size.X + image.Margin.X) >= effectiveMaxWidth
                 )
                     FinishLine(false);
             }
@@ -1016,9 +1033,8 @@ recalc:
             switch (image.HorizontalAlignment) {
                 case ImageHorizontalAlignment.Inline:
                     // FIXME: Y margin for inline images
-                    // FIXME: This extra whitespace at the right edge of the image causes
-                    //  weird expansion of bounding boxes since it doesn't function as whitespace
-                    fragment.Width += xMargin2;
+                    fragment.Width += image.Margin.X;
+                    fragment.Overhang = image.Margin.X;
                     line.Width += fragment.Width;
                     UnconstrainedLineSize.X += fragment.Width;
                     break;
@@ -1048,7 +1064,7 @@ recalc:
                 Bounds = Bounds.FromPositionAndSize(0f, line.Location.Y, bounds.Size.X, bounds.Size.Y),
             };
 
-            FinishFragment();
+            FinishFragment(true);
         }
 
         private void ArrangeFragments (ref Vector2 constrainedSize) {
@@ -1175,8 +1191,10 @@ recalc:
 
                         constrainedSize.Y = Math.Max(constrainedSize.Y, box.Bounds.BottomRight.Y - Position.Y);
 
-                        if (box.HorizontalAlignment == ImageHorizontalAlignment.Inline)
+                        if (box.HorizontalAlignment == ImageHorizontalAlignment.Inline) {
                             x += fragment.Width;
+                            x += fragment.Overhang;
+                        }
                     } else {
                         if (fragment.Category == gapCategory)
                             x += gapWhitespace;
@@ -1229,7 +1247,7 @@ recalc:
             while (SpanStack.Count > 0)
                 EndCurrentSpan();
 
-            FinishFragment();
+            FinishFragment(false);
             FinishLine(false);
             UnconstrainedMaxY = Math.Max(UnconstrainedMaxY, UnconstrainedY + UnconstrainedLineSize.Y);
 

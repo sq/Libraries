@@ -1755,5 +1755,11 @@ namespace Squared.Render.Text {
                 return LeftSideBearing + RightSideBearing + Width;
             }
         }
+
+        public float WorstCaseWidth {
+            get {
+                return Math.Max(LeftSideBearing, 0) + Math.Max(RightSideBearing, 0) + Width;
+            }
+        }
     }
 }

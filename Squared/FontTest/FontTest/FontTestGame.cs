@@ -396,8 +396,7 @@ namespace FontTest {
         }
 
         public string[] TestStrings = new[] {
-            // FIXME: The bounding box for 'dogs' is wrong unless there's a trailing space inside the marked region
-            "$<img:left>$<img:topright>The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs )" +
+            "$<img:left>$<img:topright>The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
             "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
             "\r\nThis fish flowed off the office desk looking baffled." +
             "\r\nTesting$<img:inline@0.0>Baseline$<img:inline@0.5>Alignment$<img:inline@1.0>" +
@@ -410,7 +409,7 @@ namespace FontTest {
             "The quick brown fox jumped over the lazy dogs. Sphinx of black quartz, judge my vow. Welcome to the circus, " +
             "we've got fun and games, here's\\a\\very-long-path\\without-spaces\\that-should-get-broken\\ok",
 
-            "This line ends with a very long string of characters: asmfkjalshasklmrasklrjhalksrmjaslkaslrklsmrs\n\n" + 
+            "This line ends with a very long string of characters: asmfkjalshasklmrasklrjhalksrmjaslkaslrklsmrsk\n\n" + 
             "Then is followed by a line break and short lines.\n" +
             "The word-wrap of the long string should produce a small bounding box.",
 
@@ -426,6 +425,8 @@ namespace FontTest {
             "Test Test Test $(Abcd)",
 
             "\u2007109!\n$[scale:0.45]CRITICAL$[]",
+
+            "{Paradise Isle}",
 
             @"In Congress, July 4, 1776
 
