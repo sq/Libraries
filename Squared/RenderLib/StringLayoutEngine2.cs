@@ -961,7 +961,8 @@ recalc:
                 ? Math.Max(MaximumWidth, DesiredWidth) * image.MaxWidthPercent.Value / 100f
                 : float.MaxValue,
                 maximumScale = Math.Min(1f, maximumWidth / image.Texture.Instance.Width),
-                effectiveScale = Math.Min(image.Scale, maximumScale);
+                effectiveScale = Math.Min(image.Scale, maximumScale),
+                xMargin2 = image.Margin.X * 2;
 
             var drawCall = new BitmapDrawCall(
                 new TextureSet(image.Texture), Vector2.Zero
@@ -977,7 +978,15 @@ recalc:
             var bounds = drawCall.EstimateDrawBounds();
             if ((image.HorizontalAlignment == ImageHorizontalAlignment.Inline) && (WordWrap || CharacterWrap)) {
                 ref var line1 = ref CurrentLine;
-                if ((line1.ActualWidth + bounds.Size.X + image.Margin.X) >= MaximumWidth)
+                float effectiveMaxWidth = MaximumWidth - line1.Inset - line1.Crush;
+                if (
+                    (bounds.Size.X < effectiveMaxWidth) &&
+                    // Ideally we would use margin.x * 1 but that would not match the behavior
+                    //  for inline images below, where we add xMargin2. So it has to match
+                    // This means that images with margins will wrap 'too early', but the alternative
+                    //  is a too-big bounding box.
+                    (line1.ActualWidth + bounds.Size.X + xMargin2) >= effectiveMaxWidth
+                )
                     FinishLine(false);
             }
 
@@ -993,7 +1002,9 @@ recalc:
             switch (image.HorizontalAlignment) {
                 case ImageHorizontalAlignment.Inline:
                     // FIXME: Y margin for inline images
-                    fragment.Width += (image.Margin.X * 2);
+                    // FIXME: This extra whitespace at the right edge of the image causes
+                    //  weird expansion of bounding boxes since it doesn't function as whitespace
+                    fragment.Width += xMargin2;
                     line.Width += fragment.Width;
                     UnconstrainedLineSize.X += fragment.Width;
                     break;
