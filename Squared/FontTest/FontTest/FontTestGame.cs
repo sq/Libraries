@@ -31,7 +31,8 @@ namespace FontTest {
         int StringIndex;
         string SelectedString => TestStrings[StringIndex];
 
-        float TextScale = 2f;
+        const int DPIFactor = 2;
+        float TextScale = DPIFactor;
 
         public Vector2 TopLeft = new Vector2(24, 24);
         public Vector2 BottomRight = new Vector2(1012, 512);
@@ -53,7 +54,8 @@ namespace FontTest {
         PressableKey HideOverflow = new PressableKey(Keys.D);
 
         Texture2D[] Images = new Texture2D[5];
-        List<Bounds> Boxes = new List<Bounds>();
+        List<(Bounds bounds, Vector2 margin)> Boxes = new ();
+        List<Bounds> Lines = new ();
 
         public FontTestGame () {
             Graphics = new GraphicsDeviceManager(this);
@@ -107,7 +109,7 @@ namespace FontTest {
                     TextScale = 1f;
                 } else {
                     ActiveFont = FallbackFont;
-                    TextScale = 2f;
+                    TextScale = DPIFactor;
                 }
                 Text.GlyphSource = ActiveFont;
                 Text.Scale = TextScale;
@@ -139,18 +141,14 @@ namespace FontTest {
         protected override void OnLoadContent (bool isReloading) {
             var margin = 6;
             LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") {
-                SizePoints = 40, DPIPercent = 200, GlyphMargin = margin, Gamma = 1.6,
+                SizePoints = 40, DPIPercent = 100 * DPIFactor, GlyphMargin = margin, Gamma = 1.6,
                 DefaultGlyphColors = {
                     { (uint)'h', Color.Red }
                 },
                 EqualizeNumberWidths = true,
             };
-            if (false)
-                LatinFont = new FreeTypeFont(RenderCoordinator, "cambria.ttc") {
-                    SizePoints = 40, DPIPercent = 200, GlyphMargin = margin, Gamma = 1.6
-                };
             UniFont = new FreeTypeFont(RenderCoordinator, @"C:\Windows\Fonts\msgothic.ttc") {
-                SizePoints = 30, DPIPercent = 200, GlyphMargin = margin, Gamma = 1.6
+                SizePoints = 30, DPIPercent = 100 * DPIFactor, GlyphMargin = margin, Gamma = 1.6
             };
             FallbackFont = new FallbackGlyphSource(LatinFont, UniFont);
             SmallLatinFont = new FreeTypeFont.FontSize((FreeTypeFont)LatinFont, 40 * 0.75f);
@@ -196,7 +194,7 @@ namespace FontTest {
         private AsyncRichImage Text_ImageProvider (AbstractString arg, RichTextConfiguration config) {
             int i;
             var x = ImageHorizontalAlignment.Inline;
-            float s = 0.5f;
+            float s = 0.5f, m = 16f;
             float? y = null;
             if (arg == "img:left") {
                 x = ImageHorizontalAlignment.Left;
@@ -217,6 +215,7 @@ namespace FontTest {
                 y = f;
                 s = 0.33f;
                 i = 4;
+                m = 8f;
             } else
                 return default;
             var tex = Images[i];
@@ -225,7 +224,7 @@ namespace FontTest {
                 HorizontalAlignment = x,
                 BaselineAlignment = y,
                 DoNotAdjustLineSpacing = (x != ImageHorizontalAlignment.Inline),
-                Margin = Vector2.One * 16f,
+                Margin = Vector2.One * m,
                 Scale = s
             };
             return new AsyncRichImage(ref ri);
@@ -300,8 +299,10 @@ namespace FontTest {
                 font.SizePoints = newSize;
                 sfont.SizePoints = newSize * 0.75f;
                 ufont.SizePoints = newSize * 2.0f;
-                Text.Invalidate();
             }
+            // HACK: Override line spacing so that empty lines have the spacing of the latin font,
+            //  not the larger spacing of the unicode font
+            ((FallbackGlyphSource)FallbackFont).OverrideLineSpacing = font.LineSpacing;
 
             Text.Invalidate();
         }
@@ -345,12 +346,20 @@ namespace FontTest {
 
             ir.RasterizeRectangle(Text.Position, Text.Position + layout.Size, 0f, 1f, Color.Transparent, Color.Transparent,Color.Yellow * 0.75f);
             ir.RasterizeRectangle(Text.Position, Text.Position + layout.UnconstrainedSize, 0f, 1f, Color.Transparent, Color.Transparent,Color.Blue * 0.75f);
+
+            var l1 = ir.Layer++;
             ir.DrawMultiple(layout, material: m, blendState: BlendState.NonPremultiplied, samplerState: RenderStates.Text, userData: new Vector4(0, 0, 0, 0.66f));
 
             if (true) {
-                foreach (var b in Text.Boxes) {
+                for (int i = 0; i < Text.Boxes.Count; i++) {
+                    var b = Text.Boxes[i];
+                    var margin = Boxes[i].margin;
                     ir.RasterizeRectangle(b.TopLeft, b.BottomRight, 0f, 1f, Color.Transparent, Color.Transparent, Color.Orange);
+                    ir.RasterizeRectangle(b.TopLeft - margin, b.BottomRight + margin, 0f, 1f, Color.Transparent, Color.Transparent, Color.Orange * 0.5f);
                 }
+
+                foreach (var line in Lines)
+                    ir.RasterizeRectangle(line.TopLeft, line.BottomRight, 1f, Color.Black * 0.5f, layer: l1);
 
                 foreach (var rm in Text.RichMarkers) {
                     foreach (var b in rm.Bounds)
@@ -375,8 +384,14 @@ namespace FontTest {
         void IStringLayoutListener.Finished (ref StringLayoutEngine2 engine, ref StringLayout result) {
             Boxes.Clear();
             for (int i = 0; i < engine.BoxCount; i++) {
-                if (engine.TryGetBoxBounds((uint)i, out var bounds))
-                    Boxes.Add(bounds);
+                if (engine.TryGetBox((uint)i, out var bounds, out var margin))
+                    Boxes.Add((bounds, margin));
+            }
+
+            Lines.Clear();
+            for (int i = 0; i < engine.LineCount; i++) {
+                if (engine.TryGetLineBounds((uint)i, out var lineBounds))
+                    Lines.Add(lineBounds);
             }
         }
 

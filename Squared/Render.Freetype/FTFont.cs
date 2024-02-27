@@ -312,7 +312,8 @@ namespace Squared.Render.Text {
             public float LineSpacing {
                 get {
                     if (!_LineSpacing.HasValue) {
-                        var size = Font.GetFTSize(_SizePoints, BaseDPI);
+                        var resolution = (uint)(BaseDPI * Font.DPIPercent / 100);
+                        var size = Font.GetFTSize(_SizePoints, resolution);
                         _LineSpacing = size.Metrics.Height.ToSingle();
                     }
 

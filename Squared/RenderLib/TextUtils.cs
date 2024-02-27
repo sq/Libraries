@@ -1202,8 +1202,8 @@ namespace Squared.Render.Text {
                 var satellite = AutoAllocateSatellite();
                 satellite.Boxes.EnsureCapacity((int)engine.BoxCount);
                 for (uint i = 0, c = engine.BoxCount; i < c; i++) {
-                    engine.TryGetBoxBounds(i, out var box);
-                    satellite.Boxes.Add(ref box);
+                    if (engine.TryGetBox(i, out var box, out _))
+                        satellite.Boxes.Add(ref box);
                 }
             }
 

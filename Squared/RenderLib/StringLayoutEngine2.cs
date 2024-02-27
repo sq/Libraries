@@ -382,14 +382,16 @@ namespace Squared.Render.TextLayout2 {
             return true;
         }
 
-        public bool TryGetBoxBounds (uint index, out Bounds bounds) {
+        public bool TryGetBox (uint index, out Bounds bounds, out Vector2 margin) {
             if (index >= BoxIndex) {
                 bounds = default;
+                margin = default;
                 return false;
             }
 
             ref var box = ref Buffers.Box(index);
             bounds = box.Bounds;
+            margin = box.Margin;
             return true;
         }
         
@@ -585,6 +587,7 @@ namespace Squared.Render.TextLayout2 {
                 // In obscure scenarios, we may need to first word-wrap/line-break, and then
                 //  perform a forced character wrap of the current fragment afterward
                 int breaksAllowed = 2;
+                bool lineBreakPending = lineBreak;
 
                 if (isTab) {
                     glyph.LeftSideBearing *= TabSize;
@@ -612,7 +615,8 @@ recalc:
                 if (breaksAllowed > 0) {
                     breaksAllowed--;
 
-                    if (lineBreak) {
+                    if (lineBreakPending) {
+                        lineBreakPending = false;
                         PerformLineBreak(defaultLineSpacing);
                         goto recalc;
                     } else if (overflowX) {
@@ -846,17 +850,11 @@ recalc:
 #endif
         }
 
-        private void IncreaseLineHeight (ref Line line, ref Fragment fragment) {
-            UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, fragment.Height);
-
-            if (line.Height >= fragment.Height)
-                return;
-
-            line.Height = fragment.Height;
+        private void CalculateLineInsetAndCrush (ref Line line) {
             if (BoxIndex == 0)
                 return;
 
-            var interval = new Interval(line.Location.Y, line.Location.Y + line.Height);
+            var interval = new Interval(line.Location.Y, line.Location.Y + Math.Max(line.Height, 1f));
             float inset = 0f, crush = 0f;
             for (uint b = 0; b < BoxIndex; b++) {
                 ref var box = ref Buffers.Box(b);
@@ -879,6 +877,16 @@ recalc:
             line.Crush = crush;
         }
 
+        private void IncreaseLineHeight (ref Line line, ref Fragment fragment) {
+            UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, fragment.Height);
+
+            if (line.Height >= fragment.Height)
+                return;
+
+            line.Height = fragment.Height;
+            CalculateLineInsetAndCrush(ref line);
+        }
+
         private void FinishLine (bool forLineBreak) {
             ref var line = ref CurrentLine;
 
@@ -894,7 +902,8 @@ recalc:
 
             float indentation = forLineBreak ? BreakIndentation : WrapIndentation;
             LineIndex++;
-            CurrentLine = new Line {
+            ref var newLine = ref CurrentLine;
+            newLine = new Line {
                 Index = LineIndex,
                 Location = new Vector2(indentation, Y),
                 FirstFragmentIndex = FragmentIndex,
@@ -905,6 +914,8 @@ recalc:
             LineLimit--;
             if (LineLimit <= 0)
                 SuppressLayoutForLimit();
+
+            CalculateLineInsetAndCrush(ref newLine);
         }
 
         public void CreateEmptyBox (
@@ -993,6 +1004,8 @@ recalc:
             if (!MeasureOnly)
                 AppendDrawCall() = drawCall;
 
+            // FIXME: Something about inline image box placement is wrong in MeasureOnly mode.
+
             var boxIndex = BoxIndex++;
             ref var line = ref CurrentLine;
             ref var fragment = ref CurrentFragment;
@@ -1019,7 +1032,8 @@ recalc:
                 ? line.Height 
                 : bounds.Size.Y;
 
-            var baselineAlignment = image.BaselineAlignment ?? ((image.HorizontalAlignment == ImageHorizontalAlignment.Inline) ? 1.0f : 0.0f);
+            var baselineAlignment = image.BaselineAlignment ?? 
+                ((image.HorizontalAlignment == ImageHorizontalAlignment.Inline) ? 1.0f : 0.0f);
             fragment.Baseline = fragment.Height * baselineAlignment;
 
             ref var box = ref Buffers.Box(boxIndex);
