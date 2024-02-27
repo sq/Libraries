@@ -582,7 +582,9 @@ namespace Squared.Render.TextLayout2 {
                 hasKerningNow = hasKerningNext;
                 hasKerningNext = false;
 
-                bool allowBreaking = true;
+                // In obscure scenarios, we may need to first word-wrap/line-break, and then
+                //  perform a forced character wrap of the current fragment afterward
+                int breaksAllowed = 2;
 
                 if (isTab) {
                     glyph.LeftSideBearing *= TabSize;
@@ -607,14 +609,14 @@ recalc:
                 bool overflowX = (x2 > MaximumWidth),
                     overflowY = (y2 > MaximumHeight);
 
-                if (allowBreaking) {
-                    allowBreaking = false;
+                if (breaksAllowed > 0) {
+                    breaksAllowed--;
 
                     if (lineBreak) {
                         PerformLineBreak(defaultLineSpacing);
                         goto recalc;
                     } else if (overflowX) {
-                        if (PerformForcedWrap(w))
+                        if (PerformForcedWrap(w, MaximumWidth - line.Inset - line.Crush))
                             goto recalc;
                     }
                 }
@@ -722,7 +724,7 @@ recalc:
             }
         }
 
-        private bool PerformForcedWrap (float characterWidth) {
+        private bool PerformForcedWrap (float characterWidth, float currentMaximumWidth) {
             ref var fragment = ref CurrentFragment;
             // Determine whether wrapping the entire fragment will work.
             if (WordWrap) {
@@ -730,12 +732,12 @@ recalc:
                 if (!fragment.ContainsContent)
                     return true;
 
-                if (fragment.Width + characterWidth <= MaximumWidth) {
+                if (fragment.Width + characterWidth <= currentMaximumWidth) {
                 } else if (CharacterWrap) {
                     // We can't cleanly word wrap so we should try to character wrap instead.
                     FinishFragment();
                     FinishLine(false);
-                    return (characterWidth <= MaximumWidth);
+                    return (characterWidth <= currentMaximumWidth);
                 }
                 FinishLine(false);
                 return true;
@@ -745,7 +747,7 @@ recalc:
                 // Fragment wrapping didn't work, so split the fragment to a new line.
                 FinishFragment();
                 FinishLine(false);
-                return (characterWidth <= MaximumWidth);
+                return (characterWidth <= currentMaximumWidth);
             }
 
             return false;
@@ -854,7 +856,7 @@ recalc:
             if (BoxIndex == 0)
                 return;
 
-            var interval = new Interval(line.Location.Y, line.Location.Y + fragment.Height);
+            var interval = new Interval(line.Location.Y, line.Location.Y + line.Height);
             float inset = 0f, crush = 0f;
             for (uint b = 0; b < BoxIndex; b++) {
                 ref var box = ref Buffers.Box(b);
@@ -973,6 +975,12 @@ recalc:
                 SortKey = SortKey,
             };
             var bounds = drawCall.EstimateDrawBounds();
+            if ((image.HorizontalAlignment == ImageHorizontalAlignment.Inline) && (WordWrap || CharacterWrap)) {
+                ref var line1 = ref CurrentLine;
+                if ((line1.ActualWidth + bounds.Size.X + image.Margin.X) >= MaximumWidth)
+                    FinishLine(false);
+            }
+
             if (!MeasureOnly)
                 AppendDrawCall() = drawCall;
 
