@@ -291,8 +291,7 @@ namespace Squared.Render.TextLayout2 {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref BitmapDrawCall AppendDrawCall () {
-            ref var fragment = ref CurrentFragment;
+        private ref BitmapDrawCall AppendDrawCall (ref Fragment fragment) {
             if (fragment.FirstDrawCall == uint.MaxValue)
                 fragment.FirstDrawCall = DrawCallIndex;
             fragment.DrawCallCount++;
@@ -504,23 +503,22 @@ namespace Squared.Render.TextLayout2 {
                     codepoint = MaskCodepoint;
 
                 var isTab = ch1 == '\t';
-                AnalyzeCharacter(
-                    ch1, codepoint, out bool lineBreak, out bool deadGlyph, out var category
+                var category = AnalyzeCharacter(
+                    ch1, codepoint, out bool lineBreak
                 );
 
                 // Do this after AnalyzeCharacter so that we don't break custom wrap characters
                 if (isTab)
                     codepoint = ch1 = ' ';
 
-                deadGlyph = !glyphSource.GetGlyph(codepoint, out var glyph);
+                var deadGlyph = !glyphSource.GetGlyph(codepoint, out var glyph);
                 // HACK: In some cases we will end up with size metrics and stuff for \r or \n.
                 // We don't want to actually treat them like characters, it screws up layout.
                 // So just erase all their data.
                 if (lineBreak)
                     glyph = default;
 
-                float glyphLineSpacing = glyph.LineSpacing * effectiveScale.Y;
-                glyphLineSpacing += AdditionalLineSpacing;
+                float glyphLineSpacing = (glyph.LineSpacing * effectiveScale.Y) + AdditionalLineSpacing;
                 float glyphBaseline = glyph.Baseline * effectiveScale.Y;
 
                 float leftSideDelta = 0;
@@ -528,27 +526,21 @@ namespace Squared.Render.TextLayout2 {
                     glyph.LeftSideBearing *= effectiveSpacing.X;
                 else
                     leftSideDelta = Math.Abs(glyph.LeftSideBearing * effectiveSpacing.X);
-                glyph.RightSideBearing *= effectiveSpacing.X;
-                glyph.RightSideBearing -= leftSideDelta;
+
+                glyph.RightSideBearing = (glyph.RightSideBearing * effectiveSpacing.X) - leftSideDelta;
 
                 if (category == FragmentCategory.NonPrintable) {
                     ;
                 } else {
-                    {
-                        ref var cf = ref CurrentFragment;
-                        if (cf.Category == FragmentCategory.Unknown)
-                            cf.Category = category;
+                    ref var cf = ref CurrentFragment;
+                    if (cf.Category == FragmentCategory.Unknown)
+                        cf.Category = category;
 
-                        if (category != cf.Category)
-                            FinishFragment(true);
-                    }
+                    if (category != cf.Category)
+                        cf = ref FinishFragment(true);
 
-                    {
-                        ref var cf = ref CurrentFragment;
-
-                        if (cf.Category == FragmentCategory.Unknown)
-                            cf.Category = category;
-                    }
+                    if (cf.Category == FragmentCategory.Unknown)
+                        cf.Category = category;
                 }
 
                 if (glyph.LigatureProvider != null) {
@@ -662,7 +654,7 @@ recalc:
                         if (fragment.WasSuppressed)
                             fragment.WasSuppressed = false;
                     } else {
-                        ref var drawCall = ref AppendDrawCall();
+                        ref var drawCall = ref AppendDrawCall(ref fragment);
 
                         float x = FragmentOffset.X + (glyph.XOffset * effectiveScale.X) + (glyph.LeftSideBearing * effectiveScale.X),
                             // Used to compute bounding box offsets
@@ -788,7 +780,7 @@ recalc:
             fragment.DrawCallCount = 0;
         }
 
-        private void FinishFragment (bool discardOverhang) {
+        private ref Fragment FinishFragment (bool discardOverhang) {
             ref var fragment = ref CurrentFragment;
             fragment.LineIndex = LineIndex;
 
@@ -861,7 +853,8 @@ recalc:
             line.FragmentCount++;
             FragmentIndex++;
 
-            CurrentFragment = new Fragment {
+            ref var result = ref CurrentFragment;
+            result = new Fragment {
                 FirstDrawCall = DrawCallIndex,
                 LineIndex = LineIndex,
                 WasSuppressed = SuppressUntilEnd
@@ -870,6 +863,7 @@ recalc:
 #if TRACK_CODEPOINTS
             CurrentFragmentCodepoints.Clear();
 #endif
+            return ref result;
         }
 
         private void CalculateLineInsetAndCrush (ref Line line) {
@@ -945,12 +939,11 @@ recalc:
             Vector2 margin, ImageHorizontalAlignment alignment,
             bool doNotAdjustLineSpacing
         ) {
-            FinishFragment(true);
+            ref var fragment = ref FinishFragment(true);
 
             var boxIndex = BoxIndex++;
 
             ref var line = ref CurrentLine;
-            ref var fragment = ref CurrentFragment;
             fragment.BoxIndex = boxIndex;
             fragment.Category = FragmentCategory.Box;
             fragment.Width = width;
@@ -988,7 +981,7 @@ recalc:
         public void AppendImage (ref RichImage image) {
             Listener?.RecordTexture(ref this, image.Texture);
 
-            FinishFragment(true);
+            ref var fragment = ref FinishFragment(true);
 
             var drawCallIndex = DrawCallIndex;
             float maximumWidth = image.MaxWidthPercent.HasValue
@@ -1020,13 +1013,12 @@ recalc:
             }
 
             if (!MeasureOnly)
-                AppendDrawCall() = drawCall;
+                AppendDrawCall(ref fragment) = SuppressUntilEnd ? default : drawCall;
 
             // FIXME: Something about inline image box placement is wrong in MeasureOnly mode.
 
             var boxIndex = BoxIndex++;
             ref var line = ref CurrentLine;
-            ref var fragment = ref CurrentFragment;
             fragment.BoxIndex = boxIndex;
             fragment.Category = FragmentCategory.Box;
             fragment.Width = bounds.Size.X;
@@ -1293,11 +1285,11 @@ recalc:
             BreakLimit = CharacterLimit = LineLimit = int.MaxValue;
         }
 
-        private void AnalyzeCharacter (char ch1, uint codepoint, out bool lineBreak, out bool deadGlyph, out FragmentCategory category) {
+        private FragmentCategory AnalyzeCharacter (char ch1, uint codepoint, out bool lineBreak) {
             bool isWhitespace = Unicode.IsWhiteSpace(codepoint) && (MaskCodepoint == 0),
                 isWordWrapPoint, isNonPrintable = codepoint < 32;
+
             lineBreak = false;
-            deadGlyph = false;
 
             if (SplitAtWrapCharactersOnly)
                 isWordWrapPoint = WrapCharacters.BinarySearchNonRef(codepoint, UintComparer.Instance) >= 0;
@@ -1343,22 +1335,22 @@ recalc:
 
             if (SplitAtWrapCharactersOnly) {
                 if (isWordWrapPoint)
-                    category = FragmentCategory.WrapPoint;
+                    return FragmentCategory.WrapPoint;
                 else if (isNonPrintable)
-                    category = FragmentCategory.NonPrintable;
+                    return FragmentCategory.NonPrintable;
                 else if (isWhitespace)
-                    category = FragmentCategory.Whitespace;
+                    return FragmentCategory.Whitespace;
                 else
-                    category = FragmentCategory.Regular;
+                    return FragmentCategory.Regular;
             } else {
                 if (isNonPrintable)
-                    category = FragmentCategory.NonPrintable;
+                    return FragmentCategory.NonPrintable;
                 else if (isWhitespace)
-                    category = FragmentCategory.Whitespace;
+                    return FragmentCategory.Whitespace;
                 else if (isWordWrapPoint)
-                    category = FragmentCategory.WrapPoint;
+                    return FragmentCategory.WrapPoint;
                 else
-                    category = FragmentCategory.Regular;
+                    return FragmentCategory.Regular;
             }
         }
 

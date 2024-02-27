@@ -921,8 +921,11 @@ namespace Squared.Render.Text {
                 if (forcedWrap)
                     PerformForcedWrap(x, isWordWrapPoint, ref lineBreak, ref didWrapWord, glyphLineSpacing, glyphBaseline);
 
-                if (lineBreak)
+                if (lineBreak) {
                     PerformLineBreak(forcedWrap);
+                    // HACK: Some fonts have a glyph for line breaks with a size.
+                    glyph = default;
+                }
 
                 // We performed a wrap for a whitespace character. Don't advance x or do anything else.
                 // We want to bail out here *even* if the wrap operation did not produce a line break
