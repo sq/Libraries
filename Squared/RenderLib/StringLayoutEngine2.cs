@@ -671,8 +671,8 @@ recalc:
                         float x = FragmentOffset.X + 
                             ((
                                 RightToLeft
-                                    // FIXME: This is definitely wrong, but subtly so and I'm not sure how.
-                                    ? (glyph.RightSideBearing - glyph.XOffset)
+                                    // FIXME: Is this right? It produces output that looks mostly correct.
+                                    ? (glyph.RightSideBearing - glyph.XOffset - glyph.LeftSideBearing)
                                     : (glyph.LeftSideBearing + glyph.XOffset)
                             ) * effectiveScale.X),
                             // Used to compute bounding box offsets
