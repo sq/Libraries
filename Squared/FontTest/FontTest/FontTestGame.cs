@@ -72,7 +72,7 @@ namespace FontTest {
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
             Alignment.Pressed += (s, e) => {
-                Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 5);
+                Text.Alignment = (HorizontalAlignment)(((int)Text.Alignment + 1) % 6);
             };
             CharacterWrap.Pressed += (s, e) => {
                 Text.CharacterWrap = !Text.CharacterWrap;
@@ -182,7 +182,7 @@ namespace FontTest {
                     ImageProvider = Text_ImageProvider 
                 },
                 WordWrapCharacters = new uint[] {
-                    '\\', '/', ':', ','
+                    '\\', '/',
                 },
                 Listener = this,
                 // ExtraLineBreakSpacing = -12f,
@@ -433,8 +433,6 @@ namespace FontTest {
             "Test Ab$(c)\n" +
             "Test Test A$(bc)d\n" +
             "Test Test Test $(Abcd)",
-
-            "\u2007109!\n$[scale:0.45]CRITICAL$[]",
 
             "{Paradise Isle}",
 

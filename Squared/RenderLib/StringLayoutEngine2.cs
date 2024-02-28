@@ -1270,8 +1270,10 @@ recalc:
                 ? line.Height 
                 : bounds.Size.Y;
 
-            var baselineAlignment = image.BaselineAlignment ?? 
-                ((image.HorizontalAlignment == ImageHorizontalAlignment.Inline) ? 1.0f : 0.0f);
+            var baselineAlignment = Arithmetic.Saturate(
+                image.BaselineAlignment ?? 
+                ((image.HorizontalAlignment == ImageHorizontalAlignment.Inline) ? 1.0f : 0.0f)
+            );
             fragment.Baseline = fragment.Height * baselineAlignment;
 
             ref var box = ref Buffers.Box(boxIndex);
@@ -1336,6 +1338,14 @@ recalc:
                             whitespace -= (gapWhitespace * gapCount);
                         }
                         whitespace *= 0.5f;
+                        break;
+                    case HorizontalAlignment.JustifyWordsRight:
+                        if (gapCount > 0) {
+                            gapWhitespace = whitespace / gapCount;
+                            if (gapWhitespace > MaxExpansionPerSpace)
+                                gapWhitespace = 0f;
+                            whitespace -= (gapWhitespace * gapCount);
+                        }
                         break;
                 }
 

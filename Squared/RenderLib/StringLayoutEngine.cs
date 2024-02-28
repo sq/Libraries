@@ -471,6 +471,8 @@ namespace Squared.Render.Text {
                 if (wordCountMinusOne < 1) {
                     if (localAlignment == HorizontalAlignment.JustifyWordsCentered)
                         localAlignment = HorizontalAlignment.Center;
+                    else if (localAlignment == HorizontalAlignment.JustifyWordsRight)
+                        localAlignment = HorizontalAlignment.Right;
                     else
                         return;
                 }

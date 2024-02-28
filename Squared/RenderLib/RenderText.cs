@@ -79,7 +79,8 @@ namespace Squared.Render.Text {
         Center,
         Right,
         JustifyWords,
-        JustifyWordsCentered
+        JustifyWordsCentered,
+        JustifyWordsRight,
     }
 
     public struct LayoutMarker {
