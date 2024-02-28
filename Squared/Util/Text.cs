@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -12,6 +14,9 @@ using Squared.Util.Hash;
 
 namespace Squared.Util.Text {
     public static class Unicode {
+        delegate UnicodeCategory InternalGetUnicodeCategory (int ch);
+        static InternalGetUnicodeCategory _InternalGetUnicodeCategory = null;
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool DecodeSurrogatePair (char ch1, char ch2, out uint codepoint) {
             codepoint = (uint)ch1;
@@ -70,12 +75,49 @@ namespace Squared.Util.Text {
             return null;
         }
 
-        public static bool IsWhiteSpace (uint codepoint) {
-            if (codepoint > 0xFFFF)
-                // FIXME
-                return false;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static UnicodeCategory GetCategory (uint codepoint) {
+            if (codepoint < 0xFFFF)
+                return CharUnicodeInfo.GetUnicodeCategory((char)codepoint);
 
-            return char.IsWhiteSpace((char)codepoint);
+            return GetCategory_Slow(codepoint);
+        }
+
+        private static UnicodeCategory GetCategory_Slow (uint codepoint) {
+            // This is the net4x implementation
+            if (_InternalGetUnicodeCategory == null) {
+                var mi = typeof(CharUnicodeInfo).GetMethod(
+                    "InternalGetUnicodeCategory", BindingFlags.NonPublic | BindingFlags.Static,
+                    null, new[] { typeof(int) }, null
+                );
+                if (mi != null)
+                    _InternalGetUnicodeCategory = (InternalGetUnicodeCategory)Delegate.CreateDelegate(typeof(InternalGetUnicodeCategory), mi, true);
+            }
+
+            if (_InternalGetUnicodeCategory != null)
+                return _InternalGetUnicodeCategory((int)codepoint);
+            else
+                // FIXME: netcore
+                return UnicodeCategory.OtherNotAssigned;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsWhiteSpace (uint codepoint) {
+            if (codepoint < 0xFFFF)
+                return char.IsWhiteSpace((char)codepoint);
+
+            var category = GetCategory(codepoint);
+            return (uint)(category - 11) <= 2u;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool IsSeparator (uint codepoint) {
+            if (codepoint < 0xFFFF)
+                return char.IsSeparator((char)codepoint);
+
+            var category = GetCategory(codepoint);
+            // FIXME: It seems wrong that this is identical to IsWhiteSpace but who am I to judge
+            return (uint)(category - 11) <= 2u;
         }
 
         public static Pair<int> FindWordBoundary (AbstractString str, int? searchFromCodepointIndex = null, int? searchFromCharacterIndex = null) {

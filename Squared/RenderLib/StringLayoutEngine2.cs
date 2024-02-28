@@ -1400,7 +1400,7 @@ recalc:
             if (SplitAtWrapCharactersOnly)
                 isWordWrapPoint = WrapCharacters.BinarySearchNonRef(codepoint, UintComparer.Instance) >= 0;
             else
-                isWordWrapPoint = isWhitespace || char.IsSeparator(ch1) ||
+                isWordWrapPoint = isWhitespace || Unicode.IsSeparator(ch1) ||
                     (MaskCodepoint != 0) || WrapCharacters.BinarySearchNonRef(codepoint, UintComparer.Instance) >= 0;
 
             if (codepoint == 0x00A0) {
@@ -1418,7 +1418,7 @@ recalc:
                     // HACK: Attempt to word-wrap at "other" punctuation in non-western character sets, which will include things like commas
                     // This is less than ideal but .NET does not appear to expose the classification tables needed to do this correctly
                     // FIXME: This won't work for surrogate pairs, no public API is exposed for them
-                    var uniCategory = CharUnicodeInfo.GetUnicodeCategory(ch1);
+                    var uniCategory = Unicode.GetCategory(codepoint);
                     if (uniCategory == UnicodeCategory.OtherPunctuation)
                         isWordWrapPoint = true;
                     else if (uniCategory == UnicodeCategory.Control)
