@@ -447,30 +447,34 @@ namespace Squared.Render.Text {
 
                 var scaleFactor = 100f / Font.DPIPercent;
 
-                var widthMetric = glyphMetrics.Width.ToSingle();
-                var bearingXMetric = glyphMetrics.HorizontalBearingX.ToSingle();
+                float widthMetric = glyphMetrics.Width.ToSingle(),
+                    heightMetric = glyphMetrics.Height.ToSingle(),
+                    bearingXMetric = glyphMetrics.HorizontalBearingX.ToSingle(),
+                    bearingYMetric = glyphMetrics.HorizontalBearingY.ToSingle();
 
                 var rect = texRegion.Rectangle;
                 var isNumber = (codepoint >= '0' && codepoint <= '9');
 
                 glyph = new SrGlyph {
-                    KerningProvider = (Font.EnableKerning && (Font.GPOS != null) && 
+                    KerningProvider = (Font.EnableKerning && (Font.GPOS != null) &&
                         (!isNumber || !Font.EqualizeNumberWidths)) &&
                         Font.GPOS.HasAnyEntriesForGlyph(index)
-                        ? this 
+                        ? this
                         : null,
                     LigatureProvider = (Font.EnableLigatures && (Font.GSUB != null)) &&
                         Font.GSUB.HasAnyEntriesForGlyph(index)
-                        ? this 
+                        ? this
                         : null,
                     GlyphIndex = index,
                     Character = codepoint,
                     Width = widthMetric,
+                    Height = heightMetric,
+                    VerticalBearing = bearingYMetric,
                     LeftSideBearing = bearingXMetric,
                     RightSideBearing = (
                         advance -
                             widthMetric -
-                            glyphMetrics.HorizontalBearingX.ToSingle()
+                            bearingXMetric
                     ),
                     XOffset = ftgs.BitmapLeft - bearingXMetric - Font.GlyphMargin,
                     YOffset = -ftgs.BitmapTop + ascender - Font.GlyphMargin + Font.VerticalOffset + VerticalOffset,
@@ -478,7 +482,9 @@ namespace Squared.Render.Text {
                     // FIXME: Scale the spacing appropriately based on ratios
                     LineSpacing = sizeMetrics.Height.ToSingle() + ExtraLineSpacing,
                     DefaultColor = defaultColor,
-                    Baseline = sizeMetrics.Ascender.ToSingle()
+                    Baseline = sizeMetrics.Ascender.ToSingle(),
+                    XBounds = new Interval(bearingXMetric, bearingXMetric + widthMetric),
+                    YBounds = new Interval(-bearingYMetric, -bearingYMetric + heightMetric),
                 };
 
                 if (texRegion.Atlas != null) {

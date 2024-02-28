@@ -40,14 +40,23 @@ namespace Squared.Render.Text.OpenType {
                 var offset = (&LookupList->FirstLookupOffset)[i];
                 var table = (GSUBLookupTable*)(((byte*)LookupList) + offset);
                 switch (table->LookupType) {
+                    case LookupTypes.Single:
+                    case LookupTypes.Alternate:
+                    case LookupTypes.Multiple:
+                        // FIXME: Not implemented
+                        break;
                     case LookupTypes.Ligature: {
                         var lookup = new GSUBLigatureLookup(table);
                         if (lookup.SubTables.Length > 0)
                             temp.Add(lookup);
                         continue;
                     }
-                    default:
-                        continue;
+                    case LookupTypes.Context:
+                        // FIXME: Not implemented. Used for arabic, etc.
+                        break;
+                    case LookupTypes.ChainingContext:
+                        // FIXME: Not implemented. Used for arabic, hebrew, etc.
+                        break;
                 }
             }
 

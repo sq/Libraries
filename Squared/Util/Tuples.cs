@@ -135,6 +135,14 @@ namespace Squared.Util {
             return Math.Sign(c) != Math.Sign(d);
         }
 
+        public static Interval operator + (Interval lhs, float rhs) {
+            return new Interval(lhs.Min + rhs, lhs.Max + rhs);
+        }
+
+        public static Interval operator - (Interval lhs, float rhs) {
+            return new Interval(lhs.Min - rhs, lhs.Max - rhs);
+        }
+
         public static bool operator == (Interval lhs, Interval rhs) {
             return lhs.Equals(rhs);
         }

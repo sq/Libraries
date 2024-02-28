@@ -1750,9 +1750,20 @@ namespace Squared.Render.Text {
             get => RenderScaleMinusOne + 1;
             set => RenderScaleMinusOne = value - 1;
         }
+
+        // Additional properties not available for SpriteFont below
         public Color? DefaultColor;
+
         public IKerningProvider KerningProvider;
         public ILigatureProvider LigatureProvider;
+
+        public float Height;
+        public float VerticalBearing;
+        /// <summary>
+        /// Glyph bounding box intervals in freetype coordinate space,
+        ///  where x=0 is the 'pen position' and y=0 is the baseline
+        /// </summary>
+        public Interval XBounds, YBounds;
 
         public float WidthIncludingBearing {
             get {

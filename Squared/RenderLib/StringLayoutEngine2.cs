@@ -30,6 +30,7 @@ namespace Squared.Render.TextLayout2 {
         Box = 0b100,
         Whitespace = 0b1000,
         NonPrintable = 0b10000,
+        CombiningCharacter = 0b100000,
     }
 
     public struct Line {
@@ -40,7 +41,8 @@ namespace Squared.Render.TextLayout2 {
         public Vector2 Location;
         public float Width, TrailingWhitespace, 
             Height, Baseline, 
-            Inset, Crush;
+            Inset, Crush,
+            TopDecorations, BottomDecorations;
 
         public float ActualWidth {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -90,6 +92,11 @@ namespace Squared.Render.TextLayout2 {
     }
 
     public struct StringLayoutEngine2 : IDisposable {
+        private struct CombiningCharacterInfo {
+            public uint Codepoint, DrawCallIndex;
+            public Glyph Glyph;
+        }
+
         private unsafe struct StagingBuffers : IDisposable {
             public BitmapDrawCall* DrawCalls;
             public Line* Lines;
@@ -177,7 +184,8 @@ namespace Squared.Render.TextLayout2 {
 
         // Internal state
         Vector2 FragmentOffset;
-        float Y, UnconstrainedY, UnconstrainedMaxWidth, UnconstrainedMaxY;
+        float Y, UnconstrainedY, UnconstrainedMaxWidth, UnconstrainedMaxY,
+            UnconstrainedLineTopDecorations, UnconstrainedLineBottomDecorations;
         Vector2 UnconstrainedLineSize;
         uint ColIndex, LineIndex, CharIndex, 
             DrawCallIndex, SpanIndex, FragmentIndex,
@@ -190,6 +198,9 @@ namespace Squared.Render.TextLayout2 {
         bool NewLinePending;
         DenseList<uint> SpanStack;
         DenseList<bool> RTLStack;
+
+        uint CombiningCharacterAnchorCodepoint;
+        DenseList<CombiningCharacterInfo> CombiningCharacterStack;
 
         AbstractTextureReference MostRecentTexture;
 
@@ -294,6 +305,7 @@ namespace Squared.Render.TextLayout2 {
             MarkedRangeSpanIndex = uint.MaxValue;
             HitTestResult.Position = HitTestLocation ?? default;
             MostRecentTexture = AbstractTextureReference.Invalid;
+            CombiningCharacterAnchorCodepoint = uint.MaxValue;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -373,7 +385,7 @@ namespace Squared.Render.TextLayout2 {
             return true;
         }
 
-        public bool TryGetLineBounds (uint index, out Bounds bounds) {
+        public bool TryGetLineBounds (uint index, out Bounds bounds, bool includeDecorations = true) {
             if (index > LineIndex) {
                 bounds = default;
                 return false;
@@ -384,6 +396,10 @@ namespace Squared.Render.TextLayout2 {
                 line.Location.X + Position.X, line.Location.Y + Position.Y, 
                 line.Width + (IncludeTrailingWhitespace ? line.TrailingWhitespace : 0f), line.Height
             );
+            if (includeDecorations)
+                bounds.TopLeft.Y -= line.TopDecorations;
+            else
+                bounds.BottomRight.Y -= line.BottomDecorations;
             return true;
         }
 
@@ -513,6 +529,7 @@ namespace Squared.Render.TextLayout2 {
                 var category = AnalyzeCharacter(
                     ch1, codepoint, out bool lineBreak
                 );
+                var isCombiningCharacter = category == FragmentCategory.CombiningCharacter;
 
                 if (category == FragmentCategory.NonPrintable)
                     ProcessControlCharacter(codepoint);
@@ -525,11 +542,15 @@ namespace Squared.Render.TextLayout2 {
                 // HACK: In some cases we will end up with size metrics and stuff for \r or \n.
                 // We don't want to actually treat them like characters, it screws up layout.
                 // So just erase all their data.
-                if (lineBreak)
+                if (lineBreak) {
+                    // HACK: We don't want combiners to cross lines, it makes no sense.
+                    // FIXME: Go back and delete them?
+                    CombiningCharacterStack.UnsafeFastClear();
                     glyph = default;
+                }
 
-                float glyphLineSpacing = (glyph.LineSpacing * effectiveScale.Y) + AdditionalLineSpacing;
-                float glyphBaseline = glyph.Baseline * effectiveScale.Y;
+                glyph.LineSpacing = (glyph.LineSpacing * effectiveScale.Y) + AdditionalLineSpacing;
+                glyph.Baseline *= effectiveScale.Y;
 
                 float leftSideDelta = 0;
                 if (effectiveSpacing.X >= 0)
@@ -538,6 +559,16 @@ namespace Squared.Render.TextLayout2 {
                     leftSideDelta = Math.Abs(glyph.LeftSideBearing * effectiveSpacing.X);
 
                 glyph.RightSideBearing = (glyph.RightSideBearing * effectiveSpacing.X) - leftSideDelta;
+
+                if (isCombiningCharacter) {
+                    category = FragmentCategory.Regular;
+                } else if (!deadGlyph) {
+                    if (CombiningCharacterStack.Count > 0) {
+                        glyphSource.GetGlyph(CombiningCharacterAnchorCodepoint, out var anchorGlyph);
+                        ResolveCombiningCharacters(ref anchorGlyph, ref effectiveScale);
+                    }
+                    CombiningCharacterAnchorCodepoint = codepoint;
+                }
 
                 if (category == FragmentCategory.NonPrintable) {
                     ;
@@ -613,13 +644,16 @@ recalc:
                 float glyphSpacing = glyph.CharacterSpacing * effectiveScale.X,
                     inlineW = glyph.WidthIncludingBearing * effectiveScale.X,
                     worstW = glyph.WorstCaseWidth * effectiveScale.X,
-                    h = glyphLineSpacing,
+                    h = glyph.LineSpacing,
                     xBasis = line.Location.X + line.ActualWidth,
                     x1 = xBasis + FragmentOffset.X,
                     x2 = x1 + glyphSpacing + worstW,
                     y2 = Y + h;
                 bool overflowX = (x2 > MaximumWidth),
                     overflowY = (y2 > MaximumHeight);
+
+                if (isCombiningCharacter)
+                    ProcessCombiningCharacter(codepoint, ref glyph);
 
                 if (breaksAllowed > 0) {
                     breaksAllowed--;
@@ -628,9 +662,14 @@ recalc:
                         lineBreakPending = false;
                         PerformLineBreak(defaultLineSpacing);
                         goto recalc;
-                    } else if (overflowX) {
-                        if (PerformForcedWrap(worstW, MaximumWidth - line.Inset - line.Crush))
-                            goto recalc;
+                    } else if (
+                        overflowX &&
+                        // HACK: Don't perform automatic word/character wrap for combining characters.
+                        // We should normally wrap them along with the glyph they're attached to instead.
+                        !isCombiningCharacter &&
+                        PerformForcedWrap(worstW, MaximumWidth - line.Inset - line.Crush)
+                    ) {
+                        goto recalc;
                     }
                 }
 
@@ -640,8 +679,8 @@ recalc:
                 }
 
                 ref var fragment = ref CurrentFragment;
-                if (glyphBaseline > fragment.Baseline)
-                    IncreaseBaseline(ref fragment, glyphBaseline);
+                if (glyph.Baseline > fragment.Baseline)
+                    IncreaseBaseline(ref fragment, glyph.Baseline);
 
                 bool suppressThisCharacter = SuppressUntilEnd || (overflowX && HideOverflow);
 
@@ -677,7 +716,7 @@ recalc:
                             ) * effectiveScale.X),
                             // Used to compute bounding box offsets
                             wx = xBasis + x,
-                            alignmentToBaseline = fragment.Baseline - glyphBaseline,
+                            alignmentToBaseline = fragment.Baseline - glyph.Baseline,
                             y = FragmentOffset.Y + (glyph.YOffset * effectiveScale.Y) + alignmentToBaseline;
                         drawCall = new BitmapDrawCall {
                             MultiplyColor = OverrideColor 
@@ -727,6 +766,82 @@ recalc:
                     ColIndex++;
                 CharIndex++;
             }
+        }
+
+        private void ProcessCombiningCharacter (uint codepoint, ref Glyph glyph) {
+            // Heuristic
+            CombiningCharacterStack.Add(new CombiningCharacterInfo {
+                Codepoint = codepoint,
+                DrawCallIndex = DrawCallIndex,
+                Glyph = glyph
+            });
+        }
+
+        private void ResolveCombiningCharacters (ref Glyph anchorGlyph, ref Vector2 scale) {
+            if (CombiningCharacterAnchorCodepoint != uint.MaxValue) {
+                ref var line = ref CurrentLine;
+                float topSpaceEaten = 0, bottomSpaceEaten = 0,
+                    aLB = anchorGlyph.LeftSideBearing * scale.X,
+                    aW = anchorGlyph.Width * scale.X,
+                    aRB = anchorGlyph.RightSideBearing * scale.X;
+                var yBbox = anchorGlyph.YBounds;
+
+                for (int i = 0, c = CombiningCharacterStack.Count; i < c; i++) {
+                    ref var cc = ref CombiningCharacterStack.Item(i);
+                    ref var dc = ref Buffers.DrawCall(cc.DrawCallIndex);
+
+                    // We scan through the stack of combining characters, and for each one,
+                    //  we test its bounding interval (on the y axis) against the bounding
+                    //  interval for the anchor character. If they intersect, we shift the
+                    //  combining character up or down (depending on its position) to make
+                    //  room, and then combine its bounding interval with the anchor's, so
+                    //  that we can continue to shift each additional character into place.
+                    var onTop = cc.Glyph.VerticalBearing > 0f;
+                    var ccBbox = cc.Glyph.YBounds;
+                    if (onTop) {
+                        dc.Position.Y -= topSpaceEaten;
+                        ccBbox -= topSpaceEaten;
+                        topSpaceEaten += cc.Glyph.Height;
+                    } else {
+                        dc.Position.Y += bottomSpaceEaten;
+                        ccBbox += bottomSpaceEaten;
+                        bottomSpaceEaten += cc.Glyph.Height;
+                    }
+
+                    float displacement = 0;
+                    if (yBbox.GetIntersection(ccBbox, out var yIntersection))
+                        displacement = yIntersection.Max - yIntersection.Min;
+
+                    if (onTop) {
+                        dc.Position.Y -= displacement;
+                        ccBbox -= displacement;
+                    } else {
+                        dc.Position.Y += displacement;
+                        ccBbox += displacement;
+                    }
+
+                    yBbox.GetUnion(ccBbox, out yBbox);
+
+                    if (RightToLeft) {
+                    } else {
+                        // Align our left edge with the right edge of the previous character.
+                        // Align our left edge with the left edge of the previous character's body.
+                        dc.Position.X -= cc.Glyph.LeftSideBearing + aW + aRB;
+                        // Center ourselves relative to the previous character.
+                        dc.Position.X += (aW - cc.Glyph.Width) * 0.5f;
+                    }
+                }
+
+                // FIXME: Store this per-fragment so it doesn't cause glitches when wrapping.
+                // Not sure if this feature is important enough to justify making fragments 8 bytes bigger.
+                line.TopDecorations = Math.Max(line.TopDecorations, topSpaceEaten);
+                line.BottomDecorations = Math.Max(line.BottomDecorations, bottomSpaceEaten);
+                UnconstrainedLineTopDecorations = Math.Max(UnconstrainedLineTopDecorations, Math.Abs(topSpaceEaten));
+                UnconstrainedLineBottomDecorations = Math.Max(UnconstrainedLineBottomDecorations, bottomSpaceEaten);
+            }
+
+            CombiningCharacterStack.UnsafeFastClear();
+            CombiningCharacterAnchorCodepoint = uint.MaxValue;
         }
 
         private void ChangeRTL (bool rtl, bool push, bool isolate) {
@@ -963,7 +1078,7 @@ recalc:
             };
 
 #if TRACK_CODEPOINTS
-            CurrentFragmentCodepoints.Clear();
+            CurrentFragmentCodepoints.UnsafeFastClear();
 #endif
             return ref result;
         }
@@ -1008,14 +1123,22 @@ recalc:
         private void FinishLine (bool forLineBreak) {
             ref var line = ref CurrentLine;
 
-            if (!SuppressUntilEnd)
+            CurrentLine.Height += CurrentLine.BottomDecorations;
+
+            if (!SuppressUntilEnd) {
+                CurrentLine.Location.Y += CurrentLine.TopDecorations;
+                Y += CurrentLine.TopDecorations;
                 Y += CurrentLine.Height + (forLineBreak ? ExtraBreakSpacing : 0f);
+            }
 
             UnconstrainedMaxWidth = Math.Max(UnconstrainedLineSize.X, UnconstrainedMaxWidth);
             if (forLineBreak) {
+                UnconstrainedLineSize.Y += UnconstrainedLineBottomDecorations;
                 UnconstrainedMaxY = Math.Max(UnconstrainedMaxY, UnconstrainedY + UnconstrainedLineSize.Y);
-                UnconstrainedY += UnconstrainedLineSize.Y + ExtraBreakSpacing;
+                UnconstrainedY += UnconstrainedLineTopDecorations + UnconstrainedLineSize.Y + ExtraBreakSpacing;
                 UnconstrainedLineSize = new Vector2(BreakIndentation, 0f);
+                UnconstrainedLineBottomDecorations = 0f;
+                UnconstrainedLineTopDecorations = 0f;
             }
 
             float indentation = forLineBreak ? BreakIndentation : WrapIndentation;
@@ -1346,6 +1469,8 @@ recalc:
                 EndCurrentSpan();
 
             FinishFragment(false);
+            UnconstrainedY += UnconstrainedLineTopDecorations;
+            UnconstrainedLineSize.Y += UnconstrainedLineBottomDecorations;
             FinishLine(false);
             UnconstrainedMaxY = Math.Max(UnconstrainedMaxY, UnconstrainedY + UnconstrainedLineSize.Y);
 
@@ -1425,8 +1550,8 @@ recalc:
                         isNonPrintable = true;
                     else if (uniCategory == UnicodeCategory.Format)
                         isNonPrintable = true;
-                    else
-                        ;
+                    else if (uniCategory == UnicodeCategory.NonSpacingMark)
+                        return FragmentCategory.CombiningCharacter;
                 }
             } else if (ch1 == '\n')
                 lineBreak = true;

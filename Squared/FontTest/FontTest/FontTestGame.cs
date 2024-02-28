@@ -417,9 +417,11 @@ namespace FontTest {
             "表ポあA鷗ŒéＢ逍Üßªąñ丂㐀𠀀\n" +
             // Test unicode string that mixes arabic, latin and hebrew
             // NOTE: For the next line a true bidi shaping algorithm would do automatic LTR<->RTL transitions. We don't.
-            "$(\u200Fהָיְתָה‎\u200E) $(test) $(\u200Fالصفحات التّحول\u200E)\n" +
+            "$(\u200Fהָיְתָה\u200E) $(test) $(\u200Fالصفحات التّحول\u200E)\n" +
             // Test RTL push/pop
             "rtl w/ltr embed:\u2067$(test) \u2066$(test)\u2069 $(test)\u2069\n",
+
+            "C̀́̂̃omb̀́̂̃inì́̂̃ng̠̤̥̀́̂̃ c̀́̂̃har̀́̂̃a̠̤̥ct̀́̂̃er̠̤̥s̀́̂̃ à́̂̃re̠̤̥ pret̀́̂̃ty̠̤̥ Ć̀̂o̤̥ol,\ndon't y̠̤̥ou think?",
 
             "$(Airburst Shot)\n.1  $(Ammo) x 1  Cooldown: 1\n" +
             "Fire a $(Piercing Round) overhead to $(Ambush) all foes (damage decreases based on number of targets).\n" +
