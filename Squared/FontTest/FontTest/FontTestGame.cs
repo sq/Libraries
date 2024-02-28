@@ -5,6 +5,7 @@ using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Media;
 using Squared.Game;
 using Squared.Render;
 using Squared.Render.Convenience;
@@ -19,10 +20,8 @@ namespace FontTest {
         public static readonly Color ClearColor = new Color(24, 36, 40, 255);
 
         SpriteFont DutchAndHarley;
-
-        IGlyphSource LatinFont, SmallLatinFont, UniFont, FallbackFont;
-
-        IGlyphSource ActiveFont;
+        List<IGlyphSource> Fonts = new ();
+        FallbackGlyphSource FallbackFont;
 
         DefaultMaterialSet Materials;
         GraphicsDeviceManager Graphics;
@@ -82,55 +81,50 @@ namespace FontTest {
                 Text.WordWrap = !Text.WordWrap;
             };
             Hinting.Pressed += (s, e) => {
-                var ftf = (FreeTypeFont)LatinFont;
-                ftf.Hinting = !ftf.Hinting;
-                ftf.Invalidate();
-                ftf = (FreeTypeFont)UniFont;
-                ftf.Hinting = !ftf.Hinting;
-                ftf.Invalidate();
-                Text.Invalidate();
+                foreach (var font in Fonts) {
+                    if (font is FreeTypeFont ftf) {
+                        ftf.Hinting = !ftf.Hinting;
+                        ftf.Invalidate();
+                    }
+                }
             };
             MeasureOnly.Pressed += (s, e) => {
                 Text.MeasureOnly = !Text.MeasureOnly;
                 Text.Invalidate();
             };
             Monochrome.Pressed += (s, e) => {
-                var ftf = (FreeTypeFont)LatinFont;
-                ftf.Monochrome = !ftf.Monochrome;
-                ftf.Invalidate();
-                ftf = (FreeTypeFont)UniFont;
-                ftf.Monochrome = !ftf.Monochrome;
-                ftf.Invalidate();
-                Text.Invalidate();
+                foreach (var font in Fonts) {
+                    if (font is FreeTypeFont ftf) {
+                        ftf.Monochrome = !ftf.Monochrome;
+                        ftf.Invalidate();
+                    }
+                }
             };
             FreeType.Pressed += (s, e) => {
-                if (ActiveFont == FallbackFont) {
-                    ActiveFont = new SpriteFontGlyphSource(DutchAndHarley);
+                if (Text.GlyphSource == FallbackFont) {
+                    Text.GlyphSource = new SpriteFontGlyphSource(DutchAndHarley);
                     TextScale = 1f;
                 } else {
-                    ActiveFont = FallbackFont;
+                    Text.GlyphSource = FallbackFont;
                     TextScale = DPIFactor;
                 }
-                Text.GlyphSource = ActiveFont;
                 Text.Scale = TextScale;
             };
             Kerning.Pressed += (s, e) => {
-                var ftf = (FreeTypeFont)LatinFont;
-                ftf.EnableKerning = !ftf.EnableKerning;
-                ftf.Invalidate();
-                ftf = (FreeTypeFont)UniFont;
-                ftf.EnableKerning = !ftf.EnableKerning;
-                ftf.Invalidate();
-                Text.Invalidate();
+                foreach (var font in Fonts) {
+                    if (font is FreeTypeFont ftf) {
+                        ftf.EnableKerning = !ftf.EnableKerning;
+                        ftf.Invalidate();
+                    }
+                }
             };            
             Ligatures.Pressed += (s, e) => {
-                var ftf = (FreeTypeFont)LatinFont;
-                ftf.EnableLigatures = !ftf.EnableLigatures;
-                ftf.Invalidate();
-                ftf = (FreeTypeFont)UniFont;
-                ftf.EnableLigatures = !ftf.EnableLigatures;
-                ftf.Invalidate();
-                Text.Invalidate();
+                foreach (var font in Fonts) {
+                    if (font is FreeTypeFont ftf) {
+                        ftf.EnableLigatures = !ftf.EnableLigatures;
+                        ftf.Invalidate();
+                    }
+                }
             };
             HideOverflow.Pressed += (s, e) => {
                 Text.HideOverflow = !Text.HideOverflow;
@@ -138,27 +132,35 @@ namespace FontTest {
             };
         }
 
-        protected override void OnLoadContent (bool isReloading) {
+        protected FreeTypeFont LoadFont (string path, float sizePoints) {
             var margin = 6;
-            LatinFont = new FreeTypeFont(RenderCoordinator, "FiraSans-Regular.otf") {
-                SizePoints = 40, DPIPercent = 100 * DPIFactor, GlyphMargin = margin, Gamma = 1.6,
+            var result = new FreeTypeFont(RenderCoordinator, path) {
+                DPIPercent = 100 * DPIFactor,
+                GlyphMargin = margin,
+                Gamma = 1.6f,
                 DefaultGlyphColors = {
-                    { (uint)'h', Color.Red }
+                    { 'h', Color.Red }
                 },
                 EqualizeNumberWidths = true,
+                SizePoints = sizePoints
             };
-            UniFont = new FreeTypeFont(RenderCoordinator, @"C:\Windows\Fonts\msgothic.ttc") {
-                SizePoints = 30, DPIPercent = 100 * DPIFactor, GlyphMargin = margin, Gamma = 1.6
-            };
-            FallbackFont = new FallbackGlyphSource(LatinFont, UniFont);
-            SmallLatinFont = new FreeTypeFont.FontSize((FreeTypeFont)LatinFont, 40 * 0.75f);
+            Fonts.Add(result);
+            return result;
+        }
 
-            ActiveFont = FallbackFont;
+        protected override void OnLoadContent (bool isReloading) {
+            var latinFont = LoadFont("FiraSans-Regular.otf", 40f);
+            var kanjiFont = LoadFont(@"C:\Windows\Fonts\msgothic.ttc", 30f);
+            var smallLatinFont = new FreeTypeFont.FontSize(latinFont, 40 * 0.75f);
+            Fonts.Add(smallLatinFont);
+            var arabicFont = LoadFont("NotoSansArabic-Regular.otf", 40f);
+            var hebrewFont = LoadFont("NotoSansHebrew-Regular.otf", 40f);
+            FallbackFont = new FallbackGlyphSource(Fonts.ToArray());
 
             Content.RootDirectory = "";
             DutchAndHarley = Content.Load<SpriteFont>("DutchAndHarley");
 
-            Text = new DynamicStringLayout(ActiveFont, SelectedString) {
+            Text = new DynamicStringLayout(FallbackFont, SelectedString) {
                 AlignToPixels = GlyphPixelAlignment.RoundXY,
                 CharacterWrap = true,
                 WordWrap = true,
@@ -174,8 +176,8 @@ namespace FontTest {
                         {"brown", new RichStyle { Color = Color.Brown, Scale = 2 } }
                     },
                     GlyphSources = new RichTextConfiguration.GlyphSourceCollection {
-                        {"large", LatinFont },
-                        {"small", SmallLatinFont }
+                        {"large", latinFont },
+                        {"small", smallLatinFont }
                     },
                     ImageProvider = Text_ImageProvider 
                 },
@@ -292,17 +294,16 @@ namespace FontTest {
 
             var newSize = Arithmetic.Clamp(20 + (ms.ScrollWheelValue / 56f), 6, 200);
             newSize = Arithmetic.Clamp(9 + (ms.ScrollWheelValue / 100f), 4, 200);
-            var font = ((FreeTypeFont)LatinFont);
-            var sfont = ((FreeTypeFont.FontSize)SmallLatinFont);
-            var ufont = (FreeTypeFont)UniFont;
-            if (newSize != font.SizePoints) {
-                font.SizePoints = newSize;
-                sfont.SizePoints = newSize * 0.75f;
-                ufont.SizePoints = newSize * 2.0f;
+            foreach (var font in Fonts) {
+                if (font is FreeTypeFont ftf)
+                    ftf.SizePoints = newSize;
+                else if (font is FreeTypeFont.FontSize fs)
+                    fs.SizePoints = newSize * 0.66f;
             }
+
             // HACK: Override line spacing so that empty lines have the spacing of the latin font,
             //  not the larger spacing of the unicode font
-            ((FallbackGlyphSource)FallbackFont).OverrideLineSpacing = font.LineSpacing;
+            ((FallbackGlyphSource)FallbackFont).OverrideLineSpacing = Fonts[0].LineSpacing;
 
             Text.Invalidate();
         }
@@ -381,6 +382,9 @@ namespace FontTest {
         void IStringLayoutListener.Finishing (ref StringLayoutEngine2 engine) {
         }
 
+        void IStringLayoutListener.Error (ref StringLayoutEngine2 engine, string message) {
+        }
+
         void IStringLayoutListener.Finished (ref StringLayoutEngine2 engine, ref StringLayout result) {
             Boxes.Clear();
             for (int i = 0; i < engine.BoxCount; i++) {
@@ -409,9 +413,13 @@ namespace FontTest {
             "The quick brown fox jumped over the lazy dogs. Sphinx of black quartz, judge my vow. Welcome to the circus, " +
             "we've got fun and games, here's\\a\\very-long-path\\without-spaces\\that-should-get-broken\\ok",
 
-            "This line ends with a very long string of characters: asmfkjalshasklmrasklrjhalksrmjaslkaslrklsmrsk\n\n" + 
-            "Then is followed by a line break and short lines.\n" +
-            "The word-wrap of the long string should produce a small bounding box.",
+            // Test "bad unicode string" that contains lots of problem characters
+            "表ポあA鷗ŒéＢ逍Üßªąñ丂㐀𠀀\n" +
+            // Test unicode string that mixes arabic, latin and hebrew
+            // NOTE: For the next line a true bidi shaping algorithm would do automatic LTR<->RTL transitions. We don't.
+            "$(\u200Fהָיְתָה‎\u200E) $(test) $(\u200Fالصفحات التّحول\u200E)\n" +
+            // Test RTL push/pop
+            "rtl w/ltr embed:\u2067$(test) \u2066$(test)\u2069 $(test)\u2069\n",
 
             "$(Airburst Shot)\n.1  $(Ammo) x 1  Cooldown: 1\n" +
             "Fire a $(Piercing Round) overhead to $(Ambush) all foes (damage decreases based on number of targets).\n" +

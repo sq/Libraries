@@ -60,7 +60,7 @@ namespace Squared.Render.TextLayout2 {
         public uint FirstDrawCall, DrawCallCount;
         public float Left, Width, Height, Baseline, Overhang;
         public FragmentCategory Category;
-        public bool WasSuppressed;
+        public bool WasSuppressed, RTL;
         public bool WasFullySuppressed {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => WasSuppressed && (DrawCallCount == 0) && (Width <= 0);
@@ -86,6 +86,7 @@ namespace Squared.Render.TextLayout2 {
         void RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture);
         void Finishing (ref StringLayoutEngine2 engine);
         void Finished (ref StringLayoutEngine2 engine, ref StringLayout result);
+        void Error (ref StringLayoutEngine2 engine, string message);
     }
 
     public struct StringLayoutEngine2 : IDisposable {
@@ -187,8 +188,8 @@ namespace Squared.Render.TextLayout2 {
 
         // FIXME: Make this do something
         bool NewLinePending;
-        // Push/pop span stack
         DenseList<uint> SpanStack;
+        DenseList<bool> RTLStack;
 
         AbstractTextureReference MostRecentTexture;
 
@@ -196,6 +197,9 @@ namespace Squared.Render.TextLayout2 {
         DenseList<uint> CurrentFragmentCodepoints;
         string CurrentFragmentText => string.Join("", CurrentFragmentCodepoints.Select(c => (char)c));
 #endif
+
+        // Mixed Configuration/State
+        public bool RightToLeft;
 
         // Configuration
         public IStringLayoutListener Listener;
@@ -284,7 +288,9 @@ namespace Squared.Render.TextLayout2 {
             };
             UnconstrainedLineSize = new Vector2(InitialIndentation, 0f);
             Y = 0f;
-            CurrentFragment = default;
+            CurrentFragment = new Fragment {
+                RTL = RightToLeft,
+            };
             MarkedRangeSpanIndex = uint.MaxValue;
             HitTestResult.Position = HitTestLocation ?? default;
             MostRecentTexture = AbstractTextureReference.Invalid;
@@ -508,6 +514,9 @@ namespace Squared.Render.TextLayout2 {
                     ch1, codepoint, out bool lineBreak
                 );
 
+                if (category == FragmentCategory.NonPrintable)
+                    ProcessControlCharacter(codepoint);
+
                 // Do this after AnalyzeCharacter so that we don't break custom wrap characters
                 if (isTab)
                     codepoint = ch1 = ' ';
@@ -639,6 +648,8 @@ recalc:
 #if TRACK_CODEPOINTS
                 CurrentFragmentCodepoints.Add(codepoint);
 #endif
+                if (RightToLeft)
+                    FragmentOffset.X += inlineW;
 
                 if (
                     !deadGlyph && 
@@ -657,7 +668,13 @@ recalc:
                     } else {
                         ref var drawCall = ref AppendDrawCall(ref fragment);
 
-                        float x = FragmentOffset.X + (glyph.XOffset * effectiveScale.X) + (glyph.LeftSideBearing * effectiveScale.X),
+                        float x = FragmentOffset.X + 
+                            ((
+                                RightToLeft
+                                    // FIXME: This is definitely wrong, but subtly so and I'm not sure how.
+                                    ? (glyph.RightSideBearing - glyph.XOffset)
+                                    : (glyph.LeftSideBearing + glyph.XOffset)
+                            ) * effectiveScale.X),
                             // Used to compute bounding box offsets
                             wx = xBasis + x,
                             alignmentToBaseline = fragment.Baseline - glyphBaseline,
@@ -690,7 +707,9 @@ recalc:
                     AnyCharactersSuppressed = true;
                 }
 
-                FragmentOffset.X += inlineW;
+                if (!RightToLeft)
+                    FragmentOffset.X += inlineW;
+
                 if (!SuppressUntilEnd) {
                     fragment.Width += inlineW;
                     fragment.Overhang = worstW - inlineW;
@@ -707,6 +726,87 @@ recalc:
                 if (!suppressThisCharacter && !lineBreak)
                     ColIndex++;
                 CharIndex++;
+            }
+        }
+
+        private void ChangeRTL (bool rtl, bool push, bool isolate) {
+            if (rtl != RightToLeft)
+                FinishFragment(false);
+
+            // FIXME: isolate
+            if (push)
+                RTLStack.Add(RightToLeft);
+            RightToLeft = rtl;
+
+            CurrentFragment.RTL = rtl;
+        }
+
+        private void PopRTL (bool isolate) {
+            // FIXME: How does an isolate mismatch work?
+            if (!RTLStack.TryRemoveLast(out bool rtl)) {
+                Listener?.Error(ref this, "Right-to-left state pop encountered without paired push");
+                return;
+            }
+
+            if (rtl != RightToLeft)
+                FinishFragment(false);
+
+            RightToLeft = rtl;
+            CurrentFragment.RTL = rtl;
+        }
+
+        private void ProcessControlCharacter (uint codepoint) {
+            switch (codepoint) {
+                // Arabic letter mark
+                case 0x061C:
+                    // FIXME
+                    break;
+                // LTR mark
+                case 0x200E:
+                    ChangeRTL(false, push: false, isolate: false);
+                    break;
+                // RTL mark
+                case 0x200F:
+                    ChangeRTL(true, push: false, isolate: false);
+                    break;
+                // LTR embedding
+                case 0x202A:
+                    ChangeRTL(false, push: true, isolate: false);
+                    break;
+                // RTL embedding
+                case 0x202B:
+                    ChangeRTL(true, push: true, isolate: false);
+                    break;
+                // Pop directional formatting
+                case 0x202C:
+                    PopRTL(isolate: false);
+                    break;
+                // LTR override (FIXME: How is this distinct from LTR embedding?)
+                case 0x202D:
+                    ChangeRTL(false, push: true, isolate: false);
+                    break;
+                // RTL override (FIXME: How is this distinct from RTL embedding?)
+                case 0x202E:
+                    ChangeRTL(true, push: true, isolate: false);
+                    break;
+                // LTR isolate
+                case 0x2066:
+                    ChangeRTL(false, push: true, isolate: true);
+                    break;
+                // RTL isolate
+                case 0x2067:
+                    ChangeRTL(true, push: true, isolate: true);
+                    break;
+                // First strong isolate
+                case 0x2068:
+                    // FIXME
+                    break;
+                // Pop directional isolate
+                case 0x2069:
+                    PopRTL(isolate: true);
+                    break;
+                default:
+                    break;
             }
         }
 
@@ -858,7 +958,8 @@ recalc:
             result = new Fragment {
                 FirstDrawCall = DrawCallIndex,
                 LineIndex = LineIndex,
-                WasSuppressed = SuppressUntilEnd
+                WasSuppressed = SuppressUntilEnd,
+                RTL = RightToLeft,
             };
 
 #if TRACK_CODEPOINTS
@@ -1192,10 +1293,14 @@ recalc:
                         if (fragment.Category == gapCategory)
                             x += gapWhitespace;
 
+                        var rtl = fragment.RTL;
                         if (fragment.DrawCallCount > 0) {
                             for (uint dc = fragment.FirstDrawCall, dc2 = dc + fragment.DrawCallCount - 1; dc <= dc2; dc++) {
                                 ref var drawCall = ref Buffers.DrawCall(dc);
-                                drawCall.Position.X += x;
+                                if (rtl)
+                                    drawCall.Position.X = x + (fragment.Width - drawCall.Position.X);
+                                else
+                                    drawCall.Position.X += x;
                                 drawCall.Position.Y += fragmentY;
                             }
                         }
@@ -1298,7 +1403,11 @@ recalc:
                 isWordWrapPoint = isWhitespace || char.IsSeparator(ch1) ||
                     (MaskCodepoint != 0) || WrapCharacters.BinarySearchNonRef(codepoint, UintComparer.Instance) >= 0;
 
-            if (codepoint > 255) {
+            if (codepoint == 0x00A0) {
+                // Wrapping and justify expansion should never occur for a non-breaking space
+                isWordWrapPoint = false;
+                isNonPrintable = true;
+            } else if (codepoint > 127) {
                 if (codepoint == '\u2007') {
                     // Figure spaces should be treated as printable characters, not whitespace,
                     //  since they're meant for use in numerical figures. No wrapping either.
@@ -1316,11 +1425,9 @@ recalc:
                         isNonPrintable = true;
                     else if (uniCategory == UnicodeCategory.Format)
                         isNonPrintable = true;
+                    else
+                        ;
                 }
-            } else if (codepoint == 0x00A0) {
-                // Wrapping and justify expansion should never occur for a non-breaking space
-                isWordWrapPoint = false;
-                isNonPrintable = true;
             } else if (ch1 == '\n')
                 lineBreak = true;
 

@@ -1179,6 +1179,10 @@ namespace Squared.Render.Text {
             _Listener?.Initializing(ref engine);
         }
 
+        void IStringLayoutListener.Error (ref StringLayoutEngine2 engine, string message) {
+            _Listener?.Error(ref engine, message);
+        }
+
         void IStringLayoutListener.RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture) {
             if (RecordUsedTextures) {
                 var satellite = AutoAllocateSatellite();
