@@ -823,6 +823,10 @@ recalc:
                     yBbox.GetUnion(ccBbox, out yBbox);
 
                     if (RightToLeft) {
+                        // Align our left edge with the left edge of the previous character. I think?
+                        dc.Position.X -= cc.Glyph.RightSideBearing - cc.Glyph.LeftSideBearing;
+                        // Center ourselves relative to the previous character.
+                        dc.Position.X -= (aW - cc.Glyph.Width) * 0.5f;
                     } else {
                         // Align our left edge with the right edge of the previous character.
                         // Align our left edge with the left edge of the previous character's body.
