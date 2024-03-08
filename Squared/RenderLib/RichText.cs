@@ -487,11 +487,28 @@ namespace Squared.Render.Text {
         /// The processor failed to process the text
         /// </summary>
         Error = 0b1000,
+    }
 
-        /// <summary>
-        /// You can set this flag to suppress recording of the marked string at the end
-        /// </summary>
-        Unmarked = 0b10000000
+    public struct MarkedStringConfiguration {
+        public MarkedStringAction Action;
+        public AbstractString RubyText;
+        public bool Unmarked;
+
+        public MarkedStringConfiguration (MarkedStringAction action, bool unmarked = false) 
+            : this () {
+            Action = action;
+            Unmarked = unmarked;
+        }
+
+        public static MarkedStringConfiguration Ruby (string text) =>
+            new MarkedStringConfiguration {
+                Action = MarkedStringAction.PlainText,
+                RubyText = text,
+                Unmarked = true,
+            };
+
+        public static implicit operator MarkedStringConfiguration (MarkedStringAction action) =>
+            new MarkedStringConfiguration { Action = action };
     }
 
     /// <summary>
@@ -502,7 +519,7 @@ namespace Squared.Render.Text {
     /// <param name="state">A state snapshot that can be used to examine or restore the current state of the layout engine.</param>
     /// <param name="layoutEngine">The layout engine that will be used to append the text (after this method returns).</param>
     /// <returns>true if the string should be laid out, false if it should be omitted from the output entirely.</returns>
-    public delegate MarkedStringAction MarkedStringProcessor (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine);
+    public delegate MarkedStringConfiguration MarkedStringProcessor (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine);
 
     public interface IRichTextStateTracker {
         void MarkString (RichTextConfiguration config, AbstractString originalText, AbstractString text, AbstractString id, uint spanIndex);
@@ -552,6 +569,8 @@ namespace Squared.Render.Text {
 
         private int Version;
         public GlyphSourceCollection GlyphSources;
+        public IGlyphSource DefaultRubyGlyphSource;
+        public float DefaultRubyScale = 0.66f;
         public ImmutableAbstractStringLookup<Color> NamedColors;
         public ImmutableAbstractStringLookup<RichStyle> Styles;
         public ImmutableAbstractStringLookup<RichImage> Images;
@@ -642,12 +661,12 @@ namespace Squared.Render.Text {
         /// <returns>a list of rich images that were referenced</returns>
         public void Append (
             ref TLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, AbstractString text, 
-            string styleName, bool? overrideSuppress = null, IRichTextStateTracker stateTracker = null
+            string styleName, IRichTextStateTracker stateTracker = null
         ) {
             var state = new RichTextLayoutState(ref layoutEngine, defaultGlyphSource);
             state.Tags.AddRange(ref Tags);
             try {
-                Append(ref layoutEngine, ref state, text, styleName, overrideSuppress, stateTracker);
+                Append(ref layoutEngine, ref state, text, styleName, stateTracker);
             } finally {
                 state.Dispose();
             }
@@ -688,7 +707,8 @@ namespace Squared.Render.Text {
 
         private void AppendRichRange (
             ref TLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
-            bool? overrideSuppress, ref DenseList<RichParseError> parseErrors, IRichTextStateTracker stateTracker
+            ref DenseList<RichParseError> parseErrors, IRichTextStateTracker stateTracker,
+            bool rubyAnchor
         ) {
             int currentRangeStart = 0;
             RichStyle style;
@@ -700,7 +720,7 @@ namespace Squared.Render.Text {
                 var ch = text[i];
                 var next = (i < count - 2) ? text[i + 1] : '\0';
                 if ((ch == '$') && ((next == '[') || (next == '(') || (next == '<'))) {
-                    AppendPlainRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, i, overrideSuppress);
+                    AppendPlainRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, i, rubyAnchor);
                     bool commandMode = next == '[',
                         insertionMode = next == '<';
                     var closer = (next == '(') 
@@ -824,7 +844,7 @@ namespace Squared.Render.Text {
                             astr = bracketed.Value;
                         }
 
-                        var action = MarkedStringAction.Default;
+                        var config = default(MarkedStringConfiguration);
                         // HACK: The string processor may mess with layout state, so we want to restore it after
                         var markedState = new RichTextLayoutState(ref layoutEngine, state.DefaultGlyphSource) {
                             GlyphSource = state.GlyphSource
@@ -833,25 +853,32 @@ namespace Squared.Render.Text {
                         try {
                             ref var span = ref layoutEngine.BeginSpan(true);
                             if (MarkedStringProcessor != null)
-                                action = MarkedStringProcessor(ref astr, ref id, ref markedState, ref layoutEngine);
+                                config = MarkedStringProcessor(ref astr, ref id, ref markedState, ref layoutEngine);
 
-                            var record = (action & MarkedStringAction.Unmarked) != MarkedStringAction.Unmarked;
-                            action &= ~MarkedStringAction.Unmarked;
+                            if (!config.RubyText.IsNullOrWhiteSpace) {
+                                if (rubyAnchor)
+                                    throw new InvalidOperationException("Ruby text cannot have its own ruby text");
+                                else
+                                    layoutEngine.PushRubyText(
+                                        DefaultRubyGlyphSource ?? state.GlyphSource ?? state.DefaultGlyphSource, 
+                                        config.RubyText, DefaultRubyScale
+                                    );
+                            }
 
-                            if (action == MarkedStringAction.Error)
+                            if (config.Action == MarkedStringAction.Error)
                                 parseErrors.Add(new RichParseError {
                                     Message = "Processing failed",
                                     Offset = bracketed.Offset,
                                     Text = bracketed.Value,
                                 });
-                            else if (action != MarkedStringAction.Omit) {
+                            else if (config.Action != MarkedStringAction.Omit) {
                                 var l = astr.Length;
-                                if (record)
+                                if (!config.Unmarked)
                                     stateTracker?.MarkString(this, bracketed.Value, astr, id, span.Index);
 
-                                if (action == MarkedStringAction.RichText)
-                                    AppendRichRange(ref layoutEngine, ref state, astr, overrideSuppress, ref parseErrors, stateTracker);
-                                else if (action != MarkedStringAction.PlainText) {
+                                if (config.Action == MarkedStringAction.RichText)
+                                    AppendRichRange(ref layoutEngine, ref state, astr, ref parseErrors, stateTracker, rubyAnchor || !config.RubyText.IsNullOrWhiteSpace);
+                                else if (config.Action != MarkedStringAction.PlainText) {
                                     // FIXME
                                     /*
                                     var initialIndex = layoutEngine.currentCharacterIndex;
@@ -863,9 +890,9 @@ namespace Squared.Render.Text {
                                     layoutEngine.Markers.Add(m);
                                     */
 
-                                    AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
+                                    AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, rubyAnchor || !config.RubyText.IsNullOrWhiteSpace);
                                 } else {
-                                    AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, overrideSuppress);
+                                    AppendPlainRange(ref layoutEngine, markedState.GlyphSource ?? state.DefaultGlyphSource, astr, 0, l, rubyAnchor || !config.RubyText.IsNullOrWhiteSpace);
                                 }
                             }
 
@@ -882,13 +909,13 @@ namespace Squared.Render.Text {
                 }
             }
 
-            AppendPlainRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, count, overrideSuppress);
+            AppendPlainRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, count, false);
         }
 
         /// <returns>a list of rich images that were referenced</returns>
         public void Append (
             ref TLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
-            string styleName, bool? overrideSuppress = null, IRichTextStateTracker stateTracker = null
+            string styleName, IRichTextStateTracker stateTracker = null
         ) {
             var parseErrors = new DenseList<RichParseError>();
 
@@ -897,7 +924,7 @@ namespace Squared.Render.Text {
                 if (!string.IsNullOrWhiteSpace(styleName) && Styles.TryGetValue(styleName, out RichStyle defaultStyle))
                     ApplyStyle(ref layoutEngine, ref state, in defaultStyle);
 
-                AppendRichRange(ref layoutEngine, ref state, text, overrideSuppress, ref parseErrors, stateTracker);
+                AppendRichRange(ref layoutEngine, ref state, text, ref parseErrors, stateTracker, false);
 
                 if (OnParseError != null)
                     foreach (var pe in parseErrors)
@@ -928,13 +955,13 @@ namespace Squared.Render.Text {
 
         private void AppendPlainRange (
             ref TLayoutEngine layoutEngine, IGlyphSource glyphSource, AbstractString text,
-            int rangeStart, int rangeEnd, bool? overrideSuppress
+            int rangeStart, int rangeEnd, bool rubyAnchor
         ) {
             if (rangeEnd <= rangeStart)
                 return;
             var range = text.Substring(rangeStart, rangeEnd - rangeStart);
             // FIXME: overrideSuppress
-            layoutEngine.AppendText(glyphSource, range);
+            layoutEngine.AppendText(glyphSource, range, rubyAnchor ? TextLayout2.FragmentCategory.Regular : null);
         }
 
         private ImmutableAbstractString ParseBracketedText (AbstractString text, ref int i, ref int currentRangeStart, HashSet<char> terminators, char close) {

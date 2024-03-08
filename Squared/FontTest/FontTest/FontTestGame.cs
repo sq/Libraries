@@ -232,7 +232,7 @@ namespace FontTest {
             return new AsyncRichImage(ref ri);
         }
 
-        private MarkedStringAction ProcessMarkedString (
+        private MarkedStringConfiguration ProcessMarkedString (
             ref AbstractString text, ref AbstractString id, 
             ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine
         ) {
@@ -243,7 +243,15 @@ namespace FontTest {
             } else if (text.TextEquals("rich substring")) {
                 text = "<$[scale:2.0]b$[scale:1.66]i$[scale:1.33]g$[scale:1.0] rich substring>";
                 return MarkedStringAction.RichText;
-            }
+            } else if (text.TextEquals("anchor string", StringComparison.OrdinalIgnoreCase)) {
+                return MarkedStringConfiguration.Ruby("ruby text");
+            } else if (text.TextEquals("無限")) {
+                return MarkedStringConfiguration.Ruby("むげん");
+            } else if (text.TextEquals("出来")) {
+                return MarkedStringConfiguration.Ruby("でき");
+            } else if (text.TextEquals("体")) {
+                return MarkedStringConfiguration.Ruby("からだ");
+            }            
             return default;
         }
 
@@ -401,7 +409,7 @@ namespace FontTest {
 
         public string[] TestStrings = new[] {
             "$<img:left>$<img:topright>The $[.quick]$(quick) $[color:brown;scale:2.0;spacing:1.5]b$[scale:1.75]r$[scale:1.5]o$[scale:1.25]w$[scale:1.0]n$[] $(fox) $[font:small]jum$[font:large]ped$[] $[color:#FF00FF]over$[]$( )$(t)he$( )$(lazy dogs)" +
-            "\r\nこの体は、無限のチェイサーで出来ていた $(marked)" +
+            "\r\nこの$(体)は、$(無限)のチェイサーで$(出来)ていた $(marked)" +
             "\r\nThis fish flowed off the office desk looking baffled." +
             "\r\nTesting$<img:inline@0.0>Baseline$<img:inline@0.5>Alignment$<img:inline@1.0>" +
             "\r\n\r\nEmpty line before this one $(marked)\r\n$<img:bottomleft>$<img:bottomright>$(rich substring)",
@@ -421,7 +429,8 @@ namespace FontTest {
             // Test RTL push/pop
             "rtl w/ltr embed:\u2067$(test) \u2066$(test)\u2069 $(test)\u2069\n",
 
-            "C̀́̂̃omb̀́̂̃inì́̂̃ng̠̤̥̀́̂̃ c̀́̂̃har̀́̂̃a̠̤̥ct̀́̂̃er̠̤̥s̀́̂̃ à́̂̃re̠̤̥ pret̀́̂̃ty̠̤̥ Ć̀̂o̤̥ol,\ndon't y̠̤̥ou think?",
+            "C̀́̂̃omb̀́̂̃inì́̂̃ng̠̤̥̀́̂̃ c̀́̂̃har̀́̂̃a̠̤̥ct̀́̂̃er̠̤̥s̀́̂̃ à́̂̃re̠̤̥ pret̀́̂̃ty̠̤̥ Ć̀̂o̤̥ol,\ndon't y̠̤̥ou think?\n" +
+            "Ruby: $(Anchor String) <- should wrap as one box",
 
             "$(Airburst Shot)\n.1  $(Ammo) x 1  Cooldown: 1\n" +
             "Fire a $(Piercing Round) overhead to $(Ambush) all foes (damage decreases based on number of targets).\n" +

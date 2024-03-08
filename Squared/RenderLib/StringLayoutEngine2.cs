@@ -28,9 +28,10 @@ namespace Squared.Render.TextLayout2 {
         Regular = 0b1,
         WrapPoint = 0b10,
         Box = 0b100,
-        Whitespace = 0b1000,
-        NonPrintable = 0b10000,
-        CombiningCharacter = 0b100000,
+        RubyText = 0b1000,
+        Whitespace = 0b10000,
+        NonPrintable = 0b100000,
+        CombiningCharacter = 0b1000000,
     }
 
     public struct Line {
@@ -58,7 +59,7 @@ namespace Squared.Render.TextLayout2 {
     }
 
     public struct Fragment {
-        public uint LineIndex, BoxIndex;
+        public uint LineIndex, BoxIndex, AnchorSpanIndex;
         public uint FirstDrawCall, DrawCallCount;
         public float Left, Width, Height, Baseline, Overhang;
         public FragmentCategory Category;
@@ -81,6 +82,16 @@ namespace Squared.Render.TextLayout2 {
         public uint FragmentIndex;
         // Optional
         public uint DrawCallIndex;
+    }
+
+    public struct RubyConfiguration {
+        public IGlyphSource GlyphSource;
+        public AbstractString Text;
+        private float ScaleMinusOne;
+        public float Scale {
+            get => ScaleMinusOne + 1;
+            set => ScaleMinusOne = value - 1;
+        }
     }
 
     public interface IStringLayoutListener {
@@ -198,6 +209,7 @@ namespace Squared.Render.TextLayout2 {
         bool NewLinePending;
         DenseList<uint> SpanStack;
         DenseList<bool> RTLStack;
+        DenseList<RubyConfiguration> RubyStack;
 
         uint CombiningCharacterAnchorCodepoint;
         DenseList<CombiningCharacterInfo> CombiningCharacterStack;
@@ -301,6 +313,7 @@ namespace Squared.Render.TextLayout2 {
             Y = 0f;
             CurrentFragment = new Fragment {
                 RTL = RightToLeft,
+                AnchorSpanIndex = uint.MaxValue,
             };
             MarkedRangeSpanIndex = uint.MaxValue;
             HitTestResult.Position = HitTestLocation ?? default;
@@ -326,17 +339,24 @@ namespace Squared.Render.TextLayout2 {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref BitmapDrawCall GetDrawCall (uint index) {
+        public readonly ref BitmapDrawCall GetDrawCall (uint index) {
             if (index > DrawCallIndex)
                 index = DrawCallIndex;
             return ref Buffers.DrawCall(index);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ref Span GetSpan (uint index) {
+        public readonly ref Span GetSpan (uint index) {
             if (index > SpanIndex)
                 index = SpanIndex;
             return ref Buffers.Span(index);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly ref Line GetLine (uint index) {
+            if (index > LineIndex)
+                index = LineIndex;
+            return ref Buffers.Line(index);
         }
 
         public bool TryGetSpanBoundingBoxes (uint index, ref DenseList<Bounds> output) {
@@ -455,12 +475,51 @@ namespace Squared.Render.TextLayout2 {
             return ref EndSpan(index);
         }
 
+        /// <summary>
+        /// Attaches ruby text to the current span.
+        /// </summary>
+        public void PushRubyText (IGlyphSource glyphSource, AbstractString text, float scale) {
+            if (glyphSource == null)
+                throw new ArgumentNullException(nameof(glyphSource));
+
+            RubyStack.Add(new RubyConfiguration {
+                GlyphSource = glyphSource,
+                Text = text,
+                Scale = scale
+            });
+        }
+
         private ref Span EndSpan (uint index) {
             ref var result = ref Buffers.Span(index);
             result.LastRelativeX = FragmentOffset.X;
             result.LastFragmentIndex = FragmentIndex;
             result.DrawCallCount = DrawCallIndex - result.FirstDrawCall;
+
+            int rubies = RubyStack.Count;
+            if (rubies > 0) {
+                var rs = RubyStack;
+                RubyStack.Clear();
+                for (int i = 0; i < rubies; i++)
+                    ProcessRuby(ref result, rs[i]);
+            }
+
             return ref result;
+        }
+
+        private void ProcessRuby (ref Span anchor, RubyConfiguration ruby) {
+            FinishFragment(false);
+            ref var rubySpan = ref BeginSpan(true);
+            ref var fragment = ref CurrentFragment;
+            var oldScale = Scale;
+            try {
+                Scale *= ruby.Scale;
+                ref var line = ref CurrentLine;
+                AppendText(ruby.GlyphSource, ruby.Text, FragmentCategory.RubyText);
+            } finally {
+                EndSpan(rubySpan.Index);
+                fragment.AnchorSpanIndex = anchor.Index;
+                Scale = oldScale;
+            }
         }
 
         private void UpdateMarkedRange () {
@@ -483,7 +542,7 @@ namespace Squared.Render.TextLayout2 {
         }
 
         public void AppendText<TGlyphSource> (
-            TGlyphSource glyphSource, AbstractString text            
+            TGlyphSource glyphSource, AbstractString text, FragmentCategory? singleFragment = null
         ) where TGlyphSource : IGlyphSource {
             if (!IsInitialized)
                 throw new InvalidOperationException("Call Initialize first");
@@ -560,7 +619,9 @@ namespace Squared.Render.TextLayout2 {
 
                 glyph.RightSideBearing = (glyph.RightSideBearing * effectiveSpacing.X) - leftSideDelta;
 
-                if (isCombiningCharacter) {
+                if (singleFragment.HasValue) {
+                    category = singleFragment.Value;
+                } else if (isCombiningCharacter) {
                     category = FragmentCategory.Regular;
                 } else if (!deadGlyph) {
                     if (CombiningCharacterStack.Count > 0) {
@@ -577,7 +638,7 @@ namespace Squared.Render.TextLayout2 {
                     if (cf.Category == FragmentCategory.Unknown)
                         cf.Category = category;
 
-                    if (category != cf.Category)
+                    if (!singleFragment.HasValue && (category != cf.Category))
                         cf = ref FinishFragment(true);
 
                     if (cf.Category == FragmentCategory.Unknown)
@@ -595,7 +656,7 @@ namespace Squared.Render.TextLayout2 {
                 }
 
                 // FIXME: Kerning across multiple AppendText calls
-                if (!hasKerningNow && (glyph.KerningProvider != null) && (i < l - 2)) {
+                if (!isCombiningCharacter && !hasKerningNow && (glyph.KerningProvider != null) && (i < l - 2)) {
                     var temp = i + 1;
                     var codepoint2 = DecodeCodepoint(text, ref temp, l, out _, out _);
                     // FIXME: Also do adjustment for next glyph!
@@ -660,14 +721,14 @@ recalc:
 
                     if (lineBreakPending) {
                         lineBreakPending = false;
-                        PerformLineBreak(defaultLineSpacing);
+                        PerformLineBreak(defaultLineSpacing, singleFragment.HasValue);
                         goto recalc;
                     } else if (
                         overflowX &&
                         // HACK: Don't perform automatic word/character wrap for combining characters.
                         // We should normally wrap them along with the glyph they're attached to instead.
                         !isCombiningCharacter &&
-                        PerformForcedWrap(worstW, MaximumWidth - line.Inset - line.Crush)
+                        PerformForcedWrap(worstW, MaximumWidth - line.Inset - line.Crush, singleFragment.HasValue)
                     ) {
                         goto recalc;
                     }
@@ -929,6 +990,14 @@ recalc:
             }
         }
 
+        public void IncreaseBaseline (float newBaseline) {
+            ref var fragment = ref CurrentFragment;
+            if (newBaseline <= fragment.Baseline)
+                return;
+
+            IncreaseBaseline(ref fragment, newBaseline);
+        }
+
         private void IncreaseBaseline (ref Fragment fragment, float newBaseline) {
             float adjustment = newBaseline - fragment.Baseline;
             fragment.Baseline = newBaseline;
@@ -941,8 +1010,11 @@ recalc:
             }
         }
 
-        private bool PerformForcedWrap (float characterWidth, float currentMaximumWidth) {
+        private bool PerformForcedWrap (float characterWidth, float currentMaximumWidth, bool singleFragment) {
             ref var fragment = ref CurrentFragment;
+            if (fragment.Category == FragmentCategory.RubyText)
+                return false;
+
             // Determine whether wrapping the entire fragment will work.
             if (WordWrap) {
                 // If we're about to wrap a whitespace fragment, just say we succeeded but don't do anything.
@@ -950,7 +1022,7 @@ recalc:
                     return true;
 
                 if (fragment.Width + characterWidth <= currentMaximumWidth) {
-                } else if (CharacterWrap) {
+                } else if (CharacterWrap && !singleFragment) {
                     // We can't cleanly word wrap so we should try to character wrap instead.
                     FinishFragment(false);
                     FinishLine(false);
@@ -970,7 +1042,8 @@ recalc:
             return false;
         }
 
-        private void PerformLineBreak (float defaultLineSpacing) {
+        private void PerformLineBreak (float defaultLineSpacing, bool singleFragmentMode) {
+            // FIXME: Single fragment mode
             FinishFragment(false);
             if (CurrentLine.Height == 0f)
                 CurrentLine.Height = defaultLineSpacing;
@@ -1011,6 +1084,10 @@ recalc:
             float baselineAdjustment = line.Baseline - fragment.Baseline;
 
             switch (fragment.Category) {
+                case FragmentCategory.RubyText:
+                    UnconstrainedLineTopDecorations = Math.Max(UnconstrainedLineTopDecorations, fragment.Height);
+                    line.TopDecorations = Math.Max(line.TopDecorations, fragment.Height);
+                    break;
                 case FragmentCategory.Regular:
                     UnconstrainedLineSize.X += fragment.Width; 
                     line.Width += fragment.Width + line.TrailingWhitespace;
@@ -1079,6 +1156,7 @@ recalc:
                 LineIndex = LineIndex,
                 WasSuppressed = SuppressUntilEnd,
                 RTL = RightToLeft,
+                AnchorSpanIndex = uint.MaxValue,
             };
 
 #if TRACK_CODEPOINTS
@@ -1112,6 +1190,13 @@ recalc:
 
             line.Inset = inset;
             line.Crush = crush;
+        }
+
+        public void IncreaseLineHeight (float newHeight) {
+            ref var line = ref CurrentLine;
+
+            UnconstrainedLineSize.Y = Math.Max(UnconstrainedLineSize.Y, newHeight);
+            CalculateLineInsetAndCrush(ref line);
         }
 
         private void IncreaseLineHeight (ref Line line, ref Fragment fragment) {
@@ -1292,7 +1377,7 @@ recalc:
 
         private void ArrangeFragments (ref Vector2 constrainedSize) {
             var gapCategory = SplitAtWrapCharactersOnly 
-                ? FragmentCategory.WrapPoint 
+                ? FragmentCategory.WrapPoint
                 : FragmentCategory.Whitespace;
 
             for (uint i = 0; i <= LineIndex; i++) {
@@ -1361,90 +1446,127 @@ recalc:
                 if (DesiredWidth > 0)
                     boxRightEdge = DesiredWidth;
 
+                bool foundAnchoredFragments = false;
                 for (uint f = line.FirstFragmentIndex, f2 = f + line.FragmentCount - 1; f <= f2; f++) {
                     ref var fragment = ref Buffers.Fragment(f);
                     float fragmentY = y + (line.Baseline - fragment.Baseline);
-                    fragment.Left = x;
+                    if (fragment.AnchorSpanIndex == uint.MaxValue)
+                        ArrangeSingleFragment(
+                            ref constrainedSize, gapCategory, ref line, ref x, y, gapWhitespace,
+                            boxRightEdge, ref fragment, fragmentY
+                        );
+                    else
+                        foundAnchoredFragments = true;
+                }
 
-                    if (fragment.Category == FragmentCategory.Box) {
-                        ref var box = ref Buffers.Box(fragment.BoxIndex);
+                if (!foundAnchoredFragments)
+                    continue;
 
-                        float boxX = x, boxBaseline = box.Bounds.Size.Y * box.BaselineAlignment,
-                            alignmentToBaseline = line.Baseline - boxBaseline;
-                        if (MeasureOnly) {
-                            // We don't have draw call information so we can only align the existing box.
-                            // Its size should be fairly accurate though.
-                            switch (box.HorizontalAlignment) {
-                                case ImageHorizontalAlignment.Left:
-                                    boxX = Position.X;
-                                    alignmentToBaseline = 0f;
-                                    break;
-                                case ImageHorizontalAlignment.Right:
-                                    constrainedSize.X = boxRightEdge; // :(
-                                    boxX = boxRightEdge - box.Bounds.Size.X + Position.X;
-                                    alignmentToBaseline = 0f;
-                                    break;
-                            }
-                            box.Bounds = Bounds.FromPositionAndSize(boxX, y + alignmentToBaseline, box.Bounds.Size.X, box.Bounds.Size.Y);
-                        } else if (box.DrawCallIndex != uint.MaxValue) {
-                            ref var drawCall = ref Buffers.DrawCall(box.DrawCallIndex);
-                            var estimatedBounds = drawCall.EstimateDrawBounds();
-                            switch (box.HorizontalAlignment) {
-                                case ImageHorizontalAlignment.Left:
-                                    boxX = Position.X;
-                                    alignmentToBaseline = 0f;
-                                    break;
-                                case ImageHorizontalAlignment.Right:
-                                    constrainedSize.X = boxRightEdge; // :(
-                                    boxX = boxRightEdge - estimatedBounds.Size.X + Position.X;
-                                    alignmentToBaseline = 0f;
-                                    break;
-                                case ImageHorizontalAlignment.Inline:
-                                    boxX += box.Margin.X;
-                                    break;
-                            }
-                            box.Bounds = Bounds.FromPositionAndSize(boxX, y + alignmentToBaseline, estimatedBounds.Size.X, estimatedBounds.Size.Y);
-                            drawCall.Position = new Vector2(boxX, y + alignmentToBaseline);
-                        } else {
-                            switch (box.HorizontalAlignment) {
-                                case ImageHorizontalAlignment.Left:
-                                    boxX = Position.X;
-                                    alignmentToBaseline = 0f;
-                                    break;
-                                case ImageHorizontalAlignment.Right:
-                                    constrainedSize.X = boxRightEdge; // :(
-                                    boxX = boxRightEdge - fragment.Width + Position.X;
-                                    alignmentToBaseline = 0f;
-                                    break;
-                            }
-                            box.Bounds = Bounds.FromPositionAndSize(boxX, y + alignmentToBaseline, fragment.Width, fragment.Height);
-                        }
+                for (uint f = line.FirstFragmentIndex, f2 = f + line.FragmentCount - 1; f <= f2; f++) {
+                    ref var fragment = ref Buffers.Fragment(f);
+                    if (fragment.AnchorSpanIndex == uint.MaxValue)
+                        continue;
 
-                        constrainedSize.Y = Math.Max(constrainedSize.Y, box.Bounds.BottomRight.Y - Position.Y);
+                    DenseList<Bounds> anchorBoxes = default;
+                    // FIXME
+                    if (!TryGetSpanBoundingBoxes(fragment.AnchorSpanIndex, ref anchorBoxes))
+                        continue;
 
-                        if (box.HorizontalAlignment == ImageHorizontalAlignment.Inline) {
-                            x += fragment.Width;
-                            x += fragment.Overhang;
-                        }
-                    } else {
-                        if (fragment.Category == gapCategory)
-                            x += gapWhitespace;
+                    var lastBox = anchorBoxes.LastOrDefault();
+                    float anchoredX = lastBox.Center.X - (fragment.Width * 0.5f), anchoredY = y - fragment.Height;
+                    ArrangeSingleFragment(
+                        ref constrainedSize, FragmentCategory.Regular,
+                        ref line, ref anchoredX, anchoredY,
+                        0f, boxRightEdge, ref fragment, anchoredY
+                    );
+                }
+            }
+        }
 
-                        var rtl = fragment.RTL;
-                        if (fragment.DrawCallCount > 0) {
-                            for (uint dc = fragment.FirstDrawCall, dc2 = dc + fragment.DrawCallCount - 1; dc <= dc2; dc++) {
-                                ref var drawCall = ref Buffers.DrawCall(dc);
-                                if (rtl)
-                                    drawCall.Position.X = x + (fragment.Width - drawCall.Position.X);
-                                else
-                                    drawCall.Position.X += x;
-                                drawCall.Position.Y += fragmentY;
-                            }
-                        }
+        private void ArrangeSingleFragment (
+            ref Vector2 constrainedSize, FragmentCategory gapCategory, ref Line line, 
+            ref float x, float y, float gapWhitespace, float boxRightEdge, 
+            ref Fragment fragment, float fragmentY
+        ) {
+            fragment.Left = x;
 
-                        x += fragment.Width;
+            if (fragment.Category == FragmentCategory.Box) {
+                ref var box = ref Buffers.Box(fragment.BoxIndex);
+
+                float boxX = x, boxBaseline = box.Bounds.Size.Y * box.BaselineAlignment,
+                    alignmentToBaseline = line.Baseline - boxBaseline;
+                if (MeasureOnly) {
+                    // We don't have draw call information so we can only align the existing box.
+                    // Its size should be fairly accurate though.
+                    switch (box.HorizontalAlignment) {
+                        case ImageHorizontalAlignment.Left:
+                            boxX = Position.X;
+                            alignmentToBaseline = 0f;
+                            break;
+                        case ImageHorizontalAlignment.Right:
+                            constrainedSize.X = boxRightEdge; // :(
+                            boxX = boxRightEdge - box.Bounds.Size.X + Position.X;
+                            alignmentToBaseline = 0f;
+                            break;
+                    }
+                    box.Bounds = Bounds.FromPositionAndSize(boxX, y + alignmentToBaseline, box.Bounds.Size.X, box.Bounds.Size.Y);
+                } else if (box.DrawCallIndex != uint.MaxValue) {
+                    ref var drawCall = ref Buffers.DrawCall(box.DrawCallIndex);
+                    var estimatedBounds = drawCall.EstimateDrawBounds();
+                    switch (box.HorizontalAlignment) {
+                        case ImageHorizontalAlignment.Left:
+                            boxX = Position.X;
+                            alignmentToBaseline = 0f;
+                            break;
+                        case ImageHorizontalAlignment.Right:
+                            constrainedSize.X = boxRightEdge; // :(
+                            boxX = boxRightEdge - estimatedBounds.Size.X + Position.X;
+                            alignmentToBaseline = 0f;
+                            break;
+                        case ImageHorizontalAlignment.Inline:
+                            boxX += box.Margin.X;
+                            break;
+                    }
+                    box.Bounds = Bounds.FromPositionAndSize(boxX, y + alignmentToBaseline, estimatedBounds.Size.X, estimatedBounds.Size.Y);
+                    drawCall.Position = new Vector2(boxX, y + alignmentToBaseline);
+                } else {
+                    switch (box.HorizontalAlignment) {
+                        case ImageHorizontalAlignment.Left:
+                            boxX = Position.X;
+                            alignmentToBaseline = 0f;
+                            break;
+                        case ImageHorizontalAlignment.Right:
+                            constrainedSize.X = boxRightEdge; // :(
+                            boxX = boxRightEdge - fragment.Width + Position.X;
+                            alignmentToBaseline = 0f;
+                            break;
+                    }
+                    box.Bounds = Bounds.FromPositionAndSize(boxX, y + alignmentToBaseline, fragment.Width, fragment.Height);
+                }
+
+                constrainedSize.Y = Math.Max(constrainedSize.Y, box.Bounds.BottomRight.Y - Position.Y);
+
+                if (box.HorizontalAlignment == ImageHorizontalAlignment.Inline) {
+                    x += fragment.Width;
+                    x += fragment.Overhang;
+                }
+            } else {
+                if (fragment.Category == gapCategory)
+                    x += gapWhitespace;
+
+                var rtl = fragment.RTL;
+                if (fragment.DrawCallCount > 0) {
+                    for (uint dc = fragment.FirstDrawCall, dc2 = dc + fragment.DrawCallCount - 1; dc <= dc2; dc++) {
+                        ref var drawCall = ref Buffers.DrawCall(dc);
+                        if (rtl)
+                            drawCall.Position.X = x + (fragment.Width - drawCall.Position.X);
+                        else
+                            drawCall.Position.X += x;
+                        drawCall.Position.Y += fragmentY;
                     }
                 }
+
+                x += fragment.Width;
             }
         }
 

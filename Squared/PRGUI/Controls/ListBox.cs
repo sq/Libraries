@@ -442,7 +442,7 @@ namespace Squared.PRGUI.Controls {
             }
 
             var box = GetRect(applyOffset: false, contentRect: true);
-            var newViewportItemCount = (int)Math.Ceiling(box.Height / VirtualYDivider) + 4;
+            var newViewportItemCount = (int)(Math.Ceiling(box.Height / VirtualItemHeight) * ColumnCount) + ColumnCount + 1;
             newViewportItemCount = Math.Max(newViewportItemCount, 8);
             if (newViewportItemCount != VirtualViewportItemCount) {
                 VirtualViewportItemCount = newViewportItemCount;

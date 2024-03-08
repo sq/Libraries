@@ -290,7 +290,7 @@ namespace PRGUI.Demo {
             UseSavedTree = false;
         }
 
-        private MarkedStringAction ProcessMarkedString (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine) {
+        private MarkedStringConfiguration ProcessMarkedString (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine) {
             layoutEngine.OverrideColor = true;
             layoutEngine.MultiplyColor = Color.Teal;
             return default;
