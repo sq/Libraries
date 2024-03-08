@@ -245,6 +245,8 @@ namespace FontTest {
                 return MarkedStringAction.RichText;
             } else if (text.TextEquals("anchor string", StringComparison.OrdinalIgnoreCase)) {
                 return MarkedStringConfiguration.Ruby("ruby text");
+            } else if (text.TextEquals("anchor", StringComparison.OrdinalIgnoreCase)) {
+                return MarkedStringConfiguration.Ruby("very long ruby text");
             } else if (text.TextEquals("無限")) {
                 return MarkedStringConfiguration.Ruby("むげん");
             } else if (text.TextEquals("出来")) {
@@ -430,7 +432,8 @@ namespace FontTest {
             "rtl w/ltr embed:\u2067$(test) \u2066$(test)\u2069 $(test)\u2069\n",
 
             "C̀́̂̃omb̀́̂̃inì́̂̃ng̠̤̥̀́̂̃ c̀́̂̃har̀́̂̃a̠̤̥ct̀́̂̃er̠̤̥s̀́̂̃ à́̂̃re̠̤̥ pret̀́̂̃ty̠̤̥ Ć̀̂o̤̥ol,\ndon't y̠̤̥ou think?\n" +
-            "Ruby: $(Anchor String) <- should wrap as one box",
+            "Ruby: $(Anchor String) <- should wrap as one box\n" +
+            "$(anchor)",
 
             "$(Airburst Shot)\n.1  $(Ammo) x 1  Cooldown: 1\n" +
             "Fire a $(Piercing Round) overhead to $(Ambush) all foes (damage decreases based on number of targets).\n" +

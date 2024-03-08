@@ -510,15 +510,14 @@ namespace Squared.Render.TextLayout2 {
         private void ProcessRuby (ref Span anchor, RubyConfiguration ruby) {
             FinishFragment(false);
             ref var rubySpan = ref BeginSpan(true);
-            ref var fragment = ref CurrentFragment;
             var oldScale = Scale;
             try {
                 Scale *= ruby.Scale;
                 ref var line = ref CurrentLine;
                 AppendText(ruby.GlyphSource, ruby.Text, FragmentCategory.RubyText);
             } finally {
+                CurrentFragment.AnchorSpanIndex = anchor.Index;
                 EndSpan(rubySpan.Index);
-                fragment.AnchorSpanIndex = anchor.Index;
                 Scale = oldScale;
             }
         }

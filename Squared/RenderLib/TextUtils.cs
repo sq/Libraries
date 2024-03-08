@@ -86,6 +86,7 @@ namespace Squared.Render.Text {
         private float _SortKey;
         private float _DesiredWidth;
         private float? _MaxExpansionPerSpace;
+        private float _MinRubyScale;
         private int _CharacterSkipCount;
         private int _CharacterLimit;
         private float _XOffsetOfFirstLine;
@@ -179,6 +180,7 @@ namespace Squared.Render.Text {
             LineLimit = int.MaxValue;
             LineBreakLimit = int.MaxValue;
             TabSize = 4;
+            MinRubyScale = 0.75f;
             MeasureOnly = false;
             RichText = false;
             HideOverflow = false;
@@ -586,6 +588,19 @@ namespace Squared.Render.Text {
         }
 
         /// <summary>
+        /// When ruby text is larger than its anchor, the layout engine will automatically
+        ///  attempt to shrink it to fit. This property sets a minimum scale for the text.
+        /// </summary>
+        public float MinRubyScale {
+            get {
+                return _MinRubyScale;
+            }
+            set {
+                InvalidatingValueAssignment(ref _MinRubyScale, value);
+            }
+        }
+
+        /// <summary>
         /// Any characters with a Y offset exceeding this value will be hidden
         /// </summary>
         public float? StopAtY {
@@ -968,7 +983,7 @@ namespace Squared.Render.Text {
                 MarkedRange = _Satellite?.MarkedRange,
                 HitTestLocation = _Satellite?.HitTest,
                 // FIXME
-                MinRubyScale = 0.7f
+                MinRubyScale = MinRubyScale
             };
         }
 
