@@ -266,6 +266,7 @@ namespace Squared.Render.TextLayout2 {
         public float MaximumWidth, DesiredWidth;
         public float MaximumHeight;
         public float MaxExpansionPerSpace;
+        public float MinRubyScale;
 
         private Pair<int> _MarkedRange;
         public Pair<int>? MarkedRange {
@@ -485,7 +486,7 @@ namespace Squared.Render.TextLayout2 {
             RubyStack.Add(new RubyConfiguration {
                 GlyphSource = glyphSource,
                 Text = text,
-                Scale = scale
+                Scale = scale,
             });
         }
 
@@ -1453,7 +1454,7 @@ recalc:
                     if (fragment.AnchorSpanIndex == uint.MaxValue)
                         ArrangeSingleFragment(
                             ref constrainedSize, gapCategory, ref line, ref x, y, gapWhitespace,
-                            boxRightEdge, ref fragment, fragmentY
+                            boxRightEdge, ref fragment, fragmentY, 1f
                         );
                     else
                         foundAnchoredFragments = true;
@@ -1473,11 +1474,17 @@ recalc:
                         continue;
 
                     var lastBox = anchorBoxes.LastOrDefault();
-                    float anchoredX = lastBox.Center.X - (fragment.Width * 0.5f), anchoredY = y - fragment.Height;
+                    float scale =
+                        lastBox.Size.X >= fragment.Width
+                            ? 1.0f
+                            : Math.Max(lastBox.Size.X / fragment.Width, MinRubyScale);
+                    float anchoredX = lastBox.Center.X - (fragment.Width * 0.5f * scale),
+                        anchoredY = y - (fragment.Height * scale);
                     ArrangeSingleFragment(
                         ref constrainedSize, FragmentCategory.Regular,
                         ref line, ref anchoredX, anchoredY,
-                        0f, boxRightEdge, ref fragment, anchoredY
+                        0f, boxRightEdge, ref fragment, anchoredY,
+                        scale
                     );
                 }
             }
@@ -1486,8 +1493,9 @@ recalc:
         private void ArrangeSingleFragment (
             ref Vector2 constrainedSize, FragmentCategory gapCategory, ref Line line, 
             ref float x, float y, float gapWhitespace, float boxRightEdge, 
-            ref Fragment fragment, float fragmentY
+            ref Fragment fragment, float fragmentY, float scale
         ) {
+            var hasScale = scale != 1.0f;
             fragment.Left = x;
 
             if (fragment.Category == FragmentCategory.Box) {
@@ -1558,10 +1566,15 @@ recalc:
                 if (fragment.DrawCallCount > 0) {
                     for (uint dc = fragment.FirstDrawCall, dc2 = dc + fragment.DrawCallCount - 1; dc <= dc2; dc++) {
                         ref var drawCall = ref Buffers.DrawCall(dc);
+
                         if (rtl)
-                            drawCall.Position.X = x + (fragment.Width - drawCall.Position.X);
+                            drawCall.Position.X = x + (fragment.Width - drawCall.Position.X) * scale;
                         else
-                            drawCall.Position.X += x;
+                            drawCall.Position.X = x + (drawCall.Position.X * scale);
+
+                        if (hasScale)
+                            drawCall.Scale *= scale;
+
                         drawCall.Position.Y += fragmentY;
                     }
                 }

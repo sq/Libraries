@@ -967,6 +967,8 @@ namespace Squared.Render.Text {
                 Listener = measureOnly.HasValue ? null : this,
                 MarkedRange = _Satellite?.MarkedRange,
                 HitTestLocation = _Satellite?.HitTest,
+                // FIXME
+                MinRubyScale = 0.7f
             };
         }
 
