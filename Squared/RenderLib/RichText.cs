@@ -379,9 +379,10 @@ namespace Squared.Render.Text {
         public readonly float InitialLineSpacing;
         public readonly bool InitialOverrideColor;
         public DenseList<string> Tags;
+        public IRichTextStateTracker Tracker;
         private DenseList<StringBuilder> StringBuildersToReturn;
 
-        public RichTextLayoutState (ref TLayoutEngine engine, IGlyphSource defaultGlyphSource) {
+        public RichTextLayoutState (ref TLayoutEngine engine, IGlyphSource defaultGlyphSource, IRichTextStateTracker stateTracker = null) {
             InitialOverrideColor = engine.OverrideColor;
             InitialColor = engine.MultiplyColor;
             InitialScale = engine.Scale;
@@ -389,6 +390,7 @@ namespace Squared.Render.Text {
             InitialLineSpacing = engine.AdditionalLineSpacing;
             DefaultGlyphSource = defaultGlyphSource;
             GlyphSource = null;
+            Tracker = stateTracker;
             Tags = default;
         }
 
@@ -465,7 +467,6 @@ namespace Squared.Render.Text {
         }
     }
 
-    [Flags]
     public enum MarkedStringAction {
         /// <summary>
         /// Lay out the text as normal and generate a marker
@@ -487,6 +488,25 @@ namespace Squared.Render.Text {
         /// The processor failed to process the text
         /// </summary>
         Error = 0b1000,
+    }
+
+    public enum RichCommandResult {
+        /// <summary>
+        /// This command was not handled, perform default handling
+        /// </summary>
+        NotHandled = 0b0,
+        /// <summary>
+        /// This command was handled, don't perform default handling
+        /// </summary>
+        Handled = 0b1,
+        /// <summary>
+        /// Halt the current append operation
+        /// </summary>
+        Halt = 0b10,
+        /// <summary>
+        /// This command was not handled successfully, record an error
+        /// </summary>
+        Error = 0b100,
     }
 
     public struct MarkedStringConfiguration {
@@ -519,7 +539,19 @@ namespace Squared.Render.Text {
     /// <param name="state">A state snapshot that can be used to examine or restore the current state of the layout engine.</param>
     /// <param name="layoutEngine">The layout engine that will be used to append the text (after this method returns).</param>
     /// <returns>true if the string should be laid out, false if it should be omitted from the output entirely.</returns>
-    public delegate MarkedStringConfiguration MarkedStringProcessor (ref AbstractString text, ref AbstractString id, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine);
+    public delegate MarkedStringConfiguration MarkedStringProcessor (
+        ref AbstractString text, ref AbstractString id, 
+        ref RichTextLayoutState state, ref TLayoutEngine layoutEngine
+    );
+
+    /// <summary>
+    /// Processes a command, i.e. '$<x:y,z:w>'
+    /// </summary>
+    /// <param name="command">the command text</param>
+    public delegate RichCommandResult RichCommandProcessor (
+        RichTextConfiguration configuration, AbstractString command, 
+        ref RichTextLayoutState layoutState, ref TLayoutEngine layoutEngine
+    );
 
     public interface IRichTextStateTracker {
         void MarkString (RichTextConfiguration config, AbstractString originalText, AbstractString text, AbstractString id, uint spanIndex);
@@ -574,6 +606,7 @@ namespace Squared.Render.Text {
         public ImmutableAbstractStringLookup<Color> NamedColors;
         public ImmutableAbstractStringLookup<RichStyle> Styles;
         public ImmutableAbstractStringLookup<RichImage> Images;
+        public RichCommandProcessor CommandProcessor;
         public Func<AbstractString, RichTextConfiguration, AsyncRichImage> ImageProvider;
         public MarkedStringProcessor MarkedStringProcessor;
         public ColorConversionMode ColorMode;
@@ -663,10 +696,10 @@ namespace Squared.Render.Text {
             ref TLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, AbstractString text, 
             string styleName, IRichTextStateTracker stateTracker = null
         ) {
-            var state = new RichTextLayoutState(ref layoutEngine, defaultGlyphSource);
+            var state = new RichTextLayoutState(ref layoutEngine, defaultGlyphSource, stateTracker);
             state.Tags.AddRange(ref Tags);
             try {
-                Append(ref layoutEngine, ref state, text, styleName, stateTracker);
+                Append(ref layoutEngine, ref state, text, styleName);
             } finally {
                 state.Dispose();
             }
@@ -674,7 +707,7 @@ namespace Squared.Render.Text {
 
         // FIXME: These all seem wrong
         private static readonly HashSet<char>
-            CommandTerminators = new HashSet<char> { '\"', '\'', '$', '[' },
+            StyleTerminators = new HashSet<char> { '\"', '\'', '$', '[' },
             InsertionTerminators = new HashSet<char> { '\"', '\'', '$', '<' },
             StringTerminators = new HashSet<char> { '$', '(' };
 
@@ -707,21 +740,21 @@ namespace Squared.Render.Text {
 
         private void AppendRichRange (
             ref TLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
-            ref DenseList<RichParseError> parseErrors, IRichTextStateTracker stateTracker,
-            bool rubyAnchor
+            ref DenseList<RichParseError> parseErrors, bool rubyAnchor
         ) {
             int currentRangeStart = 0;
             RichStyle style;
             RichImage image;
             AsyncRichImage ai;
 
+            RichCommandResult commandResult;
             var count = text.Length;
             for (int i = 0; i < count; i++) {
                 var ch = text[i];
                 var next = (i < count - 2) ? text[i + 1] : '\0';
                 if ((ch == '$') && ((next == '[') || (next == '(') || (next == '<'))) {
                     AppendPlainRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, i, rubyAnchor);
-                    bool commandMode = next == '[',
+                    bool styleMode = next == '[',
                         insertionMode = next == '<';
                     var closer = (next == '(') 
                         ? ')' 
@@ -732,22 +765,39 @@ namespace Squared.Render.Text {
                         );
                     var bracketed = ParseBracketedText(
                         text, ref i, ref currentRangeStart, 
-                        commandMode 
-                            ? CommandTerminators 
+                        styleMode 
+                            ? StyleTerminators 
                             : (insertionMode
                                 ? InsertionTerminators
                                 : StringTerminators
                             ), 
                         closer
                     );
-                    if (commandMode && bracketed.Value.IsNullOrEmpty) {
+                    if (styleMode && bracketed.Value.IsNullOrEmpty) {
                         state.Reset(ref layoutEngine);
                     } else if (
-                        commandMode && (Styles != null) && 
+                        styleMode && (Styles != null) && 
                         bracketed.Value.StartsWith(".") && 
                         Styles.TryGetValue(bracketed.Value.Substring(1).AsImmutable(true), out style)
                     ) {
                         ApplyStyle(ref layoutEngine, ref state, in style);
+                    } else if (
+                        insertionMode && (CommandProcessor != null) &&
+                        (commandResult = CommandProcessor(this, bracketed.Value, ref state, ref layoutEngine)) != RichCommandResult.NotHandled
+                    ) {
+                        switch (commandResult) {
+                            case RichCommandResult.Handled:
+                                break;
+                            case RichCommandResult.Error:
+                                parseErrors.Add(new RichParseError {
+                                    Offset = bracketed.Offset,
+                                    Message = "Failed to process command",
+                                    Text = bracketed.Value
+                                });
+                                break;
+                            case RichCommandResult.Halt:
+                                return;
+                        }
                     } else if (insertionMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
                         if (!DisableImages)
                             AppendImage(ref layoutEngine, image);
@@ -759,16 +809,16 @@ namespace Squared.Render.Text {
                             });
 
                         ai = new AsyncRichImage(ref image);
-                        stateTracker?.ReferencedImage(this, ref ai);
+                        state.Tracker?.ReferencedImage(this, ref ai);
                     } else if (
                         insertionMode && (ImageProvider != null) && 
                         (ai = ImageProvider(bracketed.Value, this)).IsInitialized
                     ) {
                         // layoutEngine.ComputeConstrainedSize(out var constrainedSize);
                         if (ai.Dead) {
-                            stateTracker?.ReferencedImage(this, ref ai);
+                            state.Tracker?.ReferencedImage(this, ref ai);
                         } else if (DisableImages) {
-                            stateTracker?.ReferencedImage(this, ref ai);
+                            state.Tracker?.ReferencedImage(this, ref ai);
                             parseErrors.Add(new RichParseError {
                                 Offset = bracketed.Offset,
                                 Message = "Images are disabled",
@@ -776,7 +826,7 @@ namespace Squared.Render.Text {
                             });
                         } else if (ai.TryGetValue(out RichImage ri)) {
                             AppendImage(ref layoutEngine, ri);
-                            stateTracker?.ReferencedImage(this, ref ai);
+                            state.Tracker?.ReferencedImage(this, ref ai);
                         } else if (ai.Width.HasValue) {
                             // Missing image of explicit size
                             var w = ai.Width.Value;
@@ -788,11 +838,11 @@ namespace Squared.Render.Text {
                                 h *= ratio;
                             }
                             layoutEngine.CreateEmptyBox(w, h, ai.Margin, ai.HorizontalAlignment, ai.DoNotAdjustLineSpacing);
-                            stateTracker?.ReferencedImage(this, ref ai);
+                            state.Tracker?.ReferencedImage(this, ref ai);
                         } else {
-                            stateTracker?.ReferencedImage(this, ref ai);
+                            state.Tracker?.ReferencedImage(this, ref ai);
                         }
-                    } else if (commandMode && bracketed.Value.Contains(":")) {
+                    } else if (styleMode && bracketed.Value.Contains(":")) {
                         foreach (var rule in RichText.ParseRules(bracketed.Value, ref parseErrors)) {
                             var value = rule.Value;
                             RuleNameTable.TryGetValue(rule.Key, out var ruleId);
@@ -834,7 +884,7 @@ namespace Squared.Render.Text {
                                     break;
                             }
                         }
-                    } else if (!commandMode) {
+                    } else if (!styleMode) {
                         AbstractString astr = bracketed.Value;
                         AbstractString id = default;
                         int pipeIndex = astr.IndexOf('|');
@@ -846,7 +896,7 @@ namespace Squared.Render.Text {
 
                         var config = default(MarkedStringConfiguration);
                         // HACK: The string processor may mess with layout state, so we want to restore it after
-                        var markedState = new RichTextLayoutState(ref layoutEngine, state.DefaultGlyphSource) {
+                        var markedState = new RichTextLayoutState(ref layoutEngine, state.DefaultGlyphSource, state.Tracker) {
                             GlyphSource = state.GlyphSource
                         };
                         markedState.Tags.AddRange(ref Tags);
@@ -874,10 +924,10 @@ namespace Squared.Render.Text {
                             else if (config.Action != MarkedStringAction.Omit) {
                                 var l = astr.Length;
                                 if (!config.Unmarked)
-                                    stateTracker?.MarkString(this, bracketed.Value, astr, id, span.Index);
+                                    state.Tracker?.MarkString(this, bracketed.Value, astr, id, span.Index);
 
                                 if (config.Action == MarkedStringAction.RichText)
-                                    AppendRichRange(ref layoutEngine, ref state, astr, ref parseErrors, stateTracker, rubyAnchor || !config.RubyText.IsNullOrWhiteSpace);
+                                    AppendRichRange(ref layoutEngine, ref state, astr, ref parseErrors, rubyAnchor || !config.RubyText.IsNullOrWhiteSpace);
                                 else if (config.Action != MarkedStringAction.PlainText) {
                                     // FIXME
                                     /*
@@ -914,8 +964,7 @@ namespace Squared.Render.Text {
 
         /// <returns>a list of rich images that were referenced</returns>
         public void Append (
-            ref TLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, 
-            string styleName, IRichTextStateTracker stateTracker = null
+            ref TLayoutEngine layoutEngine, ref RichTextLayoutState state, AbstractString text, string styleName
         ) {
             var parseErrors = new DenseList<RichParseError>();
 
@@ -924,7 +973,7 @@ namespace Squared.Render.Text {
                 if (!string.IsNullOrWhiteSpace(styleName) && Styles.TryGetValue(styleName, out RichStyle defaultStyle))
                     ApplyStyle(ref layoutEngine, ref state, in defaultStyle);
 
-                AppendRichRange(ref layoutEngine, ref state, text, ref parseErrors, stateTracker, false);
+                AppendRichRange(ref layoutEngine, ref state, text, ref parseErrors, false);
 
                 if (OnParseError != null)
                     foreach (var pe in parseErrors)
@@ -1029,6 +1078,7 @@ namespace Squared.Render.Text {
                 Images = CloneDictionary(deep, Images),
                 ImageProvider = ImageProvider,
                 MarkedStringProcessor = MarkedStringProcessor,
+                CommandProcessor = CommandProcessor,
                 DefaultStyle = DefaultStyle,
                 ColorMode = ColorMode,
                 Version = Version + 1

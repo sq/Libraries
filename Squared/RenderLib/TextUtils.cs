@@ -1086,9 +1086,9 @@ namespace Squared.Render.Text {
                     le2.EnsureCapacity(Math.Max((uint)Text.Length, 16), Math.Max((uint)Text.Length / 7, 4));
                     le2.Initialize();
                     if (RichText) {
-                        rls = new RichTextLayoutState(ref le2, glyphSource);
+                        rls = new RichTextLayoutState(ref le2, glyphSource, this);
                         rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
-                        _RichTextConfiguration.Append(ref le2, ref rls, _Text, _StyleName, stateTracker: this);
+                        _RichTextConfiguration.Append(ref le2, ref rls, _Text, _StyleName);
                         var dependencies = _Satellite?.Dependencies ?? default;
                         if (dependencies.Count > 0) {
                             SetFlag(InternalFlags.AwaitingDependencies, false);
