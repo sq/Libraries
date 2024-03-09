@@ -105,7 +105,7 @@ namespace Squared.Render.Text {
         private char? _TerminatorCharacter;
         private uint[] _WordWrapCharacters;
         private DenseList<uint> _WordWrapCharacterTable;
-        private Vector4? _UserData;
+        private Vector4 _UserData;
         private Vector4? _ImageUserData;
         private IStringLayoutListener _Listener;
 
@@ -180,7 +180,8 @@ namespace Squared.Render.Text {
             LineLimit = int.MaxValue;
             LineBreakLimit = int.MaxValue;
             TabSize = 4;
-            MinRubyScale = 0.75f;
+            // FIXME: Setting this to 1 by default because the way scaling works looks kind of screwed up ATM
+            MinRubyScale = 1.0f;
             MeasureOnly = false;
             RichText = false;
             HideOverflow = false;
@@ -846,12 +847,12 @@ namespace Squared.Render.Text {
         /// <summary>
         /// If set, text draw calls will have their UserData value set to this
         /// </summary>
-        public Vector4? UserData {
+        public Vector4 UserData {
             get {
                 return _UserData;
             }
             set {
-                InvalidatingNullableAssignment(ref _UserData, value);
+                InvalidatingValueAssignment(ref _UserData, value);
             }
         }
 
@@ -928,9 +929,9 @@ namespace Squared.Render.Text {
                 expandHorizontallyWhenAligning = ExpandHorizontallyWhenAligning,
                 splitAtWrapCharactersOnly = SplitAtWrapCharactersOnly,
                 includeTrailingWhitespace = IncludeTrailingWhitespace,
-                userData = _UserData ?? Vector4.Zero,
-                imageUserData = _ImageUserData ?? _UserData ?? Vector4.Zero,
-                clearUserData = _UserData.HasValue,
+                userData = _UserData,
+                imageUserData = _ImageUserData ?? _UserData,
+                clearUserData = _UserData != default,
                 WordWrapCharacters = _WordWrapCharacterTable,
             };
 
@@ -982,6 +983,8 @@ namespace Squared.Render.Text {
                 Listener = measureOnly.HasValue ? null : this,
                 MarkedRange = _Satellite?.MarkedRange,
                 HitTestLocation = _Satellite?.HitTest,
+                CharacterUserData = _UserData,
+                ImageUserData = _ImageUserData ?? _UserData,
                 // FIXME
                 MinRubyScale = MinRubyScale
             };

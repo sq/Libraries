@@ -809,7 +809,9 @@ namespace Squared.PRGUI.Controls {
                 segment, offset: (textOffset + ca).Floor(),
                 material: material, samplerState: RenderStates.Text,
                 scale: textScale, multiplyColor: overrideColor?.ToColor(),
-                userData: RasterizerUserData ?? userData, 
+                userData: RasterizerUserData ?? (
+                    (userData != default) ? userData : null
+                ), 
                 multiplyOpacity: multiplyOpacity,
                 blendState: (material == null) ? RenderStates.PorterDuffOver : null
             );

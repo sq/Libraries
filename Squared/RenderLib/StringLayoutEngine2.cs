@@ -282,6 +282,8 @@ namespace Squared.Render.TextLayout2 {
         }
         public Vector2? HitTestLocation;
 
+        public Vector4 CharacterUserData, ImageUserData;
+
         // Output
         public uint MarkedRangeSpanIndex;
         public LayoutHitTest HitTestResult;
@@ -791,6 +793,7 @@ recalc:
                             Textures = new TextureSet(glyph.Texture),
                             TextureRegion = glyph.BoundsInTexture,
                             SortKey = SortKey,
+                            UserData = CharacterUserData,
                         };
 
                         if (glyph.Texture != MostRecentTexture) {
@@ -1309,8 +1312,7 @@ recalc:
             ) {
                 Scale = effectiveScale * Scale,
                 TextureRegion = image.Bounds ?? Bounds.Unit,
-                // HACK: Pass through an image flag to the text material
-                UserData = new Vector4(0f, 0f, 1f, 0f),
+                UserData = ImageUserData,
                 MultiplyColor = OverrideColor ? MultiplyColor : Color.White,
                 AddColor = AddColor,
                 SortKey = SortKey,
@@ -1566,13 +1568,19 @@ recalc:
                     for (uint dc = fragment.FirstDrawCall, dc2 = dc + fragment.DrawCallCount - 1; dc <= dc2; dc++) {
                         ref var drawCall = ref Buffers.DrawCall(dc);
 
-                        if (rtl)
-                            drawCall.Position.X = x + (fragment.Width - drawCall.Position.X) * scale;
-                        else
-                            drawCall.Position.X = x + (drawCall.Position.X * scale);
+                        if (hasScale) {
+                            if (rtl)
+                                drawCall.Position.X = x + (fragment.Width - drawCall.Position.X) * scale;
+                            else
+                                drawCall.Position.X = x + (drawCall.Position.X * scale);
 
-                        if (hasScale)
                             drawCall.Scale *= scale;
+                        } else {
+                            if (rtl)
+                                drawCall.Position.X = x + (fragment.Width - drawCall.Position.X);
+                            else
+                                drawCall.Position.X = x + drawCall.Position.X;
+                        }
 
                         drawCall.Position.Y += fragmentY;
                     }
