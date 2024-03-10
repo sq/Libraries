@@ -981,6 +981,7 @@ namespace Squared.Render.Text {
                 IncludeTrailingWhitespace = IncludeTrailingWhitespace,
                 WrapCharacters = _WordWrapCharacterTable,
                 Listener = measureOnly.HasValue ? null : this,
+                Listener2 = Listener as IStringLayoutListener2,
                 MarkedRange = _Satellite?.MarkedRange,
                 HitTestLocation = _Satellite?.HitTest,
                 CharacterUserData = _UserData,

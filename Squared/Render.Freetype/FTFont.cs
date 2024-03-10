@@ -22,6 +22,29 @@ using FtGlyph = SharpFont.Glyph;
 using SrGlyph = Squared.Render.Text.Glyph;
 
 namespace Squared.Render.Text {
+    public enum FreeTypeFontFormat {
+        /// <summary>
+        /// Stores the font atlas in an ARGB texture; sampling and filtering will occur in sRGB space
+        /// </summary>
+        SRGB,
+        /// <summary>
+        /// Stores the font atlas in an ARGB texture; sampling and filtering will occur in linear space
+        /// </summary>
+        Linear,
+        /// <summary>
+        /// Stores the font atlas in a luminance+alpha texture; sampling and filtering will occur in sRGB space
+        /// </summary>
+        GraySRGB,
+        /// <summary>
+        /// Stores the font atlas in a luminance+alpha texture; sampling and filtering will occur in linear space
+        /// </summary>
+        Gray,
+        /// <summary>
+        /// Stores the font atlas as a signed distance field.
+        /// </summary>
+        DistanceField,
+    }
+
     public class FreeTypeFont : IGlyphSource, IDisposable {
         private static EmbeddedDLLLoader DllLoader;
 
@@ -56,7 +79,7 @@ namespace Squared.Render.Text {
                 CacheByCodepoint = new Dictionary<uint, SrGlyph>(UintComparer.Instance);
             internal float _SizePoints;
             internal int _Version;
-            internal bool? _SDF;
+            private FreeTypeFontFormat? _OverrideFormat;
 
             internal DenseList<WeakReference<IGlyphSourceChangeListener>> ChangeListeners;
             void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) {
@@ -64,34 +87,27 @@ namespace Squared.Render.Text {
                     ChangeListeners.Add(listener);
             }
 
-            public bool? SDF {
-                get => _SDF;
+            public FreeTypeFontFormat Format => _OverrideFormat ?? Font.Format;
+            public FreeTypeFontFormat? OverrideFormat {
+                get => _OverrideFormat;
                 set {
-                    if (_SDF == value)
+                    if (_OverrideFormat == value) 
                         return;
-
-                    _SDF = value;
+                    _OverrideFormat = value;
                     Invalidate();
                 }
             }
 
-            public bool IsDisposed { get; private set; }
-
-            public bool ContainsColorGlyphs {
-                get => _ContainsColorGlyphs;
-                set {
-                    if (_ContainsColorGlyphs == value)
-                        return;
-
-                    _ContainsColorGlyphs = value;
-
-                    foreach (var atlas in Atlases)
-                        if (atlas is DynamicAtlas<Color> dac)
-                            dac.MipGenerator = PickMipGenerator(Font, value);
-                }
-            }
+            public bool SDF => Format == FreeTypeFontFormat.DistanceField;
 
             private bool _ContainsColorGlyphs;
+            public bool ContainsColorGlyphs => (Format switch {
+                FreeTypeFontFormat.Linear => _ContainsColorGlyphs,
+                FreeTypeFontFormat.SRGB => _ContainsColorGlyphs,
+                _ => false,
+            });
+
+            public bool IsDisposed { get; private set; }
 
             object IGlyphSource.UniqueKey => this;
 
@@ -119,21 +135,33 @@ namespace Squared.Render.Text {
                 }
             }
 
-            internal bool ActualSDF => SDF ?? Font.SDF;
-
             public override string ToString () =>
                 $"{Font} {SizePoints}pt";
 
 
-            private unsafe static MipGeneratorFn PickMipGenerator (FreeTypeFont font, bool rgba) {
-                if (rgba)
-                    return MipGenerator.Get(MipFormat.pRGBA);
+            private unsafe static MipGeneratorFn PickMipGenerator (FreeTypeFont font, FreeTypeFontFormat format) {
+                MipFormat mf;
+                switch (format) {
+                    case FreeTypeFontFormat.Linear:
+                        mf = MipFormat.pRGBA | MipFormat.sRGB;
+                        break;
+                    case FreeTypeFontFormat.SRGB:
+                        mf = MipFormat.pRGBA | MipFormat.sRGB;
+                        break;
+                    case FreeTypeFontFormat.Gray:
+                        mf = MipFormat.Gray1;
+                        break;
+                    case FreeTypeFontFormat.GraySRGB:
+                        mf = MipFormat.Gray1 | MipFormat.sRGB;
+                        break;
+                    case FreeTypeFontFormat.DistanceField:
+                        mf = MipFormat.Gray1;
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(format));
+                }
 
-                // TODO: Add a property that controls whether srgb is used. Or is freetype always srgb?
-                return font.sRGB
-                    // FIXME: Use a sRGB gamma ramp for this?
-                    ? MipGenerator.Get(MipFormat.pGray4 | MipFormat.sRGB)
-                    : font.MipGen?.Get(MipFormat.pGray4) ?? MipGenerator.Get(MipFormat.pGray4);
+                return font?.MipGen?.Get(mf) ?? MipGenerator.Get(mf);
             }
 
             private unsafe DynamicAtlasReservation Upload (FTBitmap bitmap) {
@@ -144,7 +172,7 @@ namespace Squared.Render.Text {
 
                 int width = bitmap.Width, rows = bitmap.Rows, pitch = bitmap.Pitch;
                 if (bitmap.PixelMode == PixelMode.Bgra)
-                    ContainsColorGlyphs = true;
+                    _ContainsColorGlyphs = true;
 
                 // FIXME: Dynamic
                 int spacing = 4;
@@ -158,9 +186,13 @@ namespace Squared.Render.Text {
                     }
                 }
 
-                var surfaceFormat = ActualSDF 
-                    ? SurfaceFormat.Single // FIXME SurfaceFormat.HalfSingle
-                    : (Font.sRGB ? Evil.TextureUtils.ColorSrgbEXT : SurfaceFormat.Color);
+                var surfaceFormat = Format switch {
+                    FreeTypeFontFormat.DistanceField => SurfaceFormat.Single,
+                    FreeTypeFontFormat.Linear => SurfaceFormat.ColorSrgbEXT,
+                    FreeTypeFontFormat.SRGB => SurfaceFormat.Color,
+                    FreeTypeFontFormat.Gray => SurfaceFormat.Alpha8,
+                    FreeTypeFontFormat.GraySRGB => SurfaceFormat.Alpha8,
+                };
 
                 if (!foundRoom) {
                     bool isIconFont = Font.IsIconFont,
@@ -175,14 +207,14 @@ namespace Squared.Render.Text {
 
                     var tag = $"{Font.Face.FamilyName} {Font.Face.StyleName} {SizePoints}pt #{Atlases.Count + 1}";
 
-                    IDynamicAtlas newAtlas = ActualSDF
+                    IDynamicAtlas newAtlas = SDF
                         ? (IDynamicAtlas)(new DynamicAtlas<float>(
                             Font.RenderCoordinator, newAtlasWidth, newAtlasHeight,
-                            surfaceFormat, spacing, Font.SDFMipMapping ? MipGenerator.Get(MipFormat.Single) : null, tag: tag
+                            surfaceFormat, spacing, Font.MipMapping ? PickMipGenerator(Font, Format) : null, tag: tag
                         ) { ClearValue = 1024f })
                         : new DynamicAtlas<Color>(
                             Font.RenderCoordinator, newAtlasWidth, newAtlasHeight,
-                            surfaceFormat, spacing, Font.MipMapping ? PickMipGenerator(Font, ContainsColorGlyphs) : null, tag: tag
+                            surfaceFormat, spacing, Font.MipMapping ? PickMipGenerator(Font, Format) : null, tag: tag
                         );
                     Atlases.Add(newAtlas);
                     if (!newAtlas.TryReserve(widthW, heightW, out result))
@@ -191,7 +223,7 @@ namespace Squared.Render.Text {
 
                 var pSrc = (byte*)bitmap.Buffer;
 
-                if (ActualSDF) {
+                if (SDF) {
                     var pPixels = (float*)result.Atlas.Data;
                     switch (bitmap.PixelMode) {
                         case PixelMode.Gray:
@@ -245,7 +277,7 @@ namespace Squared.Render.Text {
                                 var pDestRow = pDest + (rowOffset * 4);
                                 int yPitch = y * pitch;
 
-                                if (ActualSDF) {
+                                if (SDF) {
                                     for (var x = 0; x < width; x++) {
                                         var a = pSrc[x + yPitch];
                                     
@@ -432,7 +464,7 @@ namespace Squared.Render.Text {
                 _CachedXDesignUnitsToPx = _CachedMetrics.ScaleX.ToSingle() / 64f;
                 _CachedYDesignUnitsToPx = _CachedMetrics.ScaleY.ToSingle() / 64f;
 
-                Font.Face.RenderGlyphEXT(ActualSDF ? RenderMode.VerticalLcd + 1 : RenderMode.Normal);
+                Font.Face.RenderGlyphEXT(SDF ? RenderMode.VerticalLcd + 1 : RenderMode.Normal);
                 var ftgs = Font.Face.Glyph;
 
                 var bitmap = ftgs.Bitmap;
@@ -715,14 +747,12 @@ namespace Squared.Render.Text {
         /// <summary>
         /// If set, the texture's r/g/b channels will be sRGB-encoded while the a channel will be linear
         /// </summary>
-        private bool _sRGB;
-        public bool sRGB {
-            get => _sRGB;
+        private FreeTypeFontFormat _Format;
+        public FreeTypeFontFormat Format {
+            get => _Format;
             set {
-                if (Evil.TextureUtils.ColorSrgbEXT != SurfaceFormat.Color)
-                    _sRGB = value;
-                else
-                    _sRGB = false;
+                _Format = value;
+                Invalidate();
             }
         }
         public bool SDF;
@@ -858,7 +888,6 @@ namespace Squared.Render.Text {
             MipMapping = true;
             GlyphMargin = 0;
             DefaultSize = new FontSize(this, 12);
-            sRGB = false;
 
             if (Face.GlyphCount <= 0)
                 throw new Exception("Loaded font contains no glyphs or is corrupt.");

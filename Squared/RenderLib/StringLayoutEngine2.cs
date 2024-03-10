@@ -102,6 +102,15 @@ namespace Squared.Render.TextLayout2 {
         void Error (ref StringLayoutEngine2 engine, string message);
     }
 
+    public interface IStringLayoutListener2 {
+        /// <summary>
+        /// Invoked before a character is appended.
+        /// </summary>
+        /// <returns>Return true to append the character, or false to skip processing it.</returns>
+        bool BeforeAppendCharacter (ref StringLayoutEngine2 engine, uint codepoint, uint drawCallIndex);
+        void FragmentArranged (ref StringLayoutEngine2 engine, ref readonly Fragment fragment);
+    }
+
     public struct StringLayoutEngine2 : IDisposable {
         private struct CombiningCharacterInfo {
             public uint Codepoint, DrawCallIndex;
@@ -226,6 +235,7 @@ namespace Squared.Render.TextLayout2 {
 
         // Configuration
         public IStringLayoutListener Listener;
+        public IStringLayoutListener2 Listener2;
 
         public DenseList<uint> WrapCharacters;
 
@@ -581,6 +591,12 @@ namespace Squared.Render.TextLayout2 {
                 var codepoint = DecodeCodepoint(text, ref i, l, out char ch1, out int currentCodepointSize);
                 if (currentCodepointSize == 2)
                     CharIndex++;
+
+                if (Listener2?.BeforeAppendCharacter(ref this, codepoint, DrawCallIndex) == false) {
+                    CharIndex++;
+                    continue;
+                }
+
                 if (codepoint == TerminatorCodepoint)
                     SuppressLayoutForLimit();
                 if (MaskCodepoint > 0)
@@ -1588,6 +1604,8 @@ recalc:
 
                 x += fragment.Width;
             }
+
+            Listener2?.FragmentArranged(ref this, ref fragment);
         }
 
         public void ComputeConstrainedSize (out Vector2 constrainedSize) {
