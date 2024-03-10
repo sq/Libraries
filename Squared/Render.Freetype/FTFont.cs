@@ -17,6 +17,7 @@ using Squared.Render.Text;
 using Squared.Render.Text.OpenType;
 using Squared.Render.TextLayout2;
 using Squared.Util;
+using Squared.Util.DeclarativeSort;
 using Squared.Util.Text;
 using FtGlyph = SharpFont.Glyph;
 using SrGlyph = Squared.Render.Text.Glyph;
@@ -32,11 +33,7 @@ namespace Squared.Render.Text {
         /// </summary>
         Linear,
         /// <summary>
-        /// Stores the font atlas in a luminance+alpha texture; sampling and filtering will occur in sRGB space
-        /// </summary>
-        GraySRGB,
-        /// <summary>
-        /// Stores the font atlas in a luminance+alpha texture; sampling and filtering will occur in linear space
+        /// Stores the font atlas in a luminance texture; sampling and filtering will occur in linear space
         /// </summary>
         Gray,
         /// <summary>
@@ -143,7 +140,7 @@ namespace Squared.Render.Text {
                 MipFormat mf;
                 switch (format) {
                     case FreeTypeFontFormat.Linear:
-                        mf = MipFormat.pRGBA | MipFormat.sRGB;
+                        mf = MipFormat.pRGBA;
                         break;
                     case FreeTypeFontFormat.SRGB:
                         mf = MipFormat.pRGBA | MipFormat.sRGB;
@@ -151,15 +148,18 @@ namespace Squared.Render.Text {
                     case FreeTypeFontFormat.Gray:
                         mf = MipFormat.Gray1;
                         break;
-                    case FreeTypeFontFormat.GraySRGB:
-                        mf = MipFormat.Gray1 | MipFormat.sRGB;
-                        break;
                     case FreeTypeFontFormat.DistanceField:
-                        mf = MipFormat.Gray1;
+                        if (font.SDFMipMapping)
+                            mf = MipFormat.Gray1;
+                        else
+                            return null;
                         break;
                     default:
                         throw new ArgumentOutOfRangeException(nameof(format));
                 }
+
+                if (!font.MipMapping)
+                    return null;
 
                 return font?.MipGen?.Get(mf) ?? MipGenerator.Get(mf);
             }
@@ -186,14 +186,6 @@ namespace Squared.Render.Text {
                     }
                 }
 
-                var surfaceFormat = Format switch {
-                    FreeTypeFontFormat.DistanceField => SurfaceFormat.Single,
-                    FreeTypeFontFormat.Linear => SurfaceFormat.ColorSrgbEXT,
-                    FreeTypeFontFormat.SRGB => SurfaceFormat.Color,
-                    FreeTypeFontFormat.Gray => SurfaceFormat.Alpha8,
-                    FreeTypeFontFormat.GraySRGB => SurfaceFormat.Alpha8,
-                };
-
                 if (!foundRoom) {
                     bool isIconFont = Font.IsIconFont,
                         isFirstAtlas = (Atlases.Count == 0) && (isIconFont || ((_SizePoints * Font.DPIPercent / 100) <= SkipFirstAtlasThreshold)),
@@ -207,15 +199,7 @@ namespace Squared.Render.Text {
 
                     var tag = $"{Font.Face.FamilyName} {Font.Face.StyleName} {SizePoints}pt #{Atlases.Count + 1}";
 
-                    IDynamicAtlas newAtlas = SDF
-                        ? (IDynamicAtlas)(new DynamicAtlas<float>(
-                            Font.RenderCoordinator, newAtlasWidth, newAtlasHeight,
-                            surfaceFormat, spacing, Font.MipMapping ? PickMipGenerator(Font, Format) : null, tag: tag
-                        ) { ClearValue = 1024f })
-                        : new DynamicAtlas<Color>(
-                            Font.RenderCoordinator, newAtlasWidth, newAtlasHeight,
-                            surfaceFormat, spacing, Font.MipMapping ? PickMipGenerator(Font, Format) : null, tag: tag
-                        );
+                    var newAtlas = CreateAtlas(newAtlasWidth, newAtlasHeight, spacing, tag);
                     Atlases.Add(newAtlas);
                     if (!newAtlas.TryReserve(widthW, heightW, out result))
                         throw new InvalidOperationException("Character too large for atlas");
@@ -227,104 +211,27 @@ namespace Squared.Render.Text {
                     var pPixels = (float*)result.Atlas.Data;
                     switch (bitmap.PixelMode) {
                         case PixelMode.Gray:
-                            float valueScale = -(new Vector2(bitmap.Width, bitmap.Rows)).Length() / 2f;
-                            for (var y = 0; y < rows; y++) {
-                                var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
-                                var pDestRow = pPixels + rowOffset;
-                                int yPitch = y * pitch;
-
-                                for (var x = 0; x < width; x++) {
-                                    var a = pSrc[x + yPitch] - 128f;
-                                    a = (a / 128f) * valueScale;
-                                    
-                                    *pDestRow++ = a;
-                                }
-                            }
+                            UploadGrayAsSDF(bitmap, result, width, rows, pitch, pSrc, pPixels);
                             break;
 
                         default:
                             throw new NotImplementedException("Unsupported pixel mode: " + bitmap.PixelMode);
                     }
                 } else {
-                    var srgb = (surfaceFormat != SurfaceFormat.Color);
+                    var sRGBConversion = Format == FreeTypeFontFormat.SRGB;
                     var table = Font.GammaRamp?.GammaTable;
-                    var pPixels = (Color*)result.Atlas.Data;
-                    var pDest = (byte*)pPixels;
+                    var pDest = (byte*)result.Atlas.Data;
                     switch (bitmap.PixelMode) {
                         case PixelMode.Bgra:
-                            for (var y = 0; y < rows; y++) {
-                                var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
-                                var pDestRow = pDest + (rowOffset * 4);
-                                int yPitch = y * pitch;
-
-                                // FIXME: Implement gamma table somehow? Because the glyphs are already premultiplied, I'm not sure how
-                                // FIXME: SRGB
-                                for (var x = 0; x < width; x++) {
-                                    var ppSrc = pSrc + (x * 4) + yPitch;
-                                    
-                                    pDestRow[3] = ppSrc[3];
-                                    pDestRow[2] = ppSrc[0];
-                                    pDestRow[1] = ppSrc[1];
-                                    pDestRow[0] = ppSrc[2];
-                                    pDestRow += 4;
-                                }
-                            }
+                            UploadBgra(result, width, rows, pitch, pSrc, pDest);
                             break;
 
                         case PixelMode.Gray:
-                            for (var y = 0; y < rows; y++) {
-                                var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
-                                var pDestRow = pDest + (rowOffset * 4);
-                                int yPitch = y * pitch;
-
-                                if (SDF) {
-                                    for (var x = 0; x < width; x++) {
-                                        var a = pSrc[x + yPitch];
-                                    
-                                        pDestRow[0] = pDestRow[1] = pDestRow[2] = pDestRow[3] = a;
-                                        pDestRow += 4;
-                                    }
-                                } else {
-                                    if (table == null) {
-                                        for (var x = 0; x < width; x++) {
-                                            var a = pSrc[x + yPitch];
-                                            var g = srgb ? ColorSpace.LinearByteTosRGBByteTable[a] : a;
-                                    
-                                            pDestRow[3] = a;
-                                            pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
-                                            pDestRow += 4;
-                                        }
-                                    } else {
-                                        for (var x = 0; x < width; x++) {
-                                            var a = table[pSrc[x + yPitch]];
-                                            var g = srgb ? ColorSpace.LinearByteTosRGBByteTable[a] : a;
-                                    
-                                            pDestRow[3] = a;
-                                            pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
-                                            pDestRow += 4;
-                                        }
-                                    }
-                                }
-                            }
+                            UploadGray(result, width, rows, pitch, pSrc, sRGBConversion, table, pDest);
                             break;
 
                         case PixelMode.Mono:
-                            for (var y = 0; y < rows; y++) {
-                                var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
-                                var pDestRow = pDest + (rowOffset * 4);
-                                int yPitch = y * pitch;
-
-                                for (int x = 0; x < pitch; x++, pDestRow += (8 * 4)) {
-                                    var bits = pSrc[x + yPitch];
-
-                                    for (int i = 0; i < 8; i++) {
-                                        int iy = 7 - i;
-                                        byte g = ((bits & (1 << iy)) != 0) ? (byte)255 : (byte)0;
-                                        var pElt = pDestRow + (i * 4);
-                                        pElt[3] = pElt[2] = pElt[1] = pElt[0] = g;
-                                    }
-                                }
-                            }
+                            UploadMono(result, rows, pitch, pSrc, pDest);
                             break;
 
                         default:
@@ -334,6 +241,158 @@ namespace Squared.Render.Text {
 
                 result.Invalidate();
                 return result;
+            }
+
+            private unsafe void UploadGrayAsSDF (FTBitmap bitmap, DynamicAtlasReservation result, int width, int rows, int pitch, byte* pSrc, float* pPixels) {
+                float valueScale = -(new Vector2(bitmap.Width, bitmap.Rows)).Length() / 2f;
+                for (var y = 0; y < rows; y++) {
+                    var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                    var pDestRow = pPixels + rowOffset;
+                    int yPitch = y * pitch;
+
+                    for (var x = 0; x < width; x++) {
+                        var a = pSrc[x + yPitch] - 128f;
+                        a = (a / 128f) * valueScale;
+
+                        *pDestRow++ = a;
+                    }
+                }
+            }
+
+            private unsafe void UploadMono (DynamicAtlasReservation result, int rows, int pitch, byte* pSrc, byte* pDest) {
+                if ((Format == FreeTypeFontFormat.Linear) || (Format == FreeTypeFontFormat.SRGB)) {
+                    for (var y = 0; y < rows; y++) {
+                        var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                        var pDestRow = pDest + (rowOffset * 4);
+                        int yPitch = y * pitch;
+
+                        for (int x = 0; x < pitch; x++, pDestRow += (8 * 4)) {
+                            var bits = pSrc[x + yPitch];
+
+                            for (int i = 0; i < 8; i++) {
+                                int iy = 7 - i;
+                                byte g = ((bits & (1 << iy)) != 0) ? (byte)255 : (byte)0;
+                                var pElt = pDestRow + (i * 4);
+                                pElt[3] = pElt[2] = pElt[1] = pElt[0] = g;
+                            }
+                        }
+                    }
+                } else {
+                    for (var y = 0; y < rows; y++) {
+                        var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                        var pDestRow = pDest + rowOffset;
+                        int yPitch = y * pitch;
+
+                        for (int x = 0; x < pitch; x++, pDestRow += (8 * 4)) {
+                            var bits = pSrc[x + yPitch];
+
+                            for (int i = 0; i < 8; i++) {
+                                int iy = 7 - i;
+                                byte g = ((bits & (1 << iy)) != 0) ? (byte)255 : (byte)0;
+                                var pElt = pDestRow + (i * 4);
+                                *pElt = g;
+                            }
+                        }
+                    }                
+                }
+            }
+
+            private unsafe void UploadGray (DynamicAtlasReservation result, int width, int rows, int pitch, byte* pSrc, bool srgb, byte[] table, byte* pDest) {
+                var destIsGray = Format == FreeTypeFontFormat.Gray;
+                for (var y = 0; y < rows; y++) {
+                    var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                    int yPitch = y * pitch;
+
+                    if (destIsGray) {
+                        var pDestRow = pDest + rowOffset;
+                        if (table == null) {
+                            for (var x = 0; x < width; x++) {
+                                var a = pSrc[x + yPitch];
+
+                                *pDestRow++ = a;
+                            }
+                        } else {
+                            for (var x = 0; x < width; x++) {
+                                var a = table[pSrc[x + yPitch]];
+
+                                *pDestRow++ = a;
+                            }
+                        }
+                    } else {
+                        var pDestRow = pDest + (rowOffset * 4);
+                        if (table == null) {
+                            for (var x = 0; x < width; x++) {
+                                var a = pSrc[x + yPitch];
+                                var g = srgb ? ColorSpace.LinearByteTosRGBByteTable[a] : a;
+
+                                pDestRow[3] = a;
+                                pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
+                                pDestRow += 4;
+                            }
+                        } else {
+                            for (var x = 0; x < width; x++) {
+                                var a = table[pSrc[x + yPitch]];
+                                var g = srgb ? ColorSpace.LinearByteTosRGBByteTable[a] : a;
+
+                                pDestRow[3] = a;
+                                pDestRow[2] = pDestRow[1] = pDestRow[0] = g;
+                                pDestRow += 4;
+                            }
+                        }
+                    }
+                }
+            }
+
+            private unsafe void UploadBgra (DynamicAtlasReservation result, int width, int rows, int pitch, byte* pSrc, byte* pDest) {
+                var destIsGray = Format == FreeTypeFontFormat.Gray;
+                if (destIsGray)
+                    throw new NotImplementedException($"BGRA -> {Format}");
+
+                for (var y = 0; y < rows; y++) {
+                    var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
+                    var pDestRow = pDest + (rowOffset * 4);
+                    int yPitch = y * pitch;
+
+                    // FIXME: Implement gamma table somehow? Because the glyphs are already premultiplied, I'm not sure how
+                    // FIXME: SRGB
+                    for (var x = 0; x < width; x++) {
+                        var ppSrc = pSrc + (x * 4) + yPitch;
+
+                        pDestRow[3] = ppSrc[3];
+                        pDestRow[2] = ppSrc[0];
+                        pDestRow[1] = ppSrc[1];
+                        pDestRow[0] = ppSrc[2];
+                        pDestRow += 4;
+                    }
+                }
+            }
+
+            private IDynamicAtlas CreateAtlas (int newAtlasWidth, int newAtlasHeight, int spacing, string tag) {
+                switch (Format) {
+                    case FreeTypeFontFormat.SRGB:
+                    case FreeTypeFontFormat.Linear:
+                        return new DynamicAtlas<Color>(
+                            Font.RenderCoordinator, newAtlasWidth, newAtlasHeight,
+                            (Format == FreeTypeFontFormat.SRGB)
+                                ? SurfaceFormat.Color
+                                : SurfaceFormat.ColorSrgbEXT, 
+                            spacing, PickMipGenerator(Font, Format), tag: tag
+                        );
+                    case FreeTypeFontFormat.Gray:
+                        return new DynamicAtlas<byte>(
+                            Font.RenderCoordinator, newAtlasWidth, newAtlasHeight,
+                            SurfaceFormat.Alpha8, 
+                            spacing, PickMipGenerator(Font, Format), tag: tag
+                        );
+                    case FreeTypeFontFormat.DistanceField:
+                        return new DynamicAtlas<float>(
+                            Font.RenderCoordinator, newAtlasWidth, newAtlasHeight,
+                            SurfaceFormat.Single,
+                            spacing, PickMipGenerator(Font, Format), tag: tag
+                        ) { ClearValue = 1024f };
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(Format));
+                }
             }
 
             // FIXME: We need to invalidate cached glyphs when this changes
@@ -744,13 +803,12 @@ namespace Squared.Render.Text {
         public bool SDFMipMapping { get; set; }
         public bool EnableBitmaps { get; set; } = true;
         public bool Monochrome { get; set; }
-        /// <summary>
-        /// If set, the texture's r/g/b channels will be sRGB-encoded while the a channel will be linear
-        /// </summary>
-        private FreeTypeFontFormat _Format;
+        private FreeTypeFontFormat _Format = FreeTypeFontFormat.SRGB;
         public FreeTypeFontFormat Format {
             get => _Format;
             set {
+                if (_Format == value)
+                    return;
                 _Format = value;
                 Invalidate();
             }

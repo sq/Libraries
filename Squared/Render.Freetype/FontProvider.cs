@@ -11,6 +11,8 @@ using Squared.Threading;
 
 namespace Squared.Render {
     public class FreeTypeFontProvider : ResourceProvider<FreeTypeFont> {
+        public FreeTypeFontFormat DefaultFormat;
+
         public FreeTypeFontProvider (Assembly assembly, RenderCoordinator coordinator) 
             : this(new EmbeddedResourceStreamProvider(assembly), coordinator) {
         }
@@ -22,7 +24,9 @@ namespace Squared.Render {
 
         protected override Future<FreeTypeFont> CreateInstance (string name, Stream stream, object data, object preloadedData, bool async) {
             // FIXME
-            var f = new Future<FreeTypeFont>(new FreeTypeFont(Coordinator, stream));
+            var f = new Future<FreeTypeFont>(new FreeTypeFont(Coordinator, stream) {
+                Format = DefaultFormat,
+            });
             return f;
         }
     }
