@@ -187,9 +187,7 @@ namespace Squared.Render {
         internal bool Released;
         internal IBatchPool Pool;
 
-        internal UnorderedList<Batch> BatchesCombinedIntoThisOne = null;
-
-        internal volatile Threading.IFuture SuspendFuture = null;
+        internal DenseList<Batch> BatchesCombinedIntoThisOne;
 
         private static long LifetimeBatchCount = 0;
         private static long NextInstanceId = 0;
@@ -260,8 +258,7 @@ namespace Squared.Render {
 
             Name = null;
             StackTrace = null;
-            if (BatchesCombinedIntoThisOne != null)
-                BatchesCombinedIntoThisOne.Clear();
+            BatchesCombinedIntoThisOne.Clear();
             Released = false;
             Layer = layer;
             Material = material;
@@ -285,21 +282,6 @@ namespace Squared.Render {
             Interlocked.Increment(ref LifetimeBatchCount);
         }
 
-        /// <summary>
-        /// Suspends preparing of the batch until you call Dispose on it.
-        /// This allows you to begin filling a batch with draw calls on another thread while the rest of the
-        ///  render preparation pipeline continues.
-        /// </summary>
-        public void Suspend () {
-            if (SuspendFuture != null)
-                throw new InvalidOperationException("Batch already suspended");
-            if (IsReleased)
-                throw new InvalidOperationException("Batch already released");
-            if (State.IsPrepared || State.IsIssued)
-                throw new InvalidOperationException("Batch already prepared or issued");
-            SuspendFuture = new Threading.SignalFuture();
-        }
-
         public void CaptureStack (int extraFramesToSkip) {
             if (CaptureStackTraces)
                 StackTrace = new StackTrace(1 + extraFramesToSkip, true);
@@ -316,36 +298,14 @@ namespace Squared.Render {
             Thread.MemoryBarrier();
         }
 
-        private void WaitForSuspend () {
-            var sf = SuspendFuture;
-            if (sf != null) {
-                if (sf.Completed)
-                    return;
-
-                using (var mre = new ManualResetEventSlim(false)) {
-                    sf.RegisterOnComplete(mre.Set);
-                    if (!mre.Wait(1000))
-                        throw new ThreadStateException("A batch remained suspended for too long");
-
-                    var _ = sf.Result2;
-                }
-
-                SuspendFuture = null;
-            }
-        }
-
         // This is where you should do any computation necessary to prepare a batch for rendering.
         // Examples: State sorting, computing vertices.
         public virtual void Prepare (PrepareContext context) {
-            WaitForSuspend();
-
             context.InvokeBasePrepare(this);
             OnPrepareDone();
         }
 
         protected virtual void Prepare (PrepareManager manager) {
-            WaitForSuspend();
-
             OnPrepareDone();
         }
 
@@ -353,15 +313,11 @@ namespace Squared.Render {
         /// Use this if you have to skip issuing the batch for some reason.
         /// </summary>
         protected virtual void MarkAsIssued (DeviceManager manager) {
-            WaitForSuspend();
-
             State.IsIssued = true;
         }
 
         // This is where you send commands to the video card to render your batch.
         public virtual void Issue (DeviceManager manager) {
-            WaitForSuspend();
-
             State.IsIssued = true;
         }
 
@@ -369,9 +325,6 @@ namespace Squared.Render {
         }
 
         public void ReleaseResources () {
-            if (SuspendFuture != null)
-                SuspendFuture = null;
-
             if (Released)
                 throw new ObjectDisposedException("Batch");
 
@@ -392,17 +345,6 @@ namespace Squared.Render {
             Thread.MemoryBarrier();
 
             Pool?.Release(this);
-        }
-
-        /// <summary>
-        /// Notifies the render manager that it should release the batch once the current frame is done drawing.
-        /// You may opt to avoid calling this method in order to reuse a batch across multiple frames.
-        /// </summary>
-        public void Resume () {
-            if (SuspendFuture != null)
-                SuspendFuture.SetResult(Threading.NoneType.None, null);
-            else
-                throw new InvalidOperationException("Not suspended");
         }
 
         public bool IsReleased {

@@ -4,11 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Util;
 
 namespace Squared.Render {
     public delegate void ViewTransformModifier (ref ViewTransform vt, object userData);
 
     public class BatchGroup : ListBatch<Batch>, IBatchContainer {
+        // FIXME
+        public const bool EnableCombining = false;
+
         /// <summary>
         /// A material set view transforms are pushed to.
         /// </summary>
@@ -58,6 +62,11 @@ namespace Squared.Render {
         private object _UserData;
 
         private static readonly int BatchGroupTypeId = IdForType<BatchGroup>.Id;
+
+        static BatchGroup () {
+            if (EnableCombining)
+                BatchCombiner.Combiners.Add(new BatchGroupCombiner());
+        }
 
         void IBatchContainer.PrepareChildren (ref PrepareContext context) {
             BatchCombiner.CombineBatches(ref _DrawCalls, ref context.BatchesToRelease);
@@ -355,6 +364,58 @@ namespace Squared.Render {
                 return string.Format("{4} '{0}' #{1} {2} layer={5} material={3}", FormatName(), InstanceId, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch", Layer);
             else
                 return string.Format("{4} #{1} {2} layer={5} material={3}", FormatName(), InstanceId, StateString, Material, (this is RenderTargetBatchGroup) ? "RT Batch" : "Batch", Layer);
+        }
+
+        sealed class BatchGroupCombiner : IBatchCombiner {
+            public bool CanCombine (Batch lhs, Batch rhs) {
+                if ((lhs == null) || (rhs == null))
+                    return false;
+
+                BatchGroup glhs = lhs as BatchGroup, grhs = rhs as BatchGroup;
+                if ((glhs == null) || (grhs == null))
+                    return false;
+
+                if (glhs.Material?.MaterialID != grhs.Material?.MaterialID)
+                    return false;
+
+                if (glhs._Before != grhs._Before)
+                    return false;
+
+                if (glhs._After != grhs._After)
+                    return false;
+
+                if (glhs._UserData != grhs._UserData)
+                    return false;
+
+                if (glhs.DisableIssue != grhs.DisableIssue)
+                    return false;
+
+                if (glhs.ViewTransformModifier != grhs.ViewTransformModifier)
+                    return false;
+
+                if (!glhs._ViewTransform.Equals(ref grhs._ViewTransform))
+                    return false;
+
+                if (!glhs.MaterialParameters.Equals(ref grhs.MaterialParameters))
+                    return false;
+
+                return true;
+            }
+
+            public Batch Combine (Batch lhs, Batch rhs) {
+                var bl = (BatchGroup)lhs;
+                var br = (BatchGroup)rhs;
+
+                for (int i = 0, l = br._DrawCalls.Count; i < l; i++)
+                    bl._DrawCalls.Add(br._DrawCalls[i]);
+
+                br._DrawCalls.Clear();
+                rhs.SetCombined(true);
+                if (CaptureStackTraces)
+                    lhs.BatchesCombinedIntoThisOne.Add(rhs);
+
+                return lhs;
+            }
         }
     }
 

@@ -95,12 +95,8 @@ namespace Squared.Render {
 
                 br._DrawCalls.Clear();
                 rhs.SetCombined(true);
-                if (CaptureStackTraces) {
-                    if (lhs.BatchesCombinedIntoThisOne == null)
-                        lhs.BatchesCombinedIntoThisOne = new UnorderedList<Batch>();
-
+                if (CaptureStackTraces)
                     lhs.BatchesCombinedIntoThisOne.Add(rhs);
-                }
 
                 return lhs;
             }

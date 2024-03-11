@@ -21,6 +21,8 @@ namespace Squared.Render {
             else if (y == null)
                 return 1;
 
+            // FIXME: Sort more intelligently, perhaps by having the batches implement a 'GetStateHash'
+            //  method that can be used to find likely pairs and order them together
             unchecked {
                 var typeResult = x.TypeId - y.TypeId;
                 if (typeResult == 0)
@@ -57,7 +59,7 @@ namespace Squared.Render {
             while ((i < l) && (j < l)) {
                 a = batches[i];
 
-                if ((a == null) || (a.SuspendFuture != null)) {
+                if (a == null) {
                     i += 1;
                     j = i + 1;
                     continue;
@@ -67,7 +69,7 @@ namespace Squared.Render {
 
                 b = batches[j];
 
-                if ((b == null) || (b.SuspendFuture != null)) {
+                if (b == null) {
                     j += 1;
                     continue;
                 }
