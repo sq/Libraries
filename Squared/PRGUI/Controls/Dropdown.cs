@@ -105,6 +105,10 @@ namespace Squared.PRGUI.Controls {
             if (!Manager.TrySetSelectedItem(ref value, forUserInput))
                 return;
 
+            FireSelectionChangeEvent(forUserInput);
+        }
+
+        private void FireSelectionChangeEvent (bool forUserInput) {
             Invalidate();
             NeedsUpdate = true;
             FireEvent(UIEvents.ValueChanged, SelectedItem);
@@ -279,9 +283,9 @@ namespace Squared.PRGUI.Controls {
                         case Keys.Up:
                         case Keys.Down:
                             if (Manager.TryMoveSelection(
-                                (args.Key == Keys.Up) ? -1 : 1, false
+                                (args.Key == Keys.Up) ? -1 : 1, true
                             ))
-                                SetSelectedItem(Manager.SelectedItem, true);
+                                FireSelectionChangeEvent(true);
                             return true;
                         case Keys.Space:
                             ShowMenu();
