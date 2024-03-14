@@ -142,7 +142,8 @@ namespace FontTest {
                     { 'h', Color.Red }
                 },
                 EqualizeNumberWidths = true,
-                SizePoints = sizePoints
+                SizePoints = sizePoints,
+                Format = FreeTypeFontFormat.Gray,
             };
             Fonts.Add(result);
             return result;

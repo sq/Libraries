@@ -47,7 +47,7 @@ namespace Squared.Render.Mips {
         public sealed class WithGammaRamp {
             public readonly GammaRamp Ramp;
             private byte[] GammaTable, InvGammaTable;
-            private readonly MipGeneratorFn PAGray;
+            private readonly MipGeneratorFn Gray, PAGray, Color, sRGBColor;
 
             public WithGammaRamp (double gamma)
                 : this (new GammaRamp(gamma)) {
@@ -57,7 +57,10 @@ namespace Squared.Render.Mips {
                 Ramp = ramp;
                 GammaTable = Ramp.GammaTable;
                 InvGammaTable = Ramp.InvGammaTable;
-                PAGray = _PAGray;
+                Gray = this._Gray;
+                PAGray = this._PAGray;
+                Color = this._Color;
+                sRGBColor = this._sRGBColor;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -66,12 +69,54 @@ namespace Squared.Render.Mips {
                 return GammaTable[sum >> 2];
             }
 
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public byte AverageSRGB (byte a, byte b, byte c, byte d) {
+                // FIXME: How should this work?
+                var sum = InvGammaTable[a] + InvGammaTable[b] + InvGammaTable[c] + InvGammaTable[d];
+                return GammaTable[sum >> 2];
+            }
+
             public unsafe MipGeneratorFn Get (MipFormat format) {
                 switch (format) {
+                    case MipFormat.RGBA:
+                    case MipFormat.pRGBA:
+                        return Color;
+                    // FIXME: Is this right? I think maybe it needs to be different
+                    case MipFormat.RGBA | MipFormat.sRGB:
+                    case MipFormat.pRGBA | MipFormat.sRGB:
+                        return sRGBColor;
+                    case MipFormat.Gray1:
+                        return Gray;
                     case MipFormat.pGray4:
                         return PAGray;
                     default:
                         throw new ArgumentOutOfRangeException("format");
+                }
+            }
+
+            private unsafe void _Gray (
+                void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
+            ) {
+                if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
+                    throw new ArgumentOutOfRangeException();
+
+                byte* pSrc = (byte*)src, pDest = (byte*)dest;
+            
+                unchecked {
+                    for (var y = 0; y < destHeight; y++) {
+                        byte* srcRow = pSrc + ((y * 2) * srcStrideBytes);
+                        byte* destRow = pDest + (y * destStrideBytes);
+
+                        for (var x = 0; x < destWidth; x++) {
+                            var a = srcRow + (x * 2);
+                            var b = a + 1;
+                            var c = a + srcStrideBytes;
+                            var d = b + srcStrideBytes;
+
+                            var result = destRow + x;
+                            *result = Average(*a, *b, *c, *d);
+                        }
+                    }
                 }
             }
 
@@ -97,6 +142,65 @@ namespace Squared.Render.Mips {
                             var result = destRow + (x * 4);
                             var gray = Average(a[3], b[3], c[3], d[3]);
                             result[0] = result[1] = result[2] = result[3] = gray;
+                        }
+                    }
+                }
+            }
+
+            private unsafe void _Color (
+                void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
+            ) {
+                if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
+                    throw new ArgumentOutOfRangeException();
+
+                byte* pSrc = (byte*)src, pDest = (byte*)dest;
+            
+                unchecked {
+                    for (var y = 0; y < destHeight; y++) {
+                        byte* srcRow = pSrc + ((y * 2) * srcStrideBytes);
+                        byte* destRow = pDest + (y * destStrideBytes);
+
+                        for (var x = 0; x < destWidth; x++) {
+                            var a = srcRow + ((x * 2) * 4);
+                            var b = a + 4;
+                            var c = a + srcStrideBytes;
+                            var d = b + srcStrideBytes;
+
+                            var result = destRow + (x * 4);
+                            result[0] = Average(a[0], b[0], c[0], d[0]);
+                            result[1] = Average(a[1], b[1], c[1], d[1]);
+                            result[2] = Average(a[2], b[2], c[2], d[2]);
+                            result[3] = Average(a[3], b[3], c[3], d[3]);
+                        }
+                    }
+                }
+            }
+
+            private unsafe void _sRGBColor (
+                void* src, int srcWidth, int srcHeight, int srcStrideBytes, void* dest, int destWidth, int destHeight, int destStrideBytes
+            ) {
+                if ((destWidth < srcWidth / 2) || (destHeight < srcHeight / 2))
+                    throw new ArgumentOutOfRangeException();
+
+                byte* pSrc = (byte*)src, pDest = (byte*)dest;
+            
+                unchecked {
+                    for (var y = 0; y < destHeight; y++) {
+                        byte* srcRow = pSrc + ((y * 2) * srcStrideBytes);
+                        byte* destRow = pDest + (y * destStrideBytes);
+
+                        for (var x = 0; x < destWidth; x++) {
+                            var a = srcRow + ((x * 2) * 4);
+                            var b = a + 4;
+                            var c = a + srcStrideBytes;
+                            var d = b + srcStrideBytes;
+
+                            var result = destRow + (x * 4);
+                            result[0] = AverageSRGB(a[0], b[0], c[0], d[0]);
+                            result[1] = AverageSRGB(a[1], b[1], c[1], d[1]);
+                            result[2] = AverageSRGB(a[2], b[2], c[2], d[2]);
+                            // The alpha channel is always linear
+                            result[3] = Average(a[3], b[3], c[3], d[3]);
                         }
                     }
                 }

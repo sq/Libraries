@@ -277,23 +277,25 @@ namespace Squared.Render.Text {
                             }
                         }
                     }
-                } else {
+                } else if (Format == FreeTypeFontFormat.Gray) {
                     for (var y = 0; y < rows; y++) {
                         var rowOffset = result.Atlas.Width * (y + result.Y + Font.GlyphMargin) + (result.X + Font.GlyphMargin);
                         var pDestRow = pDest + rowOffset;
                         int yPitch = y * pitch;
 
-                        for (int x = 0; x < pitch; x++, pDestRow += (8 * 4)) {
+                        for (int x = 0; x < pitch; x++, pDestRow += 8) {
                             var bits = pSrc[x + yPitch];
 
                             for (int i = 0; i < 8; i++) {
                                 int iy = 7 - i;
                                 byte g = ((bits & (1 << iy)) != 0) ? (byte)255 : (byte)0;
-                                var pElt = pDestRow + (i * 4);
+                                var pElt = pDestRow + i;
                                 *pElt = g;
                             }
                         }
                     }                
+                } else {
+                    throw new NotImplementedException(Format.ToString());
                 }
             }
 
