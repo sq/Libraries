@@ -470,12 +470,14 @@ namespace Squared.Render.Text {
                 }
 
                 if (codepoint < LowCacheSize) {
-                    glyph = LowCacheByCodepoint[codepoint];
-                    if (glyph.GlyphIndex < uint.MaxValue) {
+                    // Capture by-reference since width normalization could modify it
+                    ref var glyphRef = ref LowCacheByCodepoint[codepoint];
+                    if (glyphRef.GlyphIndex < uint.MaxValue) {
                         if (NeedNormalization)
                             ApplyWidthNormalization(Font.EqualizeNumberWidths);
 
-                        return glyph.GlyphIndex > 0;
+                        glyph = glyphRef;
+                        return glyphRef.GlyphIndex > 0;
                     } else
                         ;
                 } else if ((codepoint == 0x2007) && NeedNormalization)

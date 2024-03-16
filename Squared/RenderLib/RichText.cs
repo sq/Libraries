@@ -554,6 +554,7 @@ namespace Squared.Render.Text {
     );
 
     public interface IRichTextStateTracker {
+        RichCommandResult TryProcessCommand (RichTextConfiguration config, AbstractString value, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine);
         void MarkString (RichTextConfiguration config, AbstractString originalText, AbstractString text, AbstractString id, uint spanIndex);
         void ReferencedImage (RichTextConfiguration config, ref AsyncRichImage image);
     }
@@ -747,7 +748,6 @@ namespace Squared.Render.Text {
             RichImage image;
             AsyncRichImage ai;
 
-            RichCommandResult commandResult;
             var count = text.Length;
             for (int i = 0; i < count; i++) {
                 var ch = text[i];
@@ -782,8 +782,8 @@ namespace Squared.Render.Text {
                     ) {
                         ApplyStyle(ref layoutEngine, ref state, in style);
                     } else if (
-                        insertionMode && (CommandProcessor != null) &&
-                        (commandResult = CommandProcessor(this, bracketed.Value, ref state, ref layoutEngine)) != RichCommandResult.NotHandled
+                        insertionMode && 
+                        TryProcessCommand(bracketed.Value, ref state, ref layoutEngine, out var commandResult)
                     ) {
                         switch (commandResult) {
                             case RichCommandResult.Handled:
@@ -960,6 +960,19 @@ namespace Squared.Render.Text {
             }
 
             AppendPlainRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, count, false);
+        }
+
+        private bool TryProcessCommand (AbstractString value, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine, out RichCommandResult commandResult) {
+            commandResult = RichCommandResult.NotHandled;
+
+            var trackerResult = state.Tracker?.TryProcessCommand(this, value, ref state, ref layoutEngine);
+            if (trackerResult.HasValue && (trackerResult != RichCommandResult.NotHandled)) {
+                commandResult = trackerResult.Value;
+            } else if (CommandProcessor != null) {
+                commandResult = CommandProcessor(this, value, ref state, ref layoutEngine);
+            }
+
+            return commandResult != RichCommandResult.NotHandled;
         }
 
         /// <returns>a list of rich images that were referenced</returns>

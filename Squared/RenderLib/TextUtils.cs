@@ -108,6 +108,7 @@ namespace Squared.Render.Text {
         private Vector4 _UserData;
         private Vector4? _ImageUserData;
         private IStringLayoutListener _Listener;
+        private IRichTextStateTracker _StateTracker;
 
         private Satellite _Satellite;
 
@@ -382,7 +383,10 @@ namespace Squared.Render.Text {
 
         public IStringLayoutListener Listener {
             get => _Listener;
-            set => InvalidatingReferenceAssignment(ref _Listener, value);
+            set {
+                InvalidatingReferenceAssignment(ref _Listener, value);
+                InvalidatingReferenceAssignment(ref _StateTracker, value as IRichTextStateTracker);
+            }
         }
 
         public SpriteFont Font {
@@ -1242,6 +1246,8 @@ namespace Squared.Render.Text {
         }
 
         void IRichTextStateTracker.MarkString (RichTextConfiguration config, AbstractString originalText, AbstractString text, AbstractString id, uint spanIndex) {
+            _StateTracker?.MarkString(config, originalText, text, id, spanIndex);
+
             if (DisableMarkers)
                 return;
             AutoAllocateSatellite().RichMarkers.Add(new LayoutMarker {
@@ -1254,6 +1260,15 @@ namespace Squared.Render.Text {
 
         void IRichTextStateTracker.ReferencedImage (RichTextConfiguration config, ref AsyncRichImage image) {
             AutoAllocateSatellite().Dependencies.Add(ref image);
+
+            _StateTracker?.ReferencedImage(config, ref image);
+        }
+
+        RichCommandResult IRichTextStateTracker.TryProcessCommand (RichTextConfiguration config, AbstractString value, ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine) {
+            if (_StateTracker != null)
+                return _StateTracker.TryProcessCommand(config, value, ref state, ref layoutEngine);
+            else
+                return RichCommandResult.NotHandled;
         }
     }
 

@@ -385,9 +385,6 @@ namespace Squared.Render.TextLayout2 {
             if (fragment1.WasFullySuppressed)
                 return false;
 
-            // FIXME: This whole algorithm doesn't work right if there are spaces at the start or end
-            //  of the span being measured.
-
             for (uint l = fragment1.LineIndex, l2 = fragment2.LineIndex; l <= l2; l++) {
                 if (!TryGetLineBounds(l, out var lineBounds))
                     continue;
