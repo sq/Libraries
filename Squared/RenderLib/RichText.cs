@@ -377,7 +377,7 @@ namespace Squared.Render.Text {
         public readonly Vector2 InitialScale;
         public readonly Vector2 InitialSpacing;
         public readonly float InitialLineSpacing;
-        public readonly bool InitialOverrideColor;
+        public readonly bool InitialOverrideColor, InitialCharacterWrap, InitialWordWrap;
         public DenseList<string> Tags;
         public IRichTextStateTracker Tracker;
         private DenseList<StringBuilder> StringBuildersToReturn;
@@ -388,6 +388,8 @@ namespace Squared.Render.Text {
             InitialScale = engine.Scale;
             InitialSpacing = engine.Spacing;
             InitialLineSpacing = engine.AdditionalLineSpacing;
+            InitialWordWrap = engine.WordWrap;
+            InitialCharacterWrap = engine.CharacterWrap;
             DefaultGlyphSource = defaultGlyphSource;
             GlyphSource = null;
             Tracker = stateTracker;
@@ -452,6 +454,9 @@ namespace Squared.Render.Text {
             engine.Scale = InitialScale;
             engine.Spacing = InitialSpacing;
             engine.AdditionalLineSpacing = InitialLineSpacing;
+            engine.WordWrap = InitialWordWrap;
+            engine.CharacterWrap = InitialCharacterWrap;
+            engine.Alignment = engine.DefaultAlignment;
         }
 
         public void Dispose () {
@@ -718,7 +723,10 @@ namespace Squared.Render.Text {
             Scale,
             Spacing,
             Font,
-            LineSpacing
+            LineSpacing,
+            WordWrap,
+            CharacterWrap,
+            Alignment,
         }
 
         private static readonly ImmutableAbstractStringLookup<RichRuleId> RuleNameTable =
@@ -737,6 +745,12 @@ namespace Squared.Render.Text {
                 { "glyphsource", RichRuleId.Font },
                 { "gs", RichRuleId.Font },
                 { "glyph-source", RichRuleId.Font },
+                { "word-wrap", RichRuleId.WordWrap },
+                { "wordwrap", RichRuleId.WordWrap },
+                { "character-wrap", RichRuleId.CharacterWrap },
+                { "characterwrap", RichRuleId.CharacterWrap },
+                { "align", RichRuleId.Alignment },
+                { "alignment", RichRuleId.Alignment },
             };
 
         private void AppendRichRange (
@@ -843,47 +857,8 @@ namespace Squared.Render.Text {
                             state.Tracker?.ReferencedImage(this, ref ai);
                         }
                     } else if (styleMode && bracketed.Value.Contains(":")) {
-                        foreach (var rule in RichText.ParseRules(bracketed.Value, ref parseErrors)) {
-                            var value = rule.Value;
-                            RuleNameTable.TryGetValue(rule.Key, out var ruleId);
-                            switch (ruleId) {
-                                case RichRuleId.Color:
-                                    layoutEngine.OverrideColor = true;
-                                    layoutEngine.MultiplyColor = ParseColor(value) ?? state.InitialColor;
-                                    break;
-                                case RichRuleId.Scale:
-                                    if (!value.TryParse(out float newScale))
-                                        layoutEngine.Scale = state.InitialScale;
-                                    else
-                                        layoutEngine.Scale = state.InitialScale * newScale;
-                                    break;
-                                case RichRuleId.Spacing:
-                                    if (!value.TryParse(out float newSpacing))
-                                        layoutEngine.Spacing = state.InitialSpacing;
-                                    else
-                                        layoutEngine.Spacing = state.InitialSpacing * newSpacing;
-                                    break;
-                                case RichRuleId.LineSpacing:
-                                    if (!value.TryParse(out float newLineSpacing))
-                                        layoutEngine.AdditionalLineSpacing = state.InitialLineSpacing;
-                                    else
-                                        layoutEngine.AdditionalLineSpacing = newLineSpacing;
-                                    break;
-                                case RichRuleId.Font:
-                                    if ((GlyphSources != null) && GlyphSources.TryGetValue(value, out var gse))
-                                        state.GlyphSource = gse.Value;
-                                    else
-                                        state.GlyphSource = null;
-                                    break;
-                                default:
-                                    parseErrors.Add(new RichParseError {
-                                        Offset = rule.Key.Offset,
-                                        Message = "Unrecognized rule",
-                                        Text = rule.Key
-                                    });
-                                    break;
-                            }
-                        }
+                        foreach (var rule in RichText.ParseRules(bracketed.Value, ref parseErrors))
+                            ApplyStyleRule(ref layoutEngine, ref state, ref parseErrors, rule);
                     } else if (!styleMode) {
                         AbstractString astr = bracketed.Value;
                         AbstractString id = default;
@@ -960,6 +935,74 @@ namespace Squared.Render.Text {
             }
 
             AppendPlainRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, count, false);
+        }
+
+        private void ApplyStyleRule (ref TLayoutEngine layoutEngine, ref RichTextLayoutState state, ref DenseList<RichParseError> parseErrors, RichRule rule) {
+            var value = rule.Value;
+            RuleNameTable.TryGetValue(rule.Key, out var ruleId);
+            switch (ruleId) {
+                case RichRuleId.Color:
+                    if (value.TextEquals("default", StringComparison.OrdinalIgnoreCase)) {
+                        layoutEngine.OverrideColor = state.InitialOverrideColor;
+                        layoutEngine.MultiplyColor = state.InitialColor;
+                    } else {
+                        layoutEngine.OverrideColor = true;
+                        layoutEngine.MultiplyColor = ParseColor(value) ?? state.InitialColor;
+                    }
+                    break;
+                case RichRuleId.Scale:
+                    if (!value.TryParse(out float newScale))
+                        layoutEngine.Scale = state.InitialScale;
+                    else
+                        layoutEngine.Scale = state.InitialScale * newScale;
+                    break;
+                case RichRuleId.Spacing:
+                    if (!value.TryParse(out float newSpacing))
+                        layoutEngine.Spacing = state.InitialSpacing;
+                    else
+                        layoutEngine.Spacing = state.InitialSpacing * newSpacing;
+                    break;
+                case RichRuleId.LineSpacing:
+                    if (!value.TryParse(out float newLineSpacing))
+                        layoutEngine.AdditionalLineSpacing = state.InitialLineSpacing;
+                    else
+                        layoutEngine.AdditionalLineSpacing = newLineSpacing;
+                    break;
+                case RichRuleId.Font:
+                    if ((GlyphSources != null) && GlyphSources.TryGetValue(value, out var gse))
+                        state.GlyphSource = gse.Value;
+                    else
+                        state.GlyphSource = null;
+                    break;
+                case RichRuleId.WordWrap:
+                case RichRuleId.CharacterWrap:
+                    if (value.TryParse(out bool b)) {
+                        if (ruleId == RichRuleId.WordWrap)
+                            layoutEngine.WordWrap = b;
+                        else
+                            layoutEngine.CharacterWrap = b;
+                    } else {
+                        if (ruleId == RichRuleId.WordWrap)
+                            layoutEngine.WordWrap = state.InitialWordWrap;
+                        else
+                            layoutEngine.CharacterWrap = state.InitialCharacterWrap;
+                    }
+                    break;
+                case RichRuleId.Alignment:
+                    if (value.TryParseEnum(out HorizontalAlignment alignment)) {
+                        layoutEngine.Alignment = alignment;
+                    } else {
+                        layoutEngine.Alignment = layoutEngine.DefaultAlignment;
+                    }
+                    break;
+                default:
+                    parseErrors.Add(new RichParseError {
+                        Offset = rule.Key.Offset,
+                        Message = "Unrecognized rule",
+                        Text = rule.Key
+                    });
+                    break;
+            }
         }
 
         private bool TryProcessCommand (AbstractString value, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine, out RichCommandResult commandResult) {

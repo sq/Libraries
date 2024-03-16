@@ -44,6 +44,7 @@ namespace Squared.Render.TextLayout2 {
             Height, Baseline, 
             Inset, Crush,
             TopDecorations, BottomDecorations;
+        public HorizontalAlignment Alignment;
 
         public float ActualWidth {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -267,7 +268,8 @@ namespace Squared.Render.TextLayout2 {
         public Color MultiplyColor, AddColor;
         public DrawCallSortKey SortKey;
 
-        public HorizontalAlignment Alignment;
+        public HorizontalAlignment DefaultAlignment;
+        private HorizontalAlignment CurrentAlignment;
         public uint MaskCodepoint;
         public uint? TerminatorCodepoint;
 
@@ -319,8 +321,10 @@ namespace Squared.Render.TextLayout2 {
 
             IsInitialized = true;
             Buffers.Span(0) = default;
+            CurrentAlignment = DefaultAlignment;
             CurrentLine = new Line {
                 Location = new Vector2(InitialIndentation, 0f),
+                Alignment = CurrentAlignment,
             };
             UnconstrainedLineSize = new Vector2(InitialIndentation, 0f);
             Y = 0f;
@@ -332,6 +336,17 @@ namespace Squared.Render.TextLayout2 {
             HitTestResult.Position = HitTestLocation ?? default;
             MostRecentTexture = AbstractTextureReference.Invalid;
             CombiningCharacterAnchorCodepoint = uint.MaxValue;
+        }
+
+        public HorizontalAlignment Alignment {
+            get => CurrentAlignment;
+            set {
+                if (CurrentAlignment == value)
+                    return;
+
+                CurrentLine.Alignment = value;
+                CurrentAlignment = value;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1253,6 +1268,7 @@ recalc:
                 Index = LineIndex,
                 Location = new Vector2(indentation, Y),
                 FirstFragmentIndex = FragmentIndex,
+                Alignment = CurrentAlignment,
             };
 
             ColIndex = 0;
@@ -1413,7 +1429,7 @@ recalc:
                 float y = Position.Y + line.Location.Y;
                 float whitespace = totalWidth - line.Width, gapWhitespace = 0f;
 
-                switch (Alignment) {
+                switch (line.Alignment) {
                     case HorizontalAlignment.Left:
                         whitespace = 0f;
                         break;

@@ -975,7 +975,7 @@ namespace Squared.Render.Text {
                 CharacterWrap = CharacterWrap,
                 WordWrap = WordWrap,
                 HideOverflow = HideOverflow,
-                Alignment = (HorizontalAlignment)_Alignment,
+                DefaultAlignment = (HorizontalAlignment)_Alignment,
                 LineLimit = (measureOnly.HasValue ? measureOnly.Value.LineLimit : _LineLimit) ?? int.MaxValue,
                 BreakLimit = (measureOnly.HasValue ? measureOnly.Value.LineBreakLimit : _LineBreakLimit) ?? int.MaxValue,
                 TabSize = _TabSize,

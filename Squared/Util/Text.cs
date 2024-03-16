@@ -274,7 +274,7 @@ namespace Squared.Util.Text {
     }
 
     public struct ImmutableAbstractString : IEquatable<ImmutableAbstractString> {
-        public sealed class Comparer : EqualityComparer<ImmutableAbstractString> {
+        public sealed class Comparer : IComparer<ImmutableAbstractString>, IEqualityComparer<ImmutableAbstractString> {
             public readonly StringComparison Comparison;
 
             public static readonly Comparer Ordinal = new Comparer(StringComparison.Ordinal),
@@ -288,17 +288,21 @@ namespace Squared.Util.Text {
                 Comparison = c;
             }
 
-            public override bool Equals (ImmutableAbstractString x, ImmutableAbstractString y) {
+            public bool Equals (ImmutableAbstractString x, ImmutableAbstractString y) {
                 return x.Value.TextEquals(y.Value, Comparison);
             }
 
-            public override int GetHashCode (ImmutableAbstractString obj) {
+            public int GetHashCode (ImmutableAbstractString obj) {
                 if (Comparison == StringComparison.OrdinalIgnoreCase)
                     return obj.GetHashCode(true);
                 if (Comparison == StringComparison.Ordinal)
                     return obj.GetHashCode(false);
                 else // FIXME
                     return 0;
+            }
+
+            public int Compare (ImmutableAbstractString x, ImmutableAbstractString y) {
+                return x.Value.CompareTo(y.Value, Comparison);
             }
         }
 
@@ -757,6 +761,35 @@ namespace Squared.Util.Text {
             return AllCodepointsEqual(other, comparison);
         }
 
+        internal int CompareTo (AbstractString value, StringComparison comparison) {
+            int count = Math.Min(Length, value.Length);
+            switch (comparison) {
+                case StringComparison.Ordinal:
+                    for (int i = 0; i < count; i++) {
+                        // FIXME: UTF-16
+                        int result = this[i] - value[i];
+                        if (result != 0)
+                            return result;
+                    }
+                    break;
+
+                case StringComparison.OrdinalIgnoreCase:
+                    for (int i = 0; i < count; i++) {
+                        // FIXME: UTF-16
+                        int result = char.ToUpperInvariant(this[i]) - 
+                            char.ToUpperInvariant(value[i]);
+                        if (result != 0)
+                            return result;
+                    }
+                    break;
+
+                default:
+                    // FIXME
+                    return string.Compare(ToString(), value.ToString(), comparison);
+            }
+            return Length - value.Length;
+        }
+
         /// <summary>
         /// This is only valid if you're sure the data won't change!
         /// </summary>
@@ -997,6 +1030,64 @@ namespace Squared.Util.Text {
             var ptr = new Pointer(this, offset);
             result = FloatScan.__floatscan(ref ptr, 1, true, out var ok);
             return ok;
+        }
+
+        public bool TryParse (out bool result, int offset = 0) {
+            var substring = Substring(offset);
+            if (substring.TextEquals("true", StringComparison.OrdinalIgnoreCase))
+                result = true;
+            else if (substring.TextEquals("false", StringComparison.OrdinalIgnoreCase))
+                result = false;
+            else if (substring.TryParse(out float f) && !substring.Contains("."))
+                result = ((int)f) != 0;
+            else {
+                result = default;
+                return false;
+            }
+            return true;
+        }
+
+        public bool TryParseEnum<TEnum> (out TEnum result, int offset = 0)
+            where TEnum : Enum
+        {
+            var haystack = EnumInfoCache<TEnum>.SortedKeyValuePairs;
+            var needle = new KeyValuePair<ImmutableAbstractString, TEnum>(
+                AsImmutable(true), default
+            );
+            var index = Array.BinarySearch(haystack, needle, EnumInfoCache<TEnum>.SearchComparer.Instance);
+            if (index >= 0) {
+                result = haystack[index].Value;
+                return true;
+            } else {
+                result = default;
+                return false;
+            }
+        }
+
+        private static class EnumInfoCache<TEnum> 
+            where TEnum : Enum
+        {
+            public sealed class SearchComparer : IComparer<KeyValuePair<ImmutableAbstractString, TEnum>> {
+                public static readonly SearchComparer Instance = new SearchComparer();
+
+                public int Compare (KeyValuePair<ImmutableAbstractString, TEnum> lhs, KeyValuePair<ImmutableAbstractString, TEnum> rhs) {
+                    return lhs.Key.Value.CompareTo(rhs.Key.Value, StringComparison.OrdinalIgnoreCase);
+                }
+            }
+
+            public static readonly KeyValuePair<ImmutableAbstractString, TEnum>[] SortedKeyValuePairs;
+
+            static EnumInfoCache () {
+                var keys = Enum.GetNames(typeof(TEnum));
+                var values = Enum.GetValues(typeof(TEnum)).Cast<TEnum>().ToArray();
+                var result = new KeyValuePair<ImmutableAbstractString, TEnum>[keys.Length];
+
+                for (int i = 0; i < result.Length; i++)
+                    result[i] = new KeyValuePair<ImmutableAbstractString, TEnum>(keys[i], values[i]);
+
+                Array.Sort(result, SearchComparer.Instance);
+                SortedKeyValuePairs = result;
+            }
         }
     }
 
