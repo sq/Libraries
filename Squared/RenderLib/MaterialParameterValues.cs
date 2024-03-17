@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Util;
@@ -34,23 +31,10 @@ namespace Squared.Render {
             }
         }
 
-        private sealed class KeyComparer : IRefComparer<Key> {
-            public static readonly KeyComparer Instance = new KeyComparer();
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public int Compare (ref Key lhs, ref Key rhs) {
-                var result = lhs.HashCode.CompareTo(rhs.HashCode);
-                if (result == 0)
-                    result = string.CompareOrdinal(lhs.Name, rhs.Name);
-                return result;
-            }
-        }
-
         [Flags]
         internal enum StateFlags {
             IsCleared = 0b001,
             CopyOnWrite = 0b010,
-            // SortNeeded = 0b100,
         }
 
         internal enum EntryValueType : int {
@@ -91,7 +75,7 @@ namespace Squared.Render {
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public Key (string name) {
-                HashCode = name.GetHashCode();
+                HashCode = name?.GetHashCode() ?? -1;
                 Name = name;
                 ValueIndex = -1;
             }
@@ -107,9 +91,6 @@ namespace Squared.Render {
 
             public object BoxedValue {
                 get {
-                    if (Reference != null)
-                        return Reference;
-
                     switch (Type) {
                         case EntryValueType.B:
                             return Primitive.B;
@@ -126,16 +107,13 @@ namespace Squared.Render {
                         case EntryValueType.Q:
                             return Primitive.Q;
                         default:
-                            return null;
+                            return Reference;
                     }
                 }
             }
 
             public static bool Equals (ref Value lhs, ref Value rhs) {
                 if (lhs.Type != rhs.Type)
-                    return false;
-
-                if (!ReferenceEquals(lhs.Reference, rhs.Reference))
                     return false;
 
                 switch (lhs.Type) {
@@ -155,7 +133,7 @@ namespace Squared.Render {
                         return lhs.Primitive.Q == rhs.Primitive.Q;
                     case EntryValueType.Texture:
                     case EntryValueType.Array:
-                        return true;
+                        return ReferenceEquals(lhs.Reference, rhs.Reference);
                     default:
                         throw new ArgumentOutOfRangeException("lhs.ValueType");
                 }
@@ -254,25 +232,30 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool FindKey (string name, out int keyIndex, out int valueIndex) {
-            var needle = new Key(name);
-            return FindKey(ref needle, out keyIndex, out valueIndex);
-        }
-
-        private bool FindKey (ref Key needle, out int keyIndex, out int valueIndex) {
-            keyIndex = valueIndex = -1;
+        private int FindValue (string name) {
             int count = Count;
             if (count <= 0)
-                return false;
+                return -1;
 
-            /*
-            if (ChangeInternalFlag(StateFlags.SortNeeded, false))
-                Keys.Sort(KeyComparer.Instance);
+            var hashCode = name.GetHashCode();
+            for (int i = 0; i < count; i++) {
+                ref var key = ref Keys.Item(i);
+                if (key.HashCode != hashCode)
+                    continue;
+                if (!string.Equals(key.Name, name, StringComparison.Ordinal))
+                    continue;
 
-            keyIndex = Keys.BinarySearch(ref needle, KeyComparer.Instance);
-            if (keyIndex < 0)
-                return false;
-            */
+                return key.ValueIndex;
+            }
+
+            return -1;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int FindValue (ref Key needle) {
+            int count = Count;
+            if (count <= 0)
+                return -1;
 
             for (int i = 0; i < count; i++) {
                 ref var key = ref Keys.Item(i);
@@ -281,12 +264,10 @@ namespace Squared.Render {
                 if (!string.Equals(key.Name, needle.Name, StringComparison.Ordinal))
                     continue;
 
-                keyIndex = i;
-                valueIndex = key.ValueIndex;
-                return true;
+                return key.ValueIndex;
             }
 
-            return false;
+            return -1;
         }
 
         public void Clear () {
@@ -294,7 +275,6 @@ namespace Squared.Render {
                 return;
 
             SetInternalFlag(StateFlags.IsCleared, true);
-            // SetInternalFlag(StateFlags.SortNeeded, false);
         }
 
         public void AddRange (ref MaterialParameterValues rhs) {
@@ -306,7 +286,8 @@ namespace Squared.Render {
         }
 
         internal bool TryGet (string name, out Value result) {
-            if (!FindKey(name, out _, out int valueIndex)) {
+            var valueIndex = FindValue(name);
+            if (valueIndex < 0) {
                 result = default(Value);
                 return false;
             }
@@ -326,7 +307,6 @@ namespace Squared.Render {
                 Values.Clear();
             }
             SetInternalFlag(StateFlags.IsCleared, false);
-            // SetInternalFlag(StateFlags.SortNeeded, false);
         }
 
         public void ReplaceWith (ref MaterialParameterValues values) {
@@ -336,7 +316,6 @@ namespace Squared.Render {
             }
 
             SetInternalFlag(StateFlags.IsCleared, false);
-            // SetInternalFlag(StateFlags.SortNeeded, false);
             FlushCopyOnWrite();
             // HACK: Keys will be interned strings 99% of the time, so leaking them doesn't matter
             Keys.ReplaceWith(ref values.Keys, false);
@@ -346,7 +325,8 @@ namespace Squared.Render {
 
         private void Set (ref Key key, ref Value value) {
             AutoClear();
-            if (FindKey(ref key, out _, out int valueIndex)) {
+            var valueIndex = FindValue(ref key);
+            if (valueIndex >= 0) {
                 ref var existingValue = ref Values.Item(valueIndex);
                 if (Value.Equals(ref existingValue, ref value))
                     return;
@@ -358,10 +338,6 @@ namespace Squared.Render {
             FlushCopyOnWrite();
             key.ValueIndex = Count;
 
-            /*
-            if (key.ValueIndex > 0)
-                SetInternalFlag(StateFlags.SortNeeded, true);
-            */
             Keys.Add(ref key);
             Values.Add(ref value);
         }
@@ -536,9 +512,10 @@ namespace Squared.Render {
 
             for (int i = 0; i < count; i++) {
                 ref var lhsKey = ref Keys.Item(i);
-                if (!pRhs.FindKey(ref lhsKey, out _, out int rhsValueIndex))
+                var rhsIndex = pRhs.FindValue(ref lhsKey);
+                if (rhsIndex < 0)
                     return false;
-                if (!Value.Equals(ref Values.Item(lhsKey.ValueIndex), ref pRhs.Values.Item(rhsValueIndex)))
+                if (!Value.Equals(ref Values.Item(lhsKey.ValueIndex), ref pRhs.Values.Item(rhsIndex)))
                     return false;
             }
 

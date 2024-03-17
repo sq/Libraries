@@ -420,20 +420,23 @@ namespace Squared.Render.Convenience {
             SamplerState samplerState2,
             object extraData
         ) {
+            var flags = default(CachedBatchFlags);
+            if (worldSpace)
+                flags |= CachedBatchFlags.WorldSpace;
+            if (UseZBuffer)
+                flags |= CachedBatchFlags.UseZBuffer;
+            if (ZBufferOnlySorting)
+                flags |= CachedBatchFlags.ZBufferOnlySorting;
+            if (DepthPrePass)
+                flags |= CachedBatchFlags.DepthPrePass;
+
             result = new CachedBatch {
                 BatchType = cbt,
                 Container = Config.Container,
                 Layer = layer,
+                Flags = flags,
                 // FIXME: Mask if multimaterial?
             };
-            if (worldSpace)
-                result.Flags |= CachedBatchFlags.WorldSpace;
-            if (UseZBuffer)
-                result.Flags |= CachedBatchFlags.UseZBuffer;
-            if (ZBufferOnlySorting)
-                result.Flags |= CachedBatchFlags.ZBufferOnlySorting;
-            if (DepthPrePass)
-                result.Flags |= CachedBatchFlags.DepthPrePass;
 
             if (cbt != CachedBatchType.MultimaterialBitmap) {
                 result.RasterizerState = rasterizerState;
