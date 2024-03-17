@@ -641,14 +641,6 @@ namespace Squared.Render.TextLayout2 {
                 glyph.LineSpacing = (glyph.LineSpacing * effectiveScale.Y) + AdditionalLineSpacing;
                 glyph.Baseline *= effectiveScale.Y;
 
-                float leftSideDelta = 0;
-                if (effectiveSpacing.X >= 0)
-                    glyph.LeftSideBearing *= effectiveSpacing.X;
-                else
-                    leftSideDelta = Math.Abs(glyph.LeftSideBearing * effectiveSpacing.X);
-
-                glyph.RightSideBearing = (glyph.RightSideBearing * effectiveSpacing.X) - leftSideDelta;
-
                 if (singleFragment.HasValue) {
                     category = singleFragment.Value;
                 } else if (isCombiningCharacter) {
@@ -732,9 +724,15 @@ namespace Squared.Render.TextLayout2 {
 recalc:
                 ref var line = ref CurrentLine;
 
+                float leftSideDelta = 0;
+                if (effectiveSpacing.X < 0) {
+                    leftSideDelta = Math.Abs(glyph.LeftSideBearing * effectiveSpacing.X);
+                    glyph.RightSideBearing -= leftSideDelta;
+                }
+
                 float glyphSpacing = glyph.CharacterSpacing * effectiveScale.X,
-                    inlineW = glyph.WidthIncludingBearing * effectiveScale.X,
-                    worstW = glyph.WorstCaseWidth * effectiveScale.X,
+                    inlineW = glyph.WidthIncludingBearing * effectiveScale.X * effectiveSpacing.X,
+                    worstW = glyph.WorstCaseWidth * effectiveScale.X * effectiveSpacing.X,
                     h = glyph.LineSpacing,
                     xBasis = line.Location.X + line.ActualWidth,
                     x1 = xBasis + FragmentOffset.X,
