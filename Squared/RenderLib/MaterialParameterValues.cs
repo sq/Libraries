@@ -141,6 +141,7 @@ namespace Squared.Render {
         }
 
         private StateFlags State;
+        private int KeyHash;
         private DenseList<Key> Keys;
         // TODO: Replace this with a few numbered object slots for references,
         //  and a big pile of UInt64s to pack primitives into. That will make
@@ -198,6 +199,8 @@ namespace Squared.Render {
             SetInternalFlag(StateFlags.CopyOnWrite, false);
             Keys.UseExistingStorage(storage.Keys, preserveContents);
             Values.UseExistingStorage(storage.Values, preserveContents);
+            if (!preserveContents)
+                KeyHash = 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -274,6 +277,7 @@ namespace Squared.Render {
             if (Keys.Count <= 0)
                 return;
 
+            KeyHash = 0;
             SetInternalFlag(StateFlags.IsCleared, true);
         }
 
@@ -321,6 +325,7 @@ namespace Squared.Render {
             Keys.ReplaceWith(ref values.Keys, false);
             // FIXME: Split VT and ref values into separate lists so we don't need to clear the VT list
             Values.ReplaceWith(ref values.Values);
+            KeyHash = values.KeyHash;
         }
 
         private void Set (ref Key key, ref Value value) {
@@ -338,6 +343,7 @@ namespace Squared.Render {
             FlushCopyOnWrite();
             key.ValueIndex = Count;
 
+            KeyHash ^= key.HashCode;
             Keys.Add(ref key);
             Values.Add(ref value);
         }
@@ -504,6 +510,8 @@ namespace Squared.Render {
         public bool Equals (MaterialParameterValues pRhs) => Equals(ref pRhs);
 
         public bool Equals (ref MaterialParameterValues pRhs) {
+            if (KeyHash != pRhs.KeyHash)
+                return false;
             var count = Count;
             if (count != pRhs.Count)
                 return false;
@@ -523,7 +531,7 @@ namespace Squared.Render {
         }
 
         public override int GetHashCode () {
-            return Count;
+            return KeyHash;
         }
 
         public override bool Equals (object obj) {
