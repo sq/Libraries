@@ -1506,7 +1506,9 @@ recalc:
                         lastBox.Size.X >= fragment.Width
                             ? 1.0f
                             : Math.Max(lastBox.Size.X / fragment.Width, MinRubyScale);
-                    float anchoredX = lastBox.Center.X - (fragment.Width * 0.5f * scale),
+                    // HACK: Ensure that we don't push ruby fragments too far to the left, if their anchor is
+                    //  at the start of a line.
+                    float anchoredX = Math.Max(Position.X, lastBox.Center.X - (fragment.Width * 0.5f * scale)),
                         anchoredY = y - (fragment.Height * scale);
                     ArrangeSingleFragment(
                         ref constrainedSize, FragmentCategory.Regular,

@@ -25,17 +25,17 @@ using SrGlyph = Squared.Render.Text.Glyph;
 namespace Squared.Render.Text {
     public enum FreeTypeFontFormat {
         /// <summary>
-        /// Stores the font atlas in an ARGB texture; sampling and filtering will occur in sRGB space
+        /// Stores the font atlas in a luminance texture
+        /// </summary>
+        Gray,
+        /// <summary>
+        /// Stores the font atlas in an ARGB texture with SRGB encoding
         /// </summary>
         SRGB,
         /// <summary>
-        /// Stores the font atlas in an ARGB texture; sampling and filtering will occur in linear space
+        /// Stores the font atlas in an ARGB texture with linear encoding
         /// </summary>
         Linear,
-        /// <summary>
-        /// Stores the font atlas in a luminance texture; sampling and filtering will occur in linear space
-        /// </summary>
-        Gray,
         /// <summary>
         /// Stores the font atlas as a signed distance field.
         /// </summary>
@@ -356,7 +356,7 @@ namespace Squared.Render.Text {
                     int yPitch = y * pitch;
 
                     // FIXME: Implement gamma table somehow? Because the glyphs are already premultiplied, I'm not sure how
-                    // FIXME: SRGB
+                    // FIXME: SRGB -> Linear
                     for (var x = 0; x < width; x++) {
                         var ppSrc = pSrc + (x * 4) + yPitch;
 
@@ -376,8 +376,8 @@ namespace Squared.Render.Text {
                         return new DynamicAtlas<Color>(
                             Font.RenderCoordinator, newAtlasWidth, newAtlasHeight,
                             (Format == FreeTypeFontFormat.SRGB)
-                                ? SurfaceFormat.Color
-                                : SurfaceFormat.ColorSrgbEXT, 
+                                ? SurfaceFormat.ColorSrgbEXT
+                                : SurfaceFormat.Color, 
                             spacing, PickMipGenerator(Font, Format), tag: tag
                         );
                     case FreeTypeFontFormat.Gray:
@@ -807,7 +807,7 @@ namespace Squared.Render.Text {
         public bool SDFMipMapping { get; set; }
         public bool EnableBitmaps { get; set; } = true;
         public bool Monochrome { get; set; }
-        private FreeTypeFontFormat _Format = FreeTypeFontFormat.SRGB;
+        private FreeTypeFontFormat _Format = FreeTypeFontFormat.Gray;
         public FreeTypeFontFormat Format {
             get => _Format;
             set {
@@ -888,10 +888,11 @@ namespace Squared.Render.Text {
             set {
                 if (value == 1) {
                     GammaRamp = null;
-                    MipGen = null;
+                    // MipGen = null;
                 } else if (_Gamma != value) {
                     GammaRamp = new GammaRamp(value);
-                    MipGen = new MipGenerator.WithGammaRamp(GammaRamp);
+					// FIXME: This looks really bad for high/low gamma values due to rounding
+                    // MipGen = new MipGenerator.WithGammaRamp(GammaRamp);
                 }
                 _Gamma = value;
             }
