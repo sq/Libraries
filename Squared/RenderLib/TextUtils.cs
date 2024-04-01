@@ -1270,6 +1270,17 @@ namespace Squared.Render.Text {
             else
                 return RichCommandResult.NotHandled;
         }
+
+        RichStyleResult IRichTextStateTracker.TryApplyStyleProperty (RichTextConfiguration config, ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine, RichProperty rule) {
+            if (_StateTracker != null)
+                return _StateTracker.TryApplyStyleProperty(config, ref state, ref layoutEngine, rule);
+            else
+                return RichStyleResult.NotHandled;
+        }
+
+        void IRichTextStateTracker.ResetStyle (RichTextConfiguration config, ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine) {
+            _StateTracker?.ResetStyle(config, ref state, ref layoutEngine);
+        }
     }
 
     public class FallbackGlyphSource : IGlyphSource, IDisposable, IEnumerable<IGlyphSource>, IGlyphSourceChangeListener {

@@ -653,6 +653,8 @@ namespace Squared.Render {
         }
 
         public static bool TryParse (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
+            if (TryParseHTML(text, out result, formatProvider))
+                return true;
             if (TryParseNumeric(text, out result, formatProvider))
                 return true;
             if (NamedColor.TryParse(text, out Color namedColor)) {
@@ -661,6 +663,39 @@ namespace Squared.Render {
             }
             result = default;
             return false;
+        }
+
+        private static bool TryParseHTML (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
+            // FIXME: rgb(), rgba(), hsl(), hsla()
+
+            result = default;
+            if (!text.StartsWith("#"))
+                return false;
+
+            string r, g, b;
+
+            if (text.Length == 4) {
+                // #abc
+                r = new string(text[1], 2);
+                g = new string(text[2], 2);
+                b = new string(text[3], 2);
+            } else if (text.Length == 7) {
+                // #aabbcc
+                r = text.Substring(1, 2);
+                g = text.Substring(3, 2);
+                b = text.Substring(5, 2);
+            } else
+                return false;
+
+            if (!int.TryParse(r, NumberStyles.HexNumber, formatProvider, out int _r))
+                return false;
+            if (!int.TryParse(g, NumberStyles.HexNumber, formatProvider, out int _g))
+                return false;
+            if (!int.TryParse(b, NumberStyles.HexNumber, formatProvider, out int _b))
+                return false;
+
+            result = new pSRGBColor(_r, _g, _b, 255, true);
+            return true;
         }
 
         private static bool TryParseNumeric (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
