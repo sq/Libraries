@@ -77,7 +77,7 @@ namespace Squared.Render {
             return (rt != null) && !rt.IsDisposed;
         }
 
-        protected RenderTarget2D CreateInstance () {
+        protected RenderTarget2D CreateInstance (string overrideName) {
             WasRecreated = true;
 
             lock (Coordinator.CreateResourceLock) {
@@ -86,7 +86,7 @@ namespace Squared.Render {
                     PreferredFormat, PreferredDepthFormat,
                     PreferredMultiSampleCount, RenderTargetUsage.PreserveContents
                 ) {
-                    Name = $"AutoRenderTarget {GetHashCode().ToString("X8")}"
+                    Name = overrideName ?? $"AutoRenderTarget {GetHashCode().ToString("X8")}"
                 };
                 Coordinator.RegisterAutoAllocatedTextureResource(result);
                 return result;
@@ -129,9 +129,7 @@ namespace Squared.Render {
             if (coordinator == null)
                 throw new ArgumentNullException(nameof(coordinator));
 
-            GetOrCreateInstance(true);
-            if (name != null)
-                SetName(name);
+            GetOrCreateInstance(true, name);
         }
 
         new public SurfaceFormat PreferredFormat {
@@ -142,7 +140,7 @@ namespace Squared.Render {
 
                 lock (Lock) {
                     base.PreferredFormat = value;
-                    GetOrCreateInstance(true);
+                    GetOrCreateInstance(true, null);
                 }
             }
         }
@@ -194,11 +192,11 @@ namespace Squared.Render {
                 Height = height;
             }
 
-            GetOrCreateInstance(true);
+            GetOrCreateInstance(true, null);
             return true;
         }
 
-        private RenderTarget2D GetOrCreateInstance (bool forceCreate) {
+        private RenderTarget2D GetOrCreateInstance (bool forceCreate, string overrideName) {
             lock (Lock) {
                 if (IsDisposed)
                     throw new ObjectDisposedException("AutoRenderTarget");
@@ -213,16 +211,15 @@ namespace Squared.Render {
                     }
                 }
 
-                CurrentInstance = CreateInstance();
-                CurrentInstance.Name = Name;
-                CurrentInstance.SetName(Name);
+                var name = overrideName ?? Name;
+                CurrentInstance = CreateInstance(name);
 
                 return CurrentInstance;
             }
         }
 
         public RenderTarget2D Get () {
-            return GetOrCreateInstance(false);
+            return GetOrCreateInstance(false, null);
         }
 
         public static explicit operator RenderTarget2D (AutoRenderTarget art) {
@@ -261,7 +258,7 @@ namespace Squared.Render {
         ) {
             Capacity = Math.Max(1, capacity);
             for (int i = 0; i < Capacity; i++)
-                AvailableTargets.Enqueue(CreateInstance());
+                AvailableTargets.Enqueue(CreateInstance(null));
         }
 
         public WriteTarget AcquireWriteTarget () {
@@ -272,7 +269,7 @@ namespace Squared.Render {
 
                 if (TotalCreated < Capacity) {
                     TotalCreated++;
-                    CurrentWriteTarget = CreateInstance();
+                    CurrentWriteTarget = CreateInstance(null);
                     return new WriteTarget(this, CurrentWriteTarget, LastWriteTarget);
                 }
 
@@ -290,7 +287,7 @@ namespace Squared.Render {
 
                 if (TotalCreated < Capacity) {
                     TotalCreated++;
-                    CurrentWriteTarget = CreateInstance();
+                    CurrentWriteTarget = CreateInstance(null);
                     return new WriteTarget(this, CurrentWriteTarget, LastWriteTarget);
                 }
 
