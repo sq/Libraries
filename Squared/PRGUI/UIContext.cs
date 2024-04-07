@@ -352,7 +352,8 @@ namespace Squared.PRGUI {
         public bool CloseActiveModal (ModalCloseReason reason) {
             if (ModalStack.Count <= 0)
                 return false;
-            return CloseModal(ModalStack[ModalStack.Count - 1], reason);
+            var modal = ModalStack[ModalStack.Count - 1];
+            return CloseModal(modal, reason);
         }
 
         public bool CloseModal (IModal modal, ModalCloseReason reason) {

@@ -80,6 +80,7 @@ namespace Squared.PRGUI.Controls {
         private Control _SelectedItem, _HoveringItem, _PendingSnap;
 
         public bool SnapMouseToNewSelection = false;
+        public bool AllowCancel { get; set; } = true;
         public bool AllowProgrammaticClose { get; set; } = true;
         public bool DeselectOnMouseLeave { get; set; } = true;
         public bool CloseWhenFocusLost { get; set; } = true;
@@ -124,6 +125,7 @@ namespace Squared.PRGUI.Controls {
         bool IModal.CanClose (ModalCloseReason reason) {
             switch (reason) {
                 case ModalCloseReason.UserCancelled:
+                    return AllowCancel;
                 case ModalCloseReason.UserConfirmed:
                     return true;
                 case ModalCloseReason.Other:
@@ -928,6 +930,9 @@ namespace Squared.PRGUI.Controls {
                 return false;
             if (!AllowProgrammaticClose && (reason == ModalCloseReason.Other))
                 return false;
+            if (!AllowCancel && (reason == ModalCloseReason.UserCancelled))
+                return false;
+            
             // HACK: We likely were the tooltip target, so hide it
             // FIXME: The context should really do this automatically
             Context.HideTooltip();

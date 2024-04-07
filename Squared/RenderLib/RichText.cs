@@ -640,6 +640,10 @@ namespace Squared.Render.Text {
         /// </summary>
         public bool DisableImages;
         /// <summary>
+        /// If set, unhandled commands will not generate a parse error.
+        /// </summary>
+        public bool IgnoreUnhandledCommands;
+        /// <summary>
         /// Contains user-provided data that can be used by your ImageProvider or MarkedStringProcessor.
         /// </summary>
         public DenseList<string> Tags;
@@ -819,6 +823,14 @@ namespace Squared.Render.Text {
                         TryProcessCommand(bracketed.Value, ref state, ref layoutEngine, out var commandResult)
                     ) {
                         switch (commandResult) {
+                            case RichCommandResult.NotHandled:
+                                if (!IgnoreUnhandledCommands)
+                                    parseErrors.Add(new RichParseError {
+                                        Offset = bracketed.Offset,
+                                        Message = "Failed to process command",
+                                        Text = bracketed.Value
+                                    });
+                                break;
                             case RichCommandResult.Handled:
                                 break;
                             case RichCommandResult.Error:
@@ -875,6 +887,14 @@ namespace Squared.Render.Text {
                         } else {
                             state.Tracker?.ReferencedImage(this, ref ai);
                         }
+                    } else if (insertionMode) {
+                        if (!IgnoreUnhandledCommands)
+                            parseErrors.Add(new RichParseError {
+                                Offset = bracketed.Offset,
+                                Message = "Failed to process command",
+                                Text = bracketed.Value
+                            });
+                        // HACK: Eat unhandled commands, don't inject them as text
                     } else if (styleMode && bracketed.Value.Contains(":")) {
                         foreach (var rule in RichText.ParseProperties(bracketed.Value, ref parseErrors))
                             ApplyStyleProperty(ref layoutEngine, ref state, ref parseErrors, rule);
@@ -1045,6 +1065,8 @@ namespace Squared.Render.Text {
                 commandResult = trackerResult.Value;
             } else if (CommandProcessor != null) {
                 commandResult = CommandProcessor(this, value, ref state, ref layoutEngine);
+            } else {
+                ;
             }
 
             return commandResult != RichCommandResult.NotHandled;
