@@ -168,6 +168,7 @@ namespace Squared.Render {
         private readonly Queue<Action> BeforeIssueQueue = new Queue<Action>();
         private readonly Queue<Action> BeforePresentQueue = new Queue<Action>();
         private readonly Queue<Action> AfterPresentQueue = new Queue<Action>();
+        private readonly Queue<Action> ThreadGroupAfterPresentQueue = new Queue<Action>();
 
         private readonly ManualResetEvent PresentBegunSignal = new ManualResetEvent(false),
             PresentEndedSignal = new ManualResetEvent(false);
@@ -389,6 +390,17 @@ namespace Squared.Render {
 
             lock (AfterPresentQueue)
                 AfterPresentQueue.Enqueue(action);
+        }
+
+        /// <summary>
+        /// Queues a callback to the ThreadGroup immediately after Present completes.
+        /// </summary>
+        public void AfterPresentAsync (Action action) {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
+
+            lock (ThreadGroupAfterPresentQueue)
+                ThreadGroupAfterPresentQueue.Enqueue(action);
         }
 
         private void RegisterForDeviceEvents () {
@@ -901,6 +913,12 @@ namespace Squared.Render {
             NotifyPendingDrawCompletions();
 
             DrainHandlerQueue(AfterPresentQueue);
+
+            lock (ThreadGroupAfterPresentQueue) {
+                foreach (var action in ThreadGroupAfterPresentQueue)
+                    ThreadGroup.Invoke(action, !_EnableThreadedIssue);
+                ThreadGroupAfterPresentQueue.Clear();
+            }
         }
 
         public bool TryWaitForPresentToStart (int millisecondsTimeout, out bool didPresentEnd, float delayMs = 1) {
