@@ -1,15 +1,23 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Buffers;
 using Squared.Render.Internal;
 using Squared.Util;
 
 namespace Squared.Render {
     public sealed class Frame : IDisposable, IBatchContainer {
+        internal struct ReadbackWorkItem {
+            public Texture2D Source;
+            public Array Destination;
+        }
+
         private enum States : int {
             Initialized = 0,
             Preparing = 1,
@@ -64,6 +72,7 @@ namespace Squared.Render {
 
         internal DenseList<Batch> Batches = new DenseList<Batch>();
         internal DenseList<Batch> BatchesToRelease = new DenseList<Batch>();
+        internal DenseList<ReadbackWorkItem> ReadbackQueue = new DenseList<ReadbackWorkItem>();
 
         volatile int State = (int)States.Disposed;
 
@@ -92,6 +101,24 @@ namespace Squared.Render {
                 PrepareData = new FramePrepareData();
             else
                 PrepareData.Initialize();
+        }
+
+        public void Readback (Texture2D source, Array destination) {
+            if (source == null)
+                throw new ArgumentNullException(nameof(source));
+            if (destination == null)
+                throw new ArgumentNullException(nameof(destination));
+            var destinationLengthInBytes = Marshal.SizeOf(destination.GetType().GetElementType()) *
+                destination.Length;
+            var requiredSize = source.Width * source.Height * Texture.GetFormatSizeEXT(source.Format);
+            if (requiredSize > destinationLengthInBytes)
+                throw new ArgumentException($"Readback buffer too small: {destinationLengthInBytes} < {requiredSize}");
+            if (source.IsDisposed)
+                throw new ObjectDisposedException(nameof(source));
+            ReadbackQueue.Add(new ReadbackWorkItem {
+                Source = source,
+                Destination = destination
+            });
         }
 
         public void Add (Batch batch) {
@@ -145,7 +172,29 @@ namespace Squared.Render {
                 throw new InvalidOperationException("Frame was not in preparing state when prepare operation completed");
         }
 
-        public void Draw () {
+        internal void PerformReadback () {
+            if (ReadbackQueue.Count == 0)
+                return;
+
+            var started = Time.Ticks;
+            foreach (var rb in ReadbackQueue) {
+                if (rb.Source.IsDisposed)
+                    continue;
+                var gch = GCHandle.Alloc(rb.Destination, GCHandleType.Pinned);
+                try {
+                    var size = Marshal.SizeOf(rb.Destination.GetType().GetElementType()) * rb.Destination.Length;
+                    rb.Source.GetDataPointerEXT(0, null, gch.AddrOfPinnedObject(), size);
+                } finally {
+                    gch.Free();
+                }
+            }
+            var ended = Time.Ticks;
+            Debug.WriteLine($"Readback took {Time.SecondsFromTicks(ended - started)}sec");
+
+            ReadbackQueue.Clear();
+        }
+
+        internal void Draw () {
             if (Interlocked.Exchange(ref State, (int)States.Drawing) != (int)States.Prepared)
                 throw new InvalidOperationException();
 

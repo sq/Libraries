@@ -837,7 +837,7 @@ namespace Squared.Render {
 
                         DrawQueue.Enqueue(new DrawTask(_ThreadedDraw, newFrame));
                     } else {
-                        ThreadedDraw(newFrame);
+                        _ThreadedDraw(newFrame);
                     }
 
                     if (_DeviceLost) {
@@ -848,7 +848,7 @@ namespace Squared.Render {
                 }
             } finally {
                 NextFrameTiming.SyncEndDraw = EndWorkPhase(WorkPhases.SyncEndDraw);
-                Interlocked.Decrement(ref _InsideDrawOperation);
+                Interlocked.Decrement(ref _InsideDrawOperation); 
             }
         }
 
@@ -857,8 +857,9 @@ namespace Squared.Render {
                 // In D3D builds, this checks to see whether PIX is attached right now
                 //  so that if it's not, we don't waste cpu time/gc pressure on trace messages
                 Tracing.RenderTrace.BeforeFrame();
-
+                 
                 StartWorkPhase(WorkPhases.BeforeIssue);
+                frame.PerformReadback();
                 RunBeforeIssueHandlers();
                 NextFrameTiming.BeforeIssue = EndWorkPhase(WorkPhases.BeforeIssue);
 
@@ -978,10 +979,12 @@ namespace Squared.Render {
                     Manager.FlushBufferGenerators(frameToDraw.Index);
                     RenderFrame(frameToDraw, true);
                 }
-
+                
                 if (endDraw) {
                     StartWorkPhase(WorkPhases.BeforePresent);
+
                     RunBeforePresentHandlers();
+
                     NextFrameTiming.BeforePresent = EndWorkPhase(WorkPhases.BeforePresent);
 
                     SetPresentBegun();
