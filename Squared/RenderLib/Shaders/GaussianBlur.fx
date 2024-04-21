@@ -72,6 +72,14 @@ float4 tap(
     return pSRGBToPLinear(pSRGB);
 }
 
+float4 tapLinear(
+    in float2 texCoord,
+    in float4 texRgn,
+    in float mipBias
+) {
+    return tex2Dlod(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, mipBias));
+}
+
 float4 gaussianBlur1D(
     in float2 stepSize,
     in float2 texCoord,
@@ -91,6 +99,30 @@ float4 gaussianBlur1D(
         divisor += weight;
         sum += tap(texCoord - offset, texRgn, mipBias) * weight;
         sum += tap(texCoord + offset, texRgn, mipBias) * weight;
+    }
+
+    return sum / (divisor * 2);
+}
+
+float4 gaussianBlur1DLinear(
+    in float2 stepSize,
+    in float2 texCoord,
+    in float4 texRgn,
+    in float mipBias
+) {
+    float4 sum = 0;
+    float divisor = 0;
+
+    [loop]
+    for (float i = 0; i <= BlurConfiguration.x; i += 1) {
+        float weight = exp(-0.5 * pow(i / BlurConfiguration.y, 2.0));
+        float2 offset = i * stepSize;
+        if (abs(i) < 0.01)
+            weight *= 0.5;
+
+        divisor += weight;
+        sum += tapLinear(texCoord - offset, texRgn, mipBias) * weight;
+        sum += tapLinear(texCoord + offset, texRgn, mipBias) * weight;
     }
 
     return sum / (divisor * 2);
@@ -161,6 +193,16 @@ float4 psEpilogue (
     return result;
 }
 
+float4 psEpilogueLinear (
+    in float4 texColor,
+    in float4 multiplyColor,
+    in float4 addColor
+) {
+    float4 result = multiplyColor * texColor;
+    result += addColor;
+    return result;
+}
+
 void AxialGaussianBlurPixelShader(
     in float4 multiplyColor : COLOR0, 
     in float4 addColor : COLOR1, 
@@ -171,6 +213,18 @@ void AxialGaussianBlurPixelShader(
     float mip = computeMip(texCoord * BitmapTextureSize.xy) + MIP_BIAS;
     float4 sum = gaussianBlur1D(BitmapTexelSize * BlurConfiguration.zw, texCoord, texRgn, mip);
     result = psEpilogue(sum, multiplyColor, addColor);
+}
+
+void AxialGaussianBlurLinearPixelShader(
+    in float4 multiplyColor : COLOR0, 
+    in float4 addColor : COLOR1, 
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    out float4 result : COLOR0
+) {
+    float mip = computeMip(texCoord * BitmapTextureSize.xy) + MIP_BIAS;
+    float4 sum = gaussianBlur1DLinear(BitmapTexelSize * BlurConfiguration.zw, texCoord, texRgn, mip);
+    result = psEpilogueLinear(sum, multiplyColor, addColor);
 }
 
 void RadialGaussianBlurPixelShader(
@@ -340,6 +394,15 @@ technique AxialGaussianBlur
     {
         vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 AxialGaussianBlurPixelShader();
+    }
+}
+
+technique AxialGaussianBlurLinear
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 AxialGaussianBlurLinearPixelShader();
     }
 }
 

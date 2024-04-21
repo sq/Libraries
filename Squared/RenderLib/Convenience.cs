@@ -78,6 +78,16 @@ namespace Squared.Render.Convenience {
             ColorSourceBlend = Blend.SourceAlpha
         };
 
+        public static readonly BlendState InverseSubtractiveBlend = new BlendState {
+            Name = "InverseSubtractiveBlend",
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.One,
+            ColorBlendFunction = BlendFunction.ReverseSubtract,
+            ColorDestinationBlend = Blend.One,
+            ColorSourceBlend = Blend.InverseSourceColor
+        };
+
         public static readonly BlendState AdditiveBlend = new BlendState {
             Name = "AdditiveBlend",
             AlphaBlendFunction = BlendFunction.Add,

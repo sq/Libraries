@@ -593,6 +593,7 @@ namespace Squared.PRGUI {
                 after: AfterComposite,
                 userData: this
             );
+			// FIXME: Is this right?
             ((BatchGroup)subgroup.Container).SetViewTransform(Appearance.HasTransformMatrix ? ApplyLocalTransformMatrix : null);
             subgroup.BlendState = RenderStates.PorterDuffOver;
             if (enableCompositor)

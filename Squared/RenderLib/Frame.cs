@@ -189,7 +189,7 @@ namespace Squared.Render {
                 }
             }
             var ended = Time.Ticks;
-            Debug.WriteLine($"Readback took {Time.SecondsFromTicks(ended - started)}sec");
+            // Debug.WriteLine($"Readback took {Time.SecondsFromTicks(ended - started)}sec");
 
             ReadbackQueue.Clear();
         }

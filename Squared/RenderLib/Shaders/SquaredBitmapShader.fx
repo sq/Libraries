@@ -114,6 +114,19 @@ void ToSRGBPixelShader(
     result.rgb = ApplyDither(result.rgb, GET_VPOS);
 }
 
+void SilhouettePixelShader(
+    in float4 multiplyColor : COLOR0, 
+    in float4 addColor : COLOR1, 
+    in float2 texCoord : TEXCOORD0,
+    in float4 texRgn : TEXCOORD1,
+    out float4 result : COLOR0
+) {
+    float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
+    float alpha = ExtractAlpha(texColor, AdaptTraits(BitmapTraits));
+    alpha = AutoClampAlpha1(alpha, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
+    result = (multiplyColor + addColor) * alpha;
+}
+
 void ShadowedPixelShader (
     in float4 multiplyColor : COLOR0,
     in float4 addColor : COLOR1,
@@ -518,5 +531,14 @@ technique DistanceFieldOutlinedBitmapTechnique
     {
         vertexShader = compile vs_3_0 GenericVertexShader();
         pixelShader = compile ps_3_0 DistanceFieldOutlinedPixelShader();
+    }
+}
+
+technique SilhouetteBitmapTechnique
+{
+    pass P0
+    {
+        vertexShader = compile vs_3_0 GenericVertexShader();
+        pixelShader = compile ps_3_0 SilhouettePixelShader();
     }
 }

@@ -402,6 +402,7 @@ namespace Squared.Render {
         public Material SepiaBitmapWithDiscard;
         public Material ShadowedBitmapWithDiscard;
         public Material StippledBitmap;
+        public Material SilhouetteBitmap;
         public Material PalettedBitmapWithDiscard;
         public Material HueBitmapWithDiscard;
         public Material OutlinedBitmap, OutlinedBitmapWithDiscard;
@@ -424,7 +425,14 @@ namespace Squared.Render {
         ///  will have really terrible banding in dark areas.
         /// </summary>
         public Material LightmappedsRGBBitmap;
+        /// <summary>
+        /// These two blur materials assume pSRGB input and output.
+        /// </summary>
         public Material AxialGaussianBlur, RadialGaussianBlur;
+        /// <summary>
+        /// This blur material assumes raw linear xyzw input and output with no gamma or alpha.
+        /// </summary>
+        public Material AxialGaussianBlurLinear;
         public Material GaussianOutlined, GaussianOutlinedWithDiscard, RadialMaskSoftening;
         public Material Clear, SetScissor, SetViewport;
 
@@ -647,6 +655,11 @@ namespace Squared.Render {
                 "BitmapWithDiscardTechnique"
             );
 
+            SilhouetteBitmap = NewMaterial(
+                bitmapShader,
+                "SilhouetteBitmapTechnique"
+            );
+
             StippledBitmap = NewMaterial(
                 stippledShader,
                 "StippledBitmapTechnique"
@@ -750,6 +763,7 @@ namespace Squared.Render {
                 LightmappedBitmap,
                 LightmappedsRGBBitmap,
                 AxialGaussianBlur,
+                AxialGaussianBlurLinear,
                 RadialGaussianBlur,
                 GaussianOutlined,
                 GaussianOutlinedWithDiscard,
@@ -794,6 +808,11 @@ namespace Squared.Render {
             AxialGaussianBlur = NewMaterial(
                 blurShader,
                 "AxialGaussianBlur"
+            );
+
+            AxialGaussianBlurLinear = NewMaterial(
+                blurShader,
+                "AxialGaussianBlurLinear"
             );
 
             RadialGaussianBlur = NewMaterial(
