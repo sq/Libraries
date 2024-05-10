@@ -1044,8 +1044,8 @@ namespace Squared.PRGUI {
 
         internal void UnsetParent (Control oldParent) {
             ClearLayoutKey();
-
             CancelActiveAnimation();
+            AbsoluteDisplayOffset = default;
 
             if (WeakParent == null)
                 return;

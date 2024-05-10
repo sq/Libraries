@@ -845,6 +845,12 @@ namespace Squared.PRGUI.Controls {
             PurgePending = false;
         }
 
+        public void ReplaceControl (Control oldControl, Control newControl) {
+            GetValueForControl(oldControl, out T value);
+            if (ControlForValue[value] == oldControl)
+                ControlForValue[value] = newControl;
+        }
+
         public IEnumerator<T> GetEnumerator () {
             return ((IEnumerable<T>)Items).GetEnumerator();
         }
