@@ -181,8 +181,13 @@ namespace Squared.PRGUI.Controls {
         protected bool DisclosureArrowHitTest (Vector2 localPosition) {
             if (localPosition.X > DisclosureArrowPadding)
                 return false;
-            if (localPosition.Y > MostRecentHeaderHeight)
-                return false;
+            if (MostRecentHeaderHeight > 0) {
+                if (localPosition.Y > MostRecentHeaderHeight)
+                    return false;
+            } else {
+                if (localPosition.Y > DisclosureArrowPadding)
+                    return false;
+            }
             if ((localPosition.X < 0) || (localPosition.Y < 0))
                 return false;
 
@@ -244,7 +249,7 @@ namespace Squared.PRGUI.Controls {
             if (Title.Length == 0 && !existingKey.HasValue && Collapsible) {
                 ref var spacer = ref context.Engine.Create();
                 spacer.OldFlags = ControlFlags.Layout_Anchor_Left | ControlFlags.Layout_Anchor_Top | ControlFlags.Layout_ForceBreak;
-                spacer.FixedSize = new Vector2(DisclosureArrowPadding, MostRecentHeaderHeight);
+                spacer.FixedSize = new Vector2(DisclosureArrowPadding, DisclosureArrowPadding);
                 context.Engine.InsertAtStart(result, spacer.Key);
             }
             return ref result;

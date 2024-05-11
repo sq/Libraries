@@ -372,6 +372,7 @@ namespace Squared.Render.Text {
         private static readonly ThreadLocal<UnorderedList<StringBuilder>> ScratchStringBuilders =
             new ThreadLocal<UnorderedList<StringBuilder>>(() => new UnorderedList<StringBuilder>());
 
+        public readonly RichTextConfiguration Configuration;
         public IGlyphSource DefaultGlyphSource, GlyphSource;
         public readonly Color InitialColor;
         public readonly Vector2 InitialScale;
@@ -380,9 +381,14 @@ namespace Squared.Render.Text {
         public readonly bool InitialOverrideColor, InitialCharacterWrap, InitialWordWrap;
         public DenseList<string> Tags;
         public IRichTextStateTracker Tracker;
+        public object UserData;
         private DenseList<StringBuilder> StringBuildersToReturn;
 
-        public RichTextLayoutState (ref TLayoutEngine engine, IGlyphSource defaultGlyphSource, IRichTextStateTracker stateTracker = null) {
+        public RichTextLayoutState (
+            RichTextConfiguration configuration, ref TLayoutEngine engine, 
+            IGlyphSource defaultGlyphSource, IRichTextStateTracker stateTracker = null
+        ) {
+            Configuration = configuration;
             InitialOverrideColor = engine.OverrideColor;
             InitialColor = engine.MultiplyColor;
             InitialScale = engine.Scale;
@@ -394,6 +400,7 @@ namespace Squared.Render.Text {
             GlyphSource = null;
             Tracker = stateTracker;
             Tags = default;
+            UserData = null;
         }
 
         /// <summary>
@@ -447,7 +454,7 @@ namespace Squared.Render.Text {
             return result;
         }
 
-        public void Reset (RichTextConfiguration configuration, ref TLayoutEngine engine) {
+        public void Reset (ref TLayoutEngine engine) {
             GlyphSource = null;
             engine.OverrideColor = InitialOverrideColor;
             engine.MultiplyColor = InitialColor;
@@ -458,7 +465,7 @@ namespace Squared.Render.Text {
             engine.CharacterWrap = InitialCharacterWrap;
             engine.Alignment = engine.DefaultAlignment;
             // FIXME: Are there cases where we shouldn't do this?
-            Tracker?.ResetStyle(configuration, ref this, ref engine);
+            Tracker?.ResetStyle(ref this, ref engine);
         }
 
         public void Dispose () {
@@ -571,16 +578,15 @@ namespace Squared.Render.Text {
     /// </summary>
     /// <param name="command">the command text</param>
     public delegate RichCommandResult RichCommandProcessor (
-        RichTextConfiguration configuration, AbstractString command, 
-        ref RichTextLayoutState layoutState, ref TLayoutEngine layoutEngine
+        AbstractString command, ref RichTextLayoutState layoutState, ref TLayoutEngine layoutEngine
     );
 
     public interface IRichTextStateTracker {
-        RichCommandResult TryProcessCommand (RichTextConfiguration config, AbstractString value, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine);
+        RichCommandResult TryProcessCommand (AbstractString value, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine);
         void MarkString (RichTextConfiguration config, AbstractString originalText, AbstractString text, AbstractString id, uint spanIndex);
         void ReferencedImage (RichTextConfiguration config, ref AsyncRichImage image);
-        void ResetStyle (RichTextConfiguration config, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine);
-        RichStyleResult TryApplyStyleProperty (RichTextConfiguration config, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine, RichProperty rule);
+        void ResetStyle (ref RichTextLayoutState state, ref TLayoutEngine layoutEngine);
+        RichStyleResult TryApplyStyleProperty (ref RichTextLayoutState state, ref TLayoutEngine layoutEngine, RichProperty rule);
     }
 
     public sealed class RichTextConfiguration : IEquatable<RichTextConfiguration> {
@@ -647,8 +653,8 @@ namespace Squared.Render.Text {
         /// Contains user-provided data that can be used by your ImageProvider or MarkedStringProcessor.
         /// </summary>
         public DenseList<string> Tags;
-
         public string DefaultStyle;
+        public object UserData;
 
         private Color AutoConvert (Color color) {
             return ColorSpace.ConvertColor(color, ColorMode);
@@ -725,7 +731,7 @@ namespace Squared.Render.Text {
             ref TLayoutEngine layoutEngine, IGlyphSource defaultGlyphSource, AbstractString text, 
             string styleName, IRichTextStateTracker stateTracker = null
         ) {
-            var state = new RichTextLayoutState(ref layoutEngine, defaultGlyphSource, stateTracker);
+            var state = new RichTextLayoutState(this, ref layoutEngine, defaultGlyphSource, stateTracker);
             state.Tags.AddRange(ref Tags);
             try {
                 Append(ref layoutEngine, ref state, text, styleName);
@@ -811,7 +817,7 @@ namespace Squared.Render.Text {
                         closer
                     );
                     if (styleMode && bracketed.Value.IsNullOrEmpty) {
-                        state.Reset(this, ref layoutEngine);
+                        state.Reset(ref layoutEngine);
                     } else if (
                         styleMode && (Styles != null) && 
                         bracketed.Value.StartsWith(".") && 
@@ -910,7 +916,7 @@ namespace Squared.Render.Text {
 
                         var config = default(MarkedStringConfiguration);
                         // HACK: The string processor may mess with layout state, so we want to restore it after
-                        var markedState = new RichTextLayoutState(ref layoutEngine, state.DefaultGlyphSource, state.Tracker) {
+                        var markedState = new RichTextLayoutState(this, ref layoutEngine, state.DefaultGlyphSource, state.Tracker) {
                             GlyphSource = state.GlyphSource
                         };
                         markedState.Tags.AddRange(ref Tags);
@@ -961,7 +967,7 @@ namespace Squared.Render.Text {
                             }
 
                             if (MarkedStringProcessor != null)
-                                markedState.Reset(this, ref layoutEngine);
+                                markedState.Reset(ref layoutEngine);
 
                             layoutEngine.EndSpanByIndex(span.Index);
                         } finally {
@@ -980,7 +986,7 @@ namespace Squared.Render.Text {
             var value = rule.Value;
             PropertyNameTable.TryGetValue(rule.Key, out var ruleId);
 
-            var trackerResult = state.Tracker?.TryApplyStyleProperty(this, ref state, ref layoutEngine, rule);
+            var trackerResult = state.Tracker?.TryApplyStyleProperty(ref state, ref layoutEngine, rule);
             if (trackerResult == RichStyleResult.Handled)
                 return;
             else if (trackerResult == RichStyleResult.Error) {
@@ -1060,11 +1066,11 @@ namespace Squared.Render.Text {
         private bool TryProcessCommand (AbstractString value, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine, out RichCommandResult commandResult) {
             commandResult = RichCommandResult.NotHandled;
 
-            var trackerResult = state.Tracker?.TryProcessCommand(this, value, ref state, ref layoutEngine);
+            var trackerResult = state.Tracker?.TryProcessCommand(value, ref state, ref layoutEngine);
             if (trackerResult.HasValue && (trackerResult != RichCommandResult.NotHandled)) {
                 commandResult = trackerResult.Value;
             } else if (CommandProcessor != null) {
-                commandResult = CommandProcessor(this, value, ref state, ref layoutEngine);
+                commandResult = CommandProcessor(value, ref state, ref layoutEngine);
             } else {
                 ;
             }
@@ -1089,7 +1095,7 @@ namespace Squared.Render.Text {
                     foreach (var pe in parseErrors)
                         OnParseError(this, pe);
             } finally {
-                state.Reset(this, ref layoutEngine);
+                state.Reset(ref layoutEngine);
             }
         }
 
@@ -1191,7 +1197,13 @@ namespace Squared.Render.Text {
                 CommandProcessor = CommandProcessor,
                 DefaultStyle = DefaultStyle,
                 ColorMode = ColorMode,
-                Version = Version + 1
+                Version = Version + 1,
+                Tags = Tags.Clone(),
+                DefaultRubyGlyphSource = DefaultRubyGlyphSource,
+                DefaultRubyScale = DefaultRubyScale,
+                DisableImages = DisableImages,
+                IgnoreUnhandledCommands = IgnoreUnhandledCommands,
+                UserData = UserData
             };
             if (OnParseError != null)
                 result.OnParseError += OnParseError;

@@ -653,7 +653,9 @@ namespace Squared.Render {
         }
 
         public static bool TryParse (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
-            if (TryParseHTML(text, out result, formatProvider))
+            if (TryParseHex(text, out result, formatProvider))
+                return true;
+            if (TryParseCSS(text, out result, formatProvider))
                 return true;
             if (TryParseNumeric(text, out result, formatProvider))
                 return true;
@@ -665,7 +667,7 @@ namespace Squared.Render {
             return false;
         }
 
-        private static bool TryParseHTML (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
+        private static bool TryParseHex (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
             // FIXME: rgb(), rgba(), hsl(), hsla()
 
             result = default;
@@ -735,6 +737,66 @@ namespace Squared.Render {
 
             result = new pSRGBColor(r, g, b, a, isPremultiplied);
             return true;
+        }
+
+        private static bool TryParseCSSFloat (string value, IFormatProvider formatProvider, out float result, float scale = 1.0f) {
+            formatProvider ??= CultureInfo.InvariantCulture;
+            if (value.EndsWith("%")) {
+                if (float.TryParse(value.Substring(0, value.Length - 1), NumberStyles.Float, formatProvider, out result)) {
+                    result = result * scale / 100.0f;
+                    return true;
+                }
+            }
+            return float.TryParse(value, NumberStyles.Float, formatProvider, out result);
+        }
+
+        private static bool TryParseCSS (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
+            result = default;
+            text = text?.Trim();
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+            var openParen = text.IndexOf('(');
+            if (openParen < 0)
+                return false;
+            if (!text.EndsWith(")"))
+                return false;
+
+            var mode = text.Substring(0, openParen);
+            text = text.Substring(openParen + 1, text.Length - openParen - 2).Trim();
+            if (string.IsNullOrWhiteSpace(text))
+                return false;
+
+            var values = text.Split([',', ' '], StringSplitOptions.RemoveEmptyEntries);
+            float scale = (mode == "rgb") ? 255 : 1.0f;
+            if ((values.Length < 3) || (values.Length > 4))
+                return false;
+            if (!TryParseCSSFloat(values[0].Trim(), formatProvider ?? CultureInfo.InvariantCulture, out float r, scale))
+                return false;
+            if (!TryParseCSSFloat(values[1].Trim(), formatProvider ?? CultureInfo.InvariantCulture, out float g, scale))
+                return false;
+            if (!TryParseCSSFloat(values[2].Trim(), formatProvider ?? CultureInfo.InvariantCulture, out float b, scale))
+                return false;
+
+            float a;
+            if ((values.Length <= 3) || !TryParseCSSFloat(values[3].Trim(), formatProvider ?? CultureInfo.InvariantCulture, out a))
+                a = 1.0f;
+
+            switch (mode) {
+                case "rgb":
+                    result = new pSRGBColor(r / 255.0f, g / 255.0f, b / 255.0f, a);
+                    return true;
+                case "oklab":
+                    result = pSRGBColor.FromOkLab(r, g, b, a);
+                    return true;
+                case "oklch":
+                    result = pSRGBColor.FromOkLCh(r, g, b, a);
+                    return true;
+                case "hsl":
+                    result = pSRGBColor.FromOkLCh(b, g, r / 360.0f, a);
+                    return true;
+            }
+
+            return false;
         }
 
         public int CompareTo (pSRGBColor other) {

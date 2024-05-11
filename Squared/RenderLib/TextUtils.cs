@@ -1111,7 +1111,7 @@ namespace Squared.Render.Text {
                     le2.EnsureCapacity(Math.Max((uint)Text.Length, 16), Math.Max((uint)Text.Length / 7, 4));
                     le2.Initialize();
                     if (RichText) {
-                        rls = new RichTextLayoutState(ref le2, glyphSource, this);
+                        rls = new RichTextLayoutState(_RichTextConfiguration, ref le2, glyphSource, this);
                         rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
                         _RichTextConfiguration.Append(ref le2, ref rls, _Text, _StyleName);
                         var dependencies = _Satellite?.Dependencies ?? default;
@@ -1264,22 +1264,22 @@ namespace Squared.Render.Text {
             _StateTracker?.ReferencedImage(config, ref image);
         }
 
-        RichCommandResult IRichTextStateTracker.TryProcessCommand (RichTextConfiguration config, AbstractString value, ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine) {
+        RichCommandResult IRichTextStateTracker.TryProcessCommand (AbstractString value, ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine) {
             if (_StateTracker != null)
-                return _StateTracker.TryProcessCommand(config, value, ref state, ref layoutEngine);
+                return _StateTracker.TryProcessCommand(value, ref state, ref layoutEngine);
             else
                 return RichCommandResult.NotHandled;
         }
 
-        RichStyleResult IRichTextStateTracker.TryApplyStyleProperty (RichTextConfiguration config, ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine, RichProperty rule) {
+        RichStyleResult IRichTextStateTracker.TryApplyStyleProperty (ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine, RichProperty rule) {
             if (_StateTracker != null)
-                return _StateTracker.TryApplyStyleProperty(config, ref state, ref layoutEngine, rule);
+                return _StateTracker.TryApplyStyleProperty(ref state, ref layoutEngine, rule);
             else
                 return RichStyleResult.NotHandled;
         }
 
-        void IRichTextStateTracker.ResetStyle (RichTextConfiguration config, ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine) {
-            _StateTracker?.ResetStyle(config, ref state, ref layoutEngine);
+        void IRichTextStateTracker.ResetStyle (ref RichTextLayoutState state, ref StringLayoutEngine2 layoutEngine) {
+            _StateTracker?.ResetStyle(ref state, ref layoutEngine);
         }
     }
 
