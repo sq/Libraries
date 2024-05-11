@@ -109,6 +109,7 @@ namespace Squared.Render.Text {
         private Vector4? _ImageUserData;
         private IStringLayoutListener _Listener;
         private IRichTextStateTracker _StateTracker;
+        private object _RichTextUserData;
 
         private Satellite _Satellite;
 
@@ -195,6 +196,7 @@ namespace Squared.Render.Text {
             _Satellite?.Dependencies.Clear();
             _Satellite?.RichMarkers.Clear();
             _Satellite?.Boxes.Clear();
+            RichTextUserData = null;
             // FIXME: Clear listener?
         }
 
@@ -379,6 +381,11 @@ namespace Squared.Render.Text {
             set {
                 InvalidatingValueAssignment(ref _TruncatedIndicator, value);
             }
+        }
+
+        public object RichTextUserData {
+            get => _RichTextUserData;
+            set => InvalidatingReferenceAssignment(ref _RichTextUserData, value);
         }
 
         public IStringLayoutListener Listener {
@@ -1112,6 +1119,7 @@ namespace Squared.Render.Text {
                     le2.Initialize();
                     if (RichText) {
                         rls = new RichTextLayoutState(_RichTextConfiguration, ref le2, glyphSource, this);
+                        rls.UserData = RichTextUserData ?? rls.UserData;
                         rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
                         _RichTextConfiguration.Append(ref le2, ref rls, _Text, _StyleName);
                         var dependencies = _Satellite?.Dependencies ?? default;

@@ -917,7 +917,8 @@ namespace Squared.Render.Text {
                         var config = default(MarkedStringConfiguration);
                         // HACK: The string processor may mess with layout state, so we want to restore it after
                         var markedState = new RichTextLayoutState(this, ref layoutEngine, state.DefaultGlyphSource, state.Tracker) {
-                            GlyphSource = state.GlyphSource
+                            GlyphSource = state.GlyphSource,
+                            UserData = state.UserData
                         };
                         markedState.Tags.AddRange(ref Tags);
                         try {
