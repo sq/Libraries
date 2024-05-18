@@ -56,6 +56,7 @@
     <Compile Include="BitSet.cs" />
     <Compile Include="CoreCLR\BitOperations.cs" />
     <Compile Include="CoreCLR\Random.Xoshiro256StarStarImpl.cs" />
+    <Compile Include="DenseDictionary.cs" />
     <Compile Include="DenseList.Queries.cs" />
     <Compile Include="DenseList.Util.cs" />
     <Compile Include="DenseList.cs" />

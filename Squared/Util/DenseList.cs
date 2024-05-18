@@ -906,6 +906,16 @@ namespace Squared.Util {
             }
         }
 
+        public void RemoveAtUnordered (int index) {
+            // FIXME: Slow
+            if ((index < _Count) && !HasList) {
+                // FIXME: Add optimized implementation? Kind of a pain
+                RemoveAt(index);
+            } else {
+                GetList().DangerousRemoveAt(index);
+            }
+        }
+
         public void RemoveRange (int index, int count) {
             if (HasList) {
                 _Items.DangerousRemoveRange(index, count);
