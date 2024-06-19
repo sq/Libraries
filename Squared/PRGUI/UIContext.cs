@@ -992,7 +992,7 @@ namespace Squared.PRGUI {
             // FIXME: For menus and perhaps list boxes, keyboard navigation sets the tooltip target
             //  to be the selected item instead of the list/menu and this ignores the container's settings
             instance.Move(
-                anchor, 
+                content.Settings.OverrideAnchor ?? anchor, 
                 tts?.AnchorPoint ?? content.Settings.AnchorPoint, 
                 tts?.ControlAlignmentPoint ?? content.Settings.ControlAlignmentPoint
             );

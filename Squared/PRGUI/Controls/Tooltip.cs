@@ -210,6 +210,7 @@ namespace Squared.PRGUI {
         /// </summary>
         public Vector2? AnchorPoint;
         public Vector2? MaxSize;
+        public Control OverrideAnchor;
         public Action<DynamicStringLayout> ConfigureLayout;
         public StringLayoutFilter LayoutFilter;
         public HorizontalAlignment TextAlignment;
@@ -225,6 +226,7 @@ namespace Squared.PRGUI {
                 ConfigureLayout = ConfigureLayout,
                 LayoutFilter = LayoutFilter,
                 TextAlignment = TextAlignment,
+                OverrideAnchor = OverrideAnchor,
             };
         }
 
@@ -237,7 +239,8 @@ namespace Squared.PRGUI {
                 (ConfigureLayout == rhs.ConfigureLayout) &&
                 (LayoutFilter == rhs.LayoutFilter) &&
                 (DefaultGlyphSource == rhs.DefaultGlyphSource) &&
-                (TextAlignment == rhs.TextAlignment);
+                (TextAlignment == rhs.TextAlignment) &&
+                (OverrideAnchor == rhs.OverrideAnchor);
         }
 
         public override int GetHashCode () {
