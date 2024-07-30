@@ -18,6 +18,7 @@
 #include "FormatCommon.fxh"
 #include "SDF2D.fxh"
 #include "BezierCommon.fxh"
+#include "RasterComposites.fxh"
 
 Texture2D RasterTexture : register(t0);
 
@@ -192,6 +193,12 @@ void computeTLBR (
             a.x, a.y, b.x, c, tl, br
         );
     }
+#endif
+    
+#ifdef INCLUDE_COMPOSITES
+    computeTLBR_Composite(
+        tl, br
+    );
 #endif
 }
 
@@ -488,9 +495,12 @@ void evaluateEllipse (
     // FIXME: sdEllipse is massively broken. What is wrong with it?
     b = abs(b);
     distance = sdEllipse(worldPosition - a, b);
-    float distanceF = distance / ((b.x + b.y) * 0.5);
     tl = a - b;
     br = a + b;
+    
+    evaluateComposites(worldPosition, distance, tl, br);
+
+    float distanceF = distance / ((b.x + b.y) * 0.5);
 
     if (simple) {
         gradientWeight = 0;
@@ -541,13 +551,16 @@ void evaluateEllipse (
 void evaluateLineSegment (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    inout int gradientType, out float2 gradientWeight
+    inout int gradientType, out float2 gradientWeight,
+    inout float2 tl, inout float2 br
 ) {
     float t;
     float2 closestPoint = closestPointOnLineSegment2(a, b, worldPosition, t),
         distance2 = worldPosition - closestPoint;
     float localRadius = radius.x + lerp(c.y, radius.y, t);
     distance = length(distance2) - localRadius;
+
+    evaluateComposites(worldPosition, distance, tl, br);
 
     if (VARIANT_SIMPLE) {
         gradientWeight = 0;
@@ -624,7 +637,8 @@ float computeLocalRectangleRadius (
 
 void evaluateRectangle (
     in float2 worldPosition, in float2 a, in float2 b, in float radius, 
-    out float distance, inout int gradientType, out float2 gradientWeight
+    out float distance, inout int gradientType, out float2 gradientWeight,
+    inout float2 tl, inout float2 br
 ) {
     float2 center = (a + b) * 0.5;
     float2 boxSize = abs(b - a) * 0.5;
@@ -637,6 +651,8 @@ void evaluateRectangle (
     PREFER_FLATTEN
     if (gradientType == GRADIENT_TYPE_Natural)
         gradientType = GRADIENT_TYPE_Linear;
+    
+    evaluateComposites(worldPosition, distance, tl, br);
 }
 
 #ifdef INCLUDE_TRIANGLE
@@ -662,6 +678,8 @@ void evaluateTriangle (
 
     distance = sdTriangle(worldPosition, ra, rb, rc);
     distance -= radius.x;
+
+    evaluateComposites(worldPosition, distance, tl, br);
 
     // FIXME: Not quite right, the center of the fill expands a bit
     float targetDistance = sdTriangle(incenter, a, b, c);
@@ -789,7 +807,8 @@ void evaluateRasterShape (
         evaluateLineSegment(
             worldPosition, a, b, c,
             radius, distance,
-            gradientType, gradientWeight
+            gradientType, gradientWeight,
+            tl, br
         );
         needTLBR = true;
     }
@@ -811,7 +830,8 @@ void evaluateRasterShape (
     else if (type == TYPE_Rectangle) {
         evaluateRectangle(
             worldPosition, a, b, radius.x, 
-            distance, gradientType, gradientWeight
+            distance, gradientType, gradientWeight,
+            tl, br
         );
     }
 #endif

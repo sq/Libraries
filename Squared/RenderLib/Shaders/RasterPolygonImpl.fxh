@@ -16,7 +16,8 @@ float2 evaluateBezierAtT (
 void evaluateLineSegment (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    inout int gradientType, out float2 gradientWeight
+    inout int gradientType, out float2 gradientWeight,
+    inout float2 tl, inout float2 br
 );
 
 void computeTLBR_Polygon (
@@ -169,7 +170,8 @@ void evaluatePolygonStep (
         } else {
             evaluateLineSegment(
                 worldPosition, prev.xy, pos, float2(0, prev.w),
-                float2(radius, current.w), temp, gradientType, temp2
+                float2(radius, current.w), temp, gradientType, temp2,
+                tl, br
             );
         }
 

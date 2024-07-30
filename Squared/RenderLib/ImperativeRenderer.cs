@@ -162,6 +162,7 @@ namespace Squared.Render.Convenience {
             public int Layer, FrameIndex;
             public float RasterGammaMinusOne;
             public object BlendStateOrSelector;
+            public List<RasterShape.RasterShapeComposite> RasterComposites;
         }
 
         private CachedBatches Cache;
@@ -406,6 +407,15 @@ namespace Squared.Render.Convenience {
                 if (value)
                     SetFlag(ImperativeRendererFlags.DisableDithering, true);
             }
+        }
+
+        public void ClearRasterComposites () {
+            Config.RasterComposites?.Clear();
+        }
+
+        public void AddRasterComposite (RasterShapeComposite value) {
+            Config.RasterComposites ??= new ();
+            Config.RasterComposites.Add(value);
         }
 
         private bool TryGetCachedBatch<T> (
@@ -683,6 +693,9 @@ namespace Squared.Render.Convenience {
             result.Config = Config;
             result.Flags = Flags;
             result.NextSortKey = NextSortKey;
+
+            if ((result.Config.RasterComposites?.Count ?? 0) > 0)
+                result.Config.RasterComposites = new List<RasterShapeComposite>(result.Config.RasterComposites);
             
             if (nextLayer)
                 Config.Layer += 1;
@@ -2015,6 +2028,7 @@ namespace Squared.Render.Convenience {
             ) || (((RasterShapeBatch)cacheEntry.Batch).RampTexture != rampTexture)
               || (((RasterShapeBatch)cacheEntry.Batch).RampUVOffset != (rampUVOffset ?? Vector2.Zero))
               || (((RasterShapeBatch)cacheEntry.Batch).DitheringSettings.HasValue != DisableDithering)
+              || !((RasterShapeBatch)cacheEntry.Batch).CompositesEqual(Config.RasterComposites)
             ) {
                 // FIXME: The way this works will cause churn when mixing textured and untextured shape batches
                 //  oh well
@@ -2023,6 +2037,7 @@ namespace Squared.Render.Convenience {
                     Config.RasterizerState, Config.DepthStencilState, desiredBlendState, rampTexture,
                     rampUVOffset
                 );
+                batch.Composites = Config.RasterComposites;
                 batch.Dispose();
                 if (DisableDithering)
                     batch.DitheringSettings = DitheringSettings.Disable;
