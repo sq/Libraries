@@ -580,9 +580,11 @@ void evaluateLineSegment (
 void evaluateBezier (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    inout int gradientType, out float2 gradientWeight
+    inout int gradientType, out float2 gradientWeight,
+    inout float2 tl, inout float2 br
 ) {
     distance = sdBezier(worldPosition, a, b, c) - radius.x;
+    evaluateComposites(worldPosition, distance, tl, br);
 
     if (VARIANT_SIMPLE) {
         gradientWeight = 0;
@@ -819,7 +821,8 @@ void evaluateRasterShape (
         evaluateBezier(
             worldPosition, a, b, c,
             radius, distance,
-            gradientType, gradientWeight
+            gradientType, gradientWeight,
+            tl, br
         );
 
         computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);

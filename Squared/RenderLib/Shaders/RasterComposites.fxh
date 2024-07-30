@@ -21,27 +21,31 @@ void evaluateComposites (
                 compositeDistance = sdBox(localPos, size);
                 break;
             case 2:
-                localPos = rotate2D(localPos, -0.5 * PI);
+                localPos = rotate2D(localPos, -0.25 * PI);
                 compositeDistance = sdBox(localPos, size);
                 break;
         }
 
+        bool expandBox = false;
+
         switch (mode) {
             case 0: // union
                 distance = min(distance, compositeDistance);
+                expandBox = true;
                 break;
             case 1: // subtract
                 distance = max(distance, -compositeDistance);
                 break;
             case 2: // xor
                 distance = max(min(distance, compositeDistance), -max(distance, compositeDistance));
+                expandBox = true;
                 break;
             case 3: // intersection
                 distance = max(distance, compositeDistance);
                 break;
         }
 
-        if (mode != 1) {
+        if (expandBox) {
             tl = min(localTl, tl);
             br = max(localBr, br);
         }

@@ -6,7 +6,8 @@ void computeTLBR_Bezier (
 void evaluateBezier (
     in float2 worldPosition, in float2 a, in float2 b, in float2 c,
     in float2 radius, out float distance,
-    inout int gradientType, out float2 gradientWeight
+    inout int gradientType, out float2 gradientWeight,
+    inout float2 tl, inout float2 br
 );
 
 float2 evaluateBezierAtT (
@@ -163,7 +164,8 @@ void evaluatePolygonStep (
             float2 a = prev.xy, b = controlPoints.xy, c = pos; 
             evaluateBezier(
                 worldPosition, a, b, c,
-                float2(radius, 0), temp, gradientType, temp2
+                float2(radius, 0), temp, gradientType, temp2,
+                tl, br
             );
         } else if (nodeType == NODE_START) {
             temp = distance;
