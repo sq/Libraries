@@ -123,7 +123,7 @@ void adjustTLBR (
 void computeTLBR (
     int type, float2 radius, float outlineSize, float4 params,
     float2 a, float2 b, float2 c,
-    out float2 tl, out float2 br
+    out float2 tl, out float2 br, bool expandBoxForComposites
 ) {
     type = EVALUATE_TYPE;
 
@@ -197,7 +197,7 @@ void computeTLBR (
     
 #ifdef INCLUDE_COMPOSITES
     computeTLBR_Composite(
-        tl, br
+        expandBoxForComposites, tl, br
     );
 #endif
 }
@@ -353,7 +353,7 @@ void RasterShapeVertexShader_Core (
 
     float2 tl, br;
 
-    computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
+    computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br, true);
     computePosition(type, outlineSize, a, b, c, radius, tl, br, cornerWeights, params, isSimpleRectangle, position.xy);
 
     float2 adjustedPosition = position.xy;
@@ -498,7 +498,8 @@ void evaluateEllipse (
     tl = a - b;
     br = a + b;
     
-    evaluateComposites(worldPosition, distance, tl, br);
+    // FIXME: This is wrong for 'along' gradient mode. But ellipses probably shouldn't use it.
+    evaluateComposites(worldPosition, false, distance, tl, br);
 
     float distanceF = distance / ((b.x + b.y) * 0.5);
 
@@ -560,7 +561,7 @@ void evaluateLineSegment (
     float localRadius = radius.x + lerp(c.y, radius.y, t);
     distance = length(distance2) - localRadius;
 
-    evaluateComposites(worldPosition, distance, tl, br);
+    evaluateComposites(worldPosition, false, distance, tl, br);
 
     if (VARIANT_SIMPLE) {
         gradientWeight = 0;
@@ -584,7 +585,7 @@ void evaluateBezier (
     inout float2 tl, inout float2 br
 ) {
     distance = sdBezier(worldPosition, a, b, c) - radius.x;
-    evaluateComposites(worldPosition, distance, tl, br);
+    evaluateComposites(worldPosition, false, distance, tl, br);
 
     if (VARIANT_SIMPLE) {
         gradientWeight = 0;
@@ -654,7 +655,7 @@ void evaluateRectangle (
     if (gradientType == GRADIENT_TYPE_Natural)
         gradientType = GRADIENT_TYPE_Linear;
     
-    evaluateComposites(worldPosition, distance, tl, br);
+    evaluateComposites(worldPosition, false, distance, tl, br);
 }
 
 #ifdef INCLUDE_TRIANGLE
@@ -681,8 +682,6 @@ void evaluateTriangle (
     distance = sdTriangle(worldPosition, ra, rb, rc);
     distance -= radius.x;
 
-    evaluateComposites(worldPosition, distance, tl, br);
-
     // FIXME: Not quite right, the center of the fill expands a bit
     float targetDistance = sdTriangle(incenter, a, b, c);
 
@@ -690,6 +689,7 @@ void evaluateTriangle (
     br = max(max(a, b), c);
 
     if (VARIANT_SIMPLE) {
+        evaluateComposites(worldPosition, false, distance, tl, br);
         gradientWeight = 0;
         return;
     }
@@ -706,6 +706,9 @@ void evaluateTriangle (
     } else {
         gradientWeight = 0;
     }
+
+    // HACK: Evaluating composites late fixes natural gradients for triangles in subtract/intersection mode
+    evaluateComposites(worldPosition, false, distance, tl, br);
 }
 #endif
 
@@ -825,7 +828,7 @@ void evaluateRasterShape (
             tl, br
         );
 
-        computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
+        computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br, false);
     }
 #endif
 
@@ -924,7 +927,7 @@ void evaluateRasterShape (
     if (annularRadius > 0.001)
         distance = abs(distance) - annularRadius;
     if (needTLBR)
-        computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br);
+        computeTLBR(type, radius, outlineSize, params, a, b, c, tl, br, false);
 }
 
 float computeShadowAlpha (

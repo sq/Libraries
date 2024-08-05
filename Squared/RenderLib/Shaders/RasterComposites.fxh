@@ -3,7 +3,7 @@ uniform const int CompositeCount;
 uniform const float4 Composites[8];
 
 void evaluateComposites (
-    in float2 worldPosition,
+    in float2 worldPosition, bool expandBox,
     inout float distance, inout float2 tl, inout float2 br
 ) {
     for (int i = 0, c = min(CompositeCount, 4); i < c; i++) {
@@ -26,26 +26,26 @@ void evaluateComposites (
                 break;
         }
 
-        bool expandBox = false;
-
+        bool needExpand = false;
         switch (mode) {
             case 0: // union
                 distance = min(distance, compositeDistance);
-                expandBox = true;
+                needExpand = true;
                 break;
             case 1: // subtract
                 distance = max(distance, -compositeDistance);
                 break;
             case 2: // xor
                 distance = max(min(distance, compositeDistance), -max(distance, compositeDistance));
-                expandBox = true;
+                needExpand = true;
                 break;
             case 3: // intersection
                 distance = max(distance, compositeDistance);
                 break;
         }
 
-        if (expandBox) {
+        [flatten]
+        if (expandBox && needExpand) {
             tl = min(localTl, tl);
             br = max(localBr, br);
         }
@@ -53,22 +53,23 @@ void evaluateComposites (
 }
 
 void computeTLBR_Composite (
+    bool expandBox,
     inout float2 tl, inout float2 br
 ) {
     float dummy = 0;
 
-    evaluateComposites(0, dummy, tl, br);
+    evaluateComposites(0, expandBox, dummy, tl, br);
 }
 #else
 #define CompositeCount 0
 
 void computeTLBR_Composite (
-    in float2 tl, in float2 br
+    bool expandBox, in float2 tl, in float2 br
 ) {    
 }
 
 void evaluateComposites (
-    in float2 worldPosition,
+    in float2 worldPosition, bool expandBox,
     in float distance, in float2 tl, in float2 br
 ) {
 }
