@@ -485,7 +485,7 @@ namespace Squared.Render.Convenience {
             ) {
                 DelegatedHintPipeline = inner,
                 Name = inner.Name,
-                InheritDefaultParametersFrom = inner
+                InheritDefaultParametersFrom = inner,
             };
             return result;
         }

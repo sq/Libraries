@@ -38,6 +38,7 @@ namespace Squared.Render {
             public SurfaceFormat[] VertexTextureFormats;
         }
 
+        internal int HotReloadVersion;
         internal readonly UniformBindingTable UniformBindings = new UniformBindingTable();
 
         public static readonly Material Null = new Material(null);
@@ -73,6 +74,7 @@ namespace Squared.Render {
 
         internal uint ActiveViewTransformId;
         internal int RenderTargetChangeIndex;
+        internal bool HotReloadRequiresClone;
 
         private DenseList<Effect> DiscardedEffects;
 
@@ -88,7 +90,7 @@ namespace Squared.Render {
         private bool _IsDisposed;
 
         // If set, HotReload will call this to get a new effect instance
-        public Func<Effect> GetEffectForReload;
+        public Func<Material, bool, Effect> GetEffectForReload;
 
         public string CurrentTechniqueName => Effect?.CurrentTechnique?.Name;
 
@@ -129,8 +131,9 @@ namespace Squared.Render {
 
             OwningThread = Thread.CurrentThread;
 
-            BeginHandlers = beginHandlers;
-            EndHandlers   = endHandlers;
+            BeginHandlers          = beginHandlers;
+            EndHandlers            = endHandlers;
+            HotReloadRequiresClone = requiresClone;
 
             // FIXME: This should probably never be null.
             if (Effect != null)
@@ -172,7 +175,7 @@ namespace Squared.Render {
                 newBeginHandlers, newEndHandlers
             ) {
                 DelegatedHintPipeline = this,
-                InheritDefaultParametersFrom = this
+                InheritDefaultParametersFrom = this,
             };
             return result;
         }
@@ -189,6 +192,7 @@ namespace Squared.Render {
             ) {
                 HintPipeline = HintPipeline,
                 OwnsEffect = true,
+                GetEffectForReload = GetEffectForReload,
             };
             DefaultParameters.CopyTo(ref result.DefaultParameters);
             return result;
@@ -327,16 +331,18 @@ namespace Squared.Render {
         }
 
         public MaterialHotReloadResult TryHotReload () {
-            if (GetEffectForReload == null)
+            var gefr = GetEffectForReload ?? InheritDefaultParametersFrom?.GetEffectForReload;
+            if (gefr == null)
                 return MaterialHotReloadResult.NotConfigured;
 
-            var newEffect = GetEffectForReload();
+            var newEffect = gefr(InheritDefaultParametersFrom ?? this, HotReloadRequiresClone);
             if (newEffect == null)
                 return MaterialHotReloadResult.Failed;
 
             if (newEffect == Effect)
                 return MaterialHotReloadResult.Unchanged;
 
+            newEffect.CurrentTechnique = Effect.Techniques[Effect.CurrentTechnique.Name];
             if (OwnsEffect)
                 DiscardedEffects.Add(Effect);
 
@@ -344,6 +350,7 @@ namespace Squared.Render {
             Effect = newEffect;
             Parameters.Initialize(newEffect);
             InitializeForEffect(newEffect);
+            UniformBindings.Clear();
             return MaterialHotReloadResult.Reloaded;
         }
 

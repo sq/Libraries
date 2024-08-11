@@ -397,6 +397,11 @@ namespace Squared.Render {
 
             return true;
         }
+
+        internal void Clear () {
+            Array.Clear(HasValue, 0, HasValue.Length);
+            Array.Clear(BindingsByID, 0, BindingsByID.Length);
+        }
     }
 
     public interface ITypedUniform {

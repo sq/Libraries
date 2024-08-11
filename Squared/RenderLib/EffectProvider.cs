@@ -134,25 +134,33 @@ namespace Squared.Render.Resources {
                 return new Future<Effect>(EffectUtils.EffectFromFxcOutput(Coordinator.Device, stream));
         }
 
+        internal int HotReloadVersion;
+
+        public void BeginHotReload () {
+            HotReloadVersion++;
+        }
+
         public Material LoadMaterial (
             MaterialSetBase materialSet,
             AbstractString effectName, string techniqueName = null, 
-            bool cachedEffect = true, bool optional = false,
-            bool cloneEffect = true
+            bool optional = false, bool cloneEffect = true
         ) {
-            Material material = null;
-            var effect = GetEffect();
-            material = new Material(effect, techniqueName, requiresClone: cloneEffect);
+            var effect = GetEffect(null, cloneEffect);
+            var material = new Material(effect, techniqueName, requiresClone: cloneEffect);
             material.GetEffectForReload = GetEffect;
 
-            Effect GetEffect () {
-                var effect = Load(effectName, cachedEffect && (material == null), optional);
+            Effect GetEffect (Material referenceMaterial, bool requiresClone) {
+                var enableCache = HotReloadVersion == (referenceMaterial?.HotReloadVersion ?? 0);
+                var effect = Load(effectName, enableCache, optional);
                 if ((effect == null) && optional)
                     return null;
 
+                if (requiresClone)
+                    effect = effect.Clone();
+
                 if (techniqueName == null)
                     techniqueName = effectName.ToString();
-                var technique = effect.Techniques[techniqueName];
+                var technique = effect.Techniques[referenceMaterial?.CurrentTechniqueName ?? techniqueName];
                 if (technique == null) {
                     if (optional)
                         return null;
@@ -160,6 +168,8 @@ namespace Squared.Render.Resources {
                         throw new KeyNotFoundException($"No technique named '{techniqueName}' in effect '{effectName}'");
                 }
 
+                if (referenceMaterial != null)
+                    referenceMaterial.HotReloadVersion = HotReloadVersion;
                 return effect;
             }
 
