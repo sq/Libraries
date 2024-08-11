@@ -93,7 +93,7 @@ namespace Squared.Render {
         // If set, HotReload will call this to get a new effect instance
         public Func<Material, bool, Effect> GetEffectForReload;
 
-        public string CurrentTechniqueName => Effect?.CurrentTechnique?.Name;
+        public string TechniqueName;
 
         private Material () {
             MaterialID = Interlocked.Increment(ref _NextMaterialID);
@@ -108,33 +108,16 @@ namespace Squared.Render {
         public Material (
             Effect effect, string techniqueName = null, 
             Action<DeviceManager>[] beginHandlers = null,
-            Action<DeviceManager>[] endHandlers = null,
-            bool requiresClone = true
+            Action<DeviceManager>[] endHandlers = null
         ) : this() {
-            if (techniqueName != null) {
-                if (requiresClone) {
-                    BaseEffect = effect;
-                    Effect = effect.Clone();
-                } else
-                    Effect = effect;
-
-                if (Effect.GraphicsDevice == null)
-                    throw new NullReferenceException("Effect has no device");
-                var technique = Effect.Techniques[techniqueName];
-                
-                if (technique != null)
-                    Effect.CurrentTechnique = technique;
-                else
-                    throw new ArgumentException("No technique named " + techniqueName, "techniqueName");
-            } else {
-                Effect = effect;
-            }
+            TechniqueName = techniqueName ?? Effect?.CurrentTechnique?.Name;
+            Effect = effect;
+            HotReloadRequiresClone = false;
 
             OwningThread = Thread.CurrentThread;
 
-            BeginHandlers          = beginHandlers;
-            EndHandlers            = endHandlers;
-            HotReloadRequiresClone = requiresClone;
+            BeginHandlers = beginHandlers;
+            EndHandlers   = endHandlers;
 
             // FIXME: This should probably never be null.
             if (Effect != null)
@@ -145,7 +128,7 @@ namespace Squared.Render {
 
         private void InitializeForEffect (Effect effect) {
             UniformBindings.Clear();
-            Name = effect?.CurrentTechnique?.Name;
+            Name = TechniqueName;
             TextureParameters.Clear();
             if (effect == null)
                 return;
@@ -176,6 +159,7 @@ namespace Squared.Render {
                 Effect, null,
                 newBeginHandlers, newEndHandlers
             ) {
+                TechniqueName = TechniqueName,
                 DelegatedHintPipeline = this,
                 InheritDefaultParametersFrom = this,
             };
@@ -186,15 +170,16 @@ namespace Squared.Render {
             var newEffect = Effect.Clone();
             if (newEffect.GraphicsDevice == null)
                 throw new NullReferenceException("Effect has no device");
-            newEffect.CurrentTechnique = newEffect.Techniques[Effect.CurrentTechnique.Name];
 
             var result = new Material(
                 newEffect, null,
                 BeginHandlers, EndHandlers
             ) {
+                TechniqueName = TechniqueName,
                 HintPipeline = HintPipeline,
                 OwnsEffect = true,
                 GetEffectForReload = GetEffectForReload,
+                HotReloadRequiresClone = true,
             };
             DefaultParameters.CopyTo(ref result.DefaultParameters);
             return result;
@@ -212,7 +197,7 @@ namespace Squared.Render {
             }
 
             if (foundErrors)
-                Debug.WriteLine($"WARNING: A disposed texture was set on effect '{Effect.CurrentTechnique?.Name ?? Effect.Name}'.");
+                Debug.WriteLine($"WARNING: A disposed texture was set on effect '{Name ?? ToString()}'.");
         }
 
         private void CheckDevice (DeviceManager deviceManager) {
@@ -241,12 +226,21 @@ namespace Squared.Render {
                     handler(deviceManager);
         }
 
+        private void Flush_Prologue (DeviceManager deviceManager) {
+            if (Effect == null)
+                return;
+
+            EffectTechnique tech = !string.IsNullOrWhiteSpace(TechniqueName)
+                ? Effect.Techniques[TechniqueName]
+                : Effect.Techniques[0];
+            Effect.CurrentTechnique = tech;
+        }
+
         private void Flush_Epilogue (DeviceManager deviceManager) {
             if (Effect != null) {
                 UniformBinding.FlushEffect(Effect);
 
-                var currentTechnique = Effect.CurrentTechnique;
-                currentTechnique.Passes[0].Apply();
+                Effect.CurrentTechnique.Passes[0].Apply();
             }
 
             if (deviceManager.ActiveViewTransform != null)
@@ -254,6 +248,8 @@ namespace Squared.Render {
         }
 
         public void Flush (DeviceManager deviceManager) {
+            Flush_Prologue(deviceManager);
+
             deviceManager.ActiveViewTransform?.AutoApply(this);
 
             InheritDefaultParametersFrom?.DefaultParameters.Apply(this);
@@ -265,6 +261,8 @@ namespace Squared.Render {
         }
 
         public void Flush (DeviceManager deviceManager, ref MaterialParameterValues parameters) {
+            Flush_Prologue(deviceManager);
+
             deviceManager.ActiveViewTransform?.AutoApply(this);
 
             // FIXME: Avoid double-set for cases where there is a default + override, since it's wasteful
@@ -344,7 +342,6 @@ namespace Squared.Render {
             if (newEffect == Effect)
                 return MaterialHotReloadResult.Unchanged;
 
-            newEffect.CurrentTechnique = newEffect.Techniques[Effect.CurrentTechnique.Name];
             if (OwnsEffect)
                 DiscardedEffects.Add(Effect);
 

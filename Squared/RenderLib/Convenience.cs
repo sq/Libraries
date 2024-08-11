@@ -512,6 +512,7 @@ namespace Squared.Render.Convenience {
                 inner.Effect, null,
                 handlers.ToArray(), inner.EndHandlers
             ) {
+                TechniqueName = inner.TechniqueName,
                 DelegatedHintPipeline = inner,
                 Name = inner.Name,
                 InheritDefaultParametersFrom = inner,

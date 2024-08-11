@@ -144,11 +144,10 @@ namespace Squared.Render.Resources {
         public Material LoadMaterial (
             MaterialSetBase materialSet,
             AbstractString effectName, string techniqueName = null,
-            bool optional = false, bool cloneEffect = true,
-            BlendState blendState = null
+            bool optional = false, BlendState blendState = null
         ) {
-            var effect = GetEffect(null, cloneEffect);
-            var material = new Material(effect, techniqueName, requiresClone: cloneEffect);
+            var effect = GetEffect(null, false);
+            var material = new Material(effect, techniqueName);
             material.GetEffectForReload = GetEffect;
 
             Effect GetEffect (Material referenceMaterial, bool requiresClone) {
@@ -162,7 +161,8 @@ namespace Squared.Render.Resources {
 
                 if (techniqueName == null)
                     techniqueName = effectName.ToString();
-                var technique = effect.Techniques[referenceMaterial?.CurrentTechniqueName ?? techniqueName];
+
+                var technique = effect.Techniques[referenceMaterial?.TechniqueName ?? techniqueName];
                 if (technique == null) {
                     if (optional)
                         return null;
