@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Text;
@@ -9,6 +10,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Evil;
 using Squared.Threading;
 using Squared.Util.Ini;
+using Squared.Util.Text;
 
 namespace Squared.Render.Resources {
     public class EffectManifest {
@@ -79,6 +81,8 @@ namespace Squared.Render.Resources {
     }
 
     public class EffectProvider : ResourceProvider<Effect> {
+        public IResourceProviderStreamSource HotReloadSource;
+
         private static IResourceProviderStreamSource MakeStreamProvider (Assembly assembly) {
             var suffix = ".fx.bin";
             var shaderStream = assembly.GetManifestResourceStream("shaders.zip");
@@ -101,8 +105,20 @@ namespace Squared.Render.Resources {
         {
         }
 
+        private bool TryGetStreamImpl (string path, bool optional, out Stream stream, out Exception error, bool exactName = false) {
+            if (HotReloadSource != null) {
+                if (HotReloadSource.TryGetStream(path, optional, out stream, out error, exactName))
+                    return true;
+            }
+
+            return StreamSource.TryGetStream(path, optional, out stream, out error, exactName);
+        }
+
+        protected override bool TryGetStream (string name, object data, bool optional, out Stream stream, out Exception exception) =>
+            TryGetStreamImpl(name, optional, out stream, out exception);
+
         public EffectManifest ReadManifest () {
-            if (!StreamSource.TryGetStream("manifest.ini", true, out var stream, out var error, exactName: true)) {
+            if (!TryGetStreamImpl("manifest.ini", true, out var stream, out var error, exactName: true)) {
                 if (error != null)
                     throw error;
                 else
@@ -116,6 +132,39 @@ namespace Squared.Render.Resources {
         protected override Future<Effect> CreateInstance (string name, Stream stream, object data, object preloadedData, bool async) {
             lock (Coordinator.CreateResourceLock)
                 return new Future<Effect>(EffectUtils.EffectFromFxcOutput(Coordinator.Device, stream));
+        }
+
+        public Material LoadMaterial (
+            MaterialSetBase materialSet,
+            AbstractString effectName, string techniqueName = null, 
+            bool cachedEffect = true, bool optional = false,
+            bool cloneEffect = true
+        ) {
+            Material material = null;
+            var effect = GetEffect();
+            material = new Material(effect, techniqueName, requiresClone: cloneEffect);
+            material.GetEffectForReload = GetEffect;
+
+            Effect GetEffect () {
+                var effect = Load(effectName, cachedEffect && (material == null), optional);
+                if ((effect == null) && optional)
+                    return null;
+
+                if (techniqueName == null)
+                    techniqueName = effectName.ToString();
+                var technique = effect.Techniques[techniqueName];
+                if (technique == null) {
+                    if (optional)
+                        return null;
+                    else
+                        throw new KeyNotFoundException($"No technique named '{techniqueName}' in effect '{effectName}'");
+                }
+
+                return effect;
+            }
+
+            materialSet?.Add(material);
+            return material;
         }
     }
 }

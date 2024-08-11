@@ -17,6 +17,13 @@ using System.Runtime.CompilerServices;
 using System.Runtime;
 
 namespace Squared.Render {
+    public enum MaterialHotReloadResult {
+        NotConfigured,
+        Failed,
+        Unchanged,
+        Reloaded
+    }
+
     public sealed class Material : IDisposable {
         public static bool LogPreloadTime = false;
 
@@ -36,12 +43,13 @@ namespace Squared.Render {
         public static readonly Material Null = new Material(null);
 
         // We have to retain this to prevent finalization
-        private readonly Effect BaseEffect;
+        private           Effect BaseEffect;
 
-        public readonly Effect Effect;
-        public          bool   OwnsEffect;
+        // Now internal to make hot reload safer
+        internal          Effect Effect { get; private set; }
+        public            bool   OwnsEffect;
 
-        public readonly Thread OwningThread;
+        public readonly   Thread OwningThread;
 
         /// <summary>
         /// Default parameter values that will be applied each time you apply this material
@@ -66,6 +74,8 @@ namespace Squared.Render {
         internal uint ActiveViewTransformId;
         internal int RenderTargetChangeIndex;
 
+        private DenseList<Effect> DiscardedEffects;
+
         internal List<EffectParameter> TextureParameters = new List<EffectParameter>();
 
         public string Name;
@@ -76,6 +86,11 @@ namespace Squared.Render {
 #endif
 
         private bool _IsDisposed;
+
+        // If set, HotReload will call this to get a new effect instance
+        public Func<Effect> GetEffectForReload;
+
+        public string CurrentTechniqueName => Effect?.CurrentTechnique?.Name;
 
         private Material () {
             MaterialID = Interlocked.Increment(ref _NextMaterialID);
@@ -112,20 +127,26 @@ namespace Squared.Render {
                 Effect = effect;
             }
 
-            Name = Effect?.CurrentTechnique?.Name;
-
             OwningThread = Thread.CurrentThread;
 
             BeginHandlers = beginHandlers;
             EndHandlers   = endHandlers;
 
             // FIXME: This should probably never be null.
-            if (Effect != null) {
+            if (Effect != null)
                 Parameters = new MaterialEffectParameters(Effect);
-                foreach (var p in Effect.Parameters) {
-                    if (p.ParameterType == EffectParameterType.Texture2D)
-                        TextureParameters.Add(p);
-                }
+
+            InitializeForEffect(Effect);
+        }
+
+        private void InitializeForEffect (Effect effect) {
+            Name = effect?.CurrentTechnique?.Name;
+            TextureParameters.Clear();
+            if (effect == null)
+                return;
+            foreach (var p in effect.Parameters) {
+                if (p.ParameterType == EffectParameterType.Texture2D)
+                    TextureParameters.Add(p);
             }
         }
 
@@ -265,6 +286,10 @@ namespace Squared.Render {
             if (OwnsEffect)
                 Effect.Dispose();
 
+            foreach (var de in DiscardedEffects)
+                de.Dispose();
+            DiscardedEffects.Clear();
+
             _IsDisposed = true;
         }
 
@@ -299,6 +324,27 @@ namespace Squared.Render {
                 hint = HintPipeline;
 
             return hint;
+        }
+
+        public MaterialHotReloadResult TryHotReload () {
+            if (GetEffectForReload == null)
+                return MaterialHotReloadResult.NotConfigured;
+
+            var newEffect = GetEffectForReload();
+            if (newEffect == null)
+                return MaterialHotReloadResult.Failed;
+
+            if (newEffect == Effect)
+                return MaterialHotReloadResult.Unchanged;
+
+            if (OwnsEffect)
+                DiscardedEffects.Add(Effect);
+
+            BaseEffect = null;
+            Effect = newEffect;
+            Parameters.Initialize(newEffect);
+            InitializeForEffect(newEffect);
+            return MaterialHotReloadResult.Reloaded;
         }
 
         public bool Preload (RenderCoordinator coordinator, DeviceManager deviceManager, IndexBuffer tempIb) {
@@ -388,29 +434,53 @@ namespace Squared.Render {
     }
     
     public class MaterialEffectParameters {
-        internal readonly Effect Effect;
+        internal Effect Effect;
         internal readonly Dictionary<string, EffectParameter> Cache = 
             // Higher capacity for faster lookup
             new Dictionary<string, EffectParameter>(512, StringComparer.Ordinal);
 
-        public readonly EffectParameter ScaleAndPosition, InputAndOutputZRanges;
-        public readonly EffectParameter ProjectionMatrix, ModelViewMatrix;
-        public readonly EffectParameter InverseProjection, InverseModelView;
-        public readonly EffectParameter BitmapTextureSize, BitmapTexelSize;
-        public readonly EffectParameter BitmapTextureSize2, BitmapTexelSize2;
-        public readonly EffectParameter BitmapTraits, BitmapTraits2;
-        public readonly EffectParameter ShadowColor, ShadowOffset, ShadowMipBias, ShadowedTopMipBias, LightmapUVOffset;
-        public readonly EffectParameter Time, FrameIndex, DitherStrength;
-        public readonly EffectParameter RenderTargetInfo;
-        public readonly EffectParameter Palette, PaletteSize;
+        public EffectParameter ScaleAndPosition { get; private set; }
+        public EffectParameter InputAndOutputZRanges { get; private set; }
+        public EffectParameter ProjectionMatrix { get; private set; }
+        public EffectParameter ModelViewMatrix { get; private set; }
+        public EffectParameter InverseProjection { get; private set; }
+        public EffectParameter InverseModelView { get; private set; }
+        public EffectParameter BitmapTextureSize { get; private set; }
+        public EffectParameter BitmapTexelSize { get; private set; }
+        public EffectParameter BitmapTextureSize2 { get; private set; }
+        public EffectParameter BitmapTexelSize2 { get; private set; }
+        public EffectParameter BitmapTraits { get; private set; }
+        public EffectParameter BitmapTraits2 { get; private set; }
+        public EffectParameter ShadowColor { get; private set; }
+        public EffectParameter ShadowOffset { get; private set; }
+        public EffectParameter ShadowMipBias { get; private set; }
+        public EffectParameter ShadowedTopMipBias { get; private set; }
+        public EffectParameter LightmapUVOffset { get; private set; }
+        public EffectParameter Time { get; private set; }
+        public EffectParameter FrameIndex { get; private set; }
+        public EffectParameter DitherStrength { get; private set; }
+        public EffectParameter RenderTargetInfo { get; private set; }
+        public EffectParameter Palette { get; private set; }
+        public EffectParameter PaletteSize { get; private set; }
 
         // Used by DefaultMaterialSet
         internal bool DitheringInitialized;
         internal UniformBinding<DitheringSettings> Dithering;
 
-        internal readonly EffectParameter BitmapTexture, SecondTexture;
+        internal EffectParameter BitmapTexture;
+        internal EffectParameter SecondTexture;
+
+        /// <summary>
+        /// Please don't use this
+        /// </summary>
+        public EffectParameterCollection AllParameters => Effect?.Parameters;
 
         public MaterialEffectParameters (Effect effect) {
+            Initialize(effect);
+        }
+
+        // For hot reload
+        internal void Initialize (Effect effect) {
             Effect = effect;
             var viewport = this["Viewport"];
 
@@ -442,6 +512,8 @@ namespace Squared.Render {
             SecondTexture = this["SecondTexture"];
             InverseModelView = this["InverseModelView"];
             InverseProjection = this["InverseProjection"];
+
+            Cache.Clear();
         }
 
         public void SetPalette (Texture2D palette) {
@@ -449,12 +521,22 @@ namespace Squared.Render {
             PaletteSize?.SetValue(new Vector2(palette.Width, palette.Height));
         }
 
+        public bool TryGetParameter (string name, out EffectParameter result) {
+            if (Effect == null) {
+                result = null;
+                return false;
+            }
+
+            if (!Cache.TryGetValue(name, out result))
+                // NOTE: We use the passed-in name instead of result.Name because the passed-in one is more likely to be interned
+                Cache[name] = result = Effect.Parameters[name];
+
+            return result != null;
+        }
+
         public EffectParameter this[string name] {
             get {
-                if (!Cache.TryGetValue(name, out EffectParameter result))
-                    // NOTE: We use the passed-in name instead of result.Name because the passed-in one is more likely to be interned
-                    Cache[name] = result = Effect.Parameters[name];
-
+                TryGetParameter(name, out var result);
                 return result;
             }
         }

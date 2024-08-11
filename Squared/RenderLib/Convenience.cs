@@ -406,6 +406,18 @@ namespace Squared.Render.Convenience {
             }
         }
 
+        public static void ClearTextures (this MaterialEffectParameters p, params string[] parameterNames) {
+            if (p == null)
+                return;
+
+            foreach (var name in parameterNames) {
+                if (p.TryGetParameter(name, out var param)) {
+                    param.SetValue((Texture2D)null);
+                    break;
+                }
+            }
+        }
+
         public static Action<DeviceManager> MakeDelegate (int index, SamplerState state) {
             return (dm) => { dm.Device.SamplerStates[index] = state; };
         }
