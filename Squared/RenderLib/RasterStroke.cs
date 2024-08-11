@@ -68,6 +68,7 @@ namespace Squared.Render.RasterStroke {
     }
 
     internal class StrokeShader {
+        // FIXME: Hot reload
         public Material Material;
         public EffectParameter BlendInLinearSpace,
             OutputInLinearSpace,

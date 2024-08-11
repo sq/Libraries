@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.Render.Convenience;
 using Squared.Render.Evil;
 using Squared.Threading;
 using Squared.Util.Ini;
@@ -142,8 +143,9 @@ namespace Squared.Render.Resources {
 
         public Material LoadMaterial (
             MaterialSetBase materialSet,
-            AbstractString effectName, string techniqueName = null, 
-            bool optional = false, bool cloneEffect = true
+            AbstractString effectName, string techniqueName = null,
+            bool optional = false, bool cloneEffect = true,
+            BlendState blendState = null
         ) {
             var effect = GetEffect(null, cloneEffect);
             var material = new Material(effect, techniqueName, requiresClone: cloneEffect);
@@ -174,6 +176,10 @@ namespace Squared.Render.Resources {
             }
 
             materialSet?.Add(material);
+            if (blendState != null) {
+                material = material.SetStates(blendState: blendState);
+                materialSet?.Add(material);
+            }
             return material;
         }
     }

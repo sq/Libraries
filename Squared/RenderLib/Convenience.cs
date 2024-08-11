@@ -379,6 +379,32 @@ namespace Squared.Render.Convenience {
             if (SamplerState3 != null)
                 dev.SamplerStates[2] = SamplerState3;
         }
+
+        public bool Equals (MaterialStateSet rhs) {
+            if (rhs == null) {
+                // FIXME: return true if all values are default?                
+                return false;
+            } else {
+                return (BlendState == rhs.BlendState) &&
+                    (DepthStencilState == rhs.DepthStencilState) &&
+                    (RasterizerState == rhs.RasterizerState) &&
+                    (SamplerState1 == rhs.SamplerState1) &&
+                    (SamplerState2 == rhs.SamplerState2) &&
+                    (SamplerState3 == rhs.SamplerState3);
+            }
+        }
+
+        public override bool Equals (object obj) {
+            if (ReferenceEquals(this, obj))
+                return true;
+
+            if (obj is MaterialStateSet mss)
+                return Equals(mss);
+            else
+                return false;
+        }
+
+        public override int GetHashCode () => 0;
     }
 
     public static class MaterialUtil {
@@ -451,6 +477,7 @@ namespace Squared.Render.Convenience {
             SamplerState samplerState3 = null
         ) {
             var mss = new MaterialStateSet();
+            var oldMss = inner.StateSet;
 
             var numBeginHandlers = (inner.BeginHandlers != null) ? inner.BeginHandlers.Length + 1 : 1;
             var handlers = new List<Action<DeviceManager>>(numBeginHandlers);
@@ -476,6 +503,8 @@ namespace Squared.Render.Convenience {
             mss.SamplerState1 = samplerState1 ?? mss.SamplerState1;
             mss.SamplerState2 = samplerState2 ?? mss.SamplerState2;
             mss.SamplerState3 = samplerState3 ?? mss.SamplerState3;
+            if (mss.Equals(oldMss))
+                return inner;
 
             handlers.Add(mss.Apply);
 
@@ -486,6 +515,7 @@ namespace Squared.Render.Convenience {
                 DelegatedHintPipeline = inner,
                 Name = inner.Name,
                 InheritDefaultParametersFrom = inner,
+                StateSet = mss,
             };
             return result;
         }

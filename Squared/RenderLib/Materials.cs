@@ -75,6 +75,7 @@ namespace Squared.Render {
         internal uint ActiveViewTransformId;
         internal int RenderTargetChangeIndex;
         internal bool HotReloadRequiresClone;
+        internal MaterialStateSet StateSet;
 
         private DenseList<Effect> DiscardedEffects;
 
@@ -143,6 +144,7 @@ namespace Squared.Render {
         }
 
         private void InitializeForEffect (Effect effect) {
+            UniformBindings.Clear();
             Name = effect?.CurrentTechnique?.Name;
             TextureParameters.Clear();
             if (effect == null)
@@ -342,7 +344,7 @@ namespace Squared.Render {
             if (newEffect == Effect)
                 return MaterialHotReloadResult.Unchanged;
 
-            newEffect.CurrentTechnique = Effect.Techniques[Effect.CurrentTechnique.Name];
+            newEffect.CurrentTechnique = newEffect.Techniques[Effect.CurrentTechnique.Name];
             if (OwnsEffect)
                 DiscardedEffects.Add(Effect);
 
@@ -350,7 +352,6 @@ namespace Squared.Render {
             Effect = newEffect;
             Parameters.Initialize(newEffect);
             InitializeForEffect(newEffect);
-            UniformBindings.Clear();
             return MaterialHotReloadResult.Reloaded;
         }
 
