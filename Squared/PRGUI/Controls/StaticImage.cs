@@ -420,7 +420,7 @@ namespace Squared.PRGUI.Controls {
                 if ((Image2Mode != StaticImageCompositeMode.CustomMaterial) && (Material == null)) {
                     var scale2 = ComputeDisplayScaleRatio(instance2, settings.ContentBox.Width, settings.ContentBox.Height);
                     drawCall.UserData = new Vector4(opacity2);
-                    drawCall.AlignTexture2(scale2 / scale, preserveAspectRatio: true);
+                    drawCall.AlignTexture2(scale2 / scale, preserveAspectRatio: true, alignment: Alignment);
                     material = SelectMaterialForTwoImages(renderer.Materials);
                 } else {
                     drawCall.TextureRegion2 = drawCall.TextureRegion;

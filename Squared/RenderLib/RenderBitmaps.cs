@@ -1592,8 +1592,9 @@ namespace Squared.Render {
         /// Attempts to align Texture2 with Texture1 while maintaining Texture2's aspect ratio and size.
         /// If Texture2 is smaller than Texture1, this will produce texture coordinates that will wrap the texture.
         /// </summary>
+        /// <param name="alignment">Specifies an origin point on both images to align with each other</param>
         /// <returns>true if successful</returns>
-        public bool AlignTexture2 (float scaleRatio = 1.0f, bool preserveAspectRatio = true) {
+        public bool AlignTexture2 (float scaleRatio = 1.0f, bool preserveAspectRatio = true, Vector2? alignment = null) {
             var instance1 = Texture1.Instance;
             var instance2 = Texture2.Instance;
             if (instance1 == null)
@@ -1622,6 +1623,9 @@ namespace Squared.Render {
                 var xy = new Vector2(scaleRatioX / scaleRatio, scaleRatioY / scaleRatio);
                 rgn2.Size = rgn2.Size * xy;
             }
+            var actualAlignment = alignment ?? Vector2.Zero;
+            rgn2 = rgn2.Translate((TextureRegion.Size * actualAlignment) - (rgn2.Size * actualAlignment));
+
             TextureRegion2 = rgn2;
 
             return true;
