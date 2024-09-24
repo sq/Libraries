@@ -1,3 +1,8 @@
+// If the radius is too small when doing a soft stroke it won't look right.
+#define MinFalloffRadius 0.5
+// Higher values produce smooth strokes for more parameters, but prevent smooth strokes from being especially thin
+#define SoftRadiusBias 0.33
+
 float IMPL_NAME (
     in float3 localRadiuses, in float2 worldPosition, IMPL_INPUTS, 
     in float4 seed, in float4 taperRanges, in float4 biases,
@@ -97,7 +102,7 @@ float IMPL_NAME (
             posSplatDerotated = mul(posSplatRotated, rotationMatrix) * shapeFactor,
             posSplatDecentered = (posSplatDerotated + radius);
 
-        float g = length(posSplatDerotated), discardDistance = (hardness < 1) ? radius + 1 : radius;
+        float g = length(posSplatDerotated), discardDistance = (hardness < 1) ? radius + SoftRadiusBias : radius;
         float4 color = 1;
 
         if (Textured) {
@@ -150,7 +155,7 @@ float IMPL_NAME (
             }
 
             if (hardness < 1) {
-                float falloff = max((1 - hardness) * radius, 1.05);
+                float falloff = max((1 - hardness) * radius, MinFalloffRadius);
                 // HACK
                 g -= (hardness * radius);
                 g /= falloff;
