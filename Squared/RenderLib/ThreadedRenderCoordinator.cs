@@ -13,6 +13,8 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Internal;
 using Squared.Threading;
 using Squared.Util;
+using SDL2;
+// using SDL3;
 
 namespace Squared.Render {
     public interface ITraceCapturingDisposable : IDisposable {
@@ -721,10 +723,10 @@ namespace Squared.Render {
                 //  because we tend to be blocked waiting on a signal when windows expects us to be pumping messages instead.
                 var gw = GetWindow();
                 if (gw != null) {
-                    var wflags = (SDL2.SDL.SDL_WindowFlags)SDL2.SDL.SDL_GetWindowFlags(gw.Handle);
+                    var wflags = (SDL.SDL_WindowFlags)SDL.SDL_GetWindowFlags(gw.Handle);
                     if (
-                        ((wflags & SDL2.SDL.SDL_WindowFlags.SDL_WINDOW_MINIMIZED) != default) ||
-                        ((wflags & SDL2.SDL.SDL_WindowFlags.SDL_WINDOW_HIDDEN) != default)
+                        ((wflags & SDL.SDL_WindowFlags.SDL_WINDOW_MINIMIZED) != default) ||
+                        ((wflags & SDL.SDL_WindowFlags.SDL_WINDOW_HIDDEN) != default)
                     )
                         _ActualEnableThreading = false;
                 }

@@ -191,12 +191,12 @@ namespace PRGUI.Demo {
 
             Materials = new DefaultMaterialSet(RenderCoordinator);
 
-            TextMaterial = Materials.Get(Materials.ShadowedBitmap, blendState: BlendState.AlphaBlend);
+            TextMaterial = Materials.Get(Materials.ShadowedBitmap, blendState: BlendState.AlphaBlend, clone: true);
             TextMaterial.Parameters.ShadowColor.SetValue(new Vector4(0, 0, 0, 0.8f));
             TextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.75f * DPIFactor);
             TextMaterial.Parameters.ShadowMipBias.SetValue(1.33f);
 
-            SelectedTextMaterial = Materials.Get(Materials.OutlinedBitmap, blendState: BlendState.AlphaBlend);
+            SelectedTextMaterial = Materials.Get(Materials.OutlinedBitmap, blendState: BlendState.AlphaBlend, clone: true);
             SelectedTextMaterial.Parameters.ShadowColor.SetValue(new Vector4(1, 1, 1, 1));
             SelectedTextMaterial.Parameters.ShadowOffset.SetValue(Vector2.One * 1.33f * DPIFactor);
             SelectedTextMaterial.Parameters.ShadowMipBias.SetValue(1f);

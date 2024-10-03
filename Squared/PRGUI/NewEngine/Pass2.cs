@@ -59,8 +59,11 @@ namespace Squared.PRGUI.NewEngine {
 
             int columnIndex = 0;
             int* columns = stackalloc int[config.GridColumnCount];
-            foreach (var run in Runs(ref result))
+            foreach (var run in Runs(ref result)) {
+                if (columnIndex >= config.GridColumnCount)
+                    throw new Exception("Too many columns");
                 columns[columnIndex++] = run;
+            }
 
             columnIndex = 0;
 
