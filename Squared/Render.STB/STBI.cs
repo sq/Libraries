@@ -495,7 +495,7 @@ namespace Squared.Render.STB {
                 int itemsPending = 0;
                 bool doneQueueing = false;
 
-                var mainThread = (coordinator.GraphicsBackendName != "D3D11");
+                var mainThread = !coordinator.GraphicsBackendIsThreadingSafe;
                 var queue = coordinator.ThreadGroup.GetQueueForType<UploadMipWorkItem>(mainThread);
                 for (uint level = 0; (levelWidth >= 1) && (levelHeight >= 1); level++) {
                     if (IsDisposed)

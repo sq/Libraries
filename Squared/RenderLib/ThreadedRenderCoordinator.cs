@@ -13,8 +13,8 @@ using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Internal;
 using Squared.Threading;
 using Squared.Util;
-using SDL2;
-// using SDL3;
+// using SDL2;
+using SDL3;
 
 namespace Squared.Render {
     public interface ITraceCapturingDisposable : IDisposable {
@@ -189,6 +189,14 @@ namespace Squared.Render {
         private int IsDisposingResources = 0;
 
         public string GraphicsBackendName => Manager.DeviceManager.GraphicsBackendName;
+        public bool GraphicsBackendIsThreadingSafe => GraphicsBackendName switch {
+            "D3D9" => true,
+            "D3D11" => true,
+            "Vulkan" => true,
+            // FIXME
+            "SDL_GPU" => false,
+            _ => false,
+        };
 
         private readonly HashSet<Texture2D> AutoAllocatedTextureResources = 
             new HashSet<Texture2D>(ReferenceComparer<Texture2D>.Instance);
@@ -801,7 +809,7 @@ namespace Squared.Render {
         
         public bool DoThreadedIssue { 
             get {
-                return _ActualEnableThreading && _EnableThreadedIssue && (GraphicsBackendName != "OpenGL");
+                return _ActualEnableThreading && _EnableThreadedIssue && GraphicsBackendIsThreadingSafe;
             }
             set {
                 _EnableThreadedIssue = value;

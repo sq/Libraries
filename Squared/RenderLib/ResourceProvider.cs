@@ -403,17 +403,7 @@ namespace Squared.Render.Resources {
             Coordinator = coordinator;
 
             EnableThreadedPreload = enableThreadedPreload;
-
-            switch (coordinator.GraphicsBackendName) {
-                case "D3D9":
-                case "D3D11":
-                case "Vulkan":
-                    EnableThreadedCreate = enableThreadedCreate && true;
-                    break;
-                default:
-                    EnableThreadedCreate = enableThreadedCreate && false;
-                    break;
-            }
+            EnableThreadedCreate = enableThreadedCreate && coordinator.GraphicsBackendIsThreadingSafe;
 
             Comparer = new CacheKeyComparer(this);
             PreloadQueue = coordinator.ThreadGroup.GetQueueForType<PreloadWorkItem>(forMainThread: !EnableThreadedPreload);

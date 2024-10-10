@@ -8,6 +8,8 @@ using System.Security;
 using System.Text;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+// using SDL2;
+using SDL3;
 
 namespace Squared.Render.Evil {
 #if WINDOWS
@@ -285,7 +287,8 @@ namespace Squared.Render.Evil {
 	    OpenGL,
 	    Vulkan,
 	    D3D11,
-	    Metal
+	    Metal,
+        SDL_GPU
     };
 
     public unsafe struct FNA3D_SysRendererEXT {
@@ -703,8 +706,8 @@ namespace Squared.Render.Evil {
                 return _IsHDREnabled.Value;
 
             try {
-                var result = SDL2.SDL.SDL_GetHintBoolean("FNA3D_ENABLE_HDR_COLORSPACE", SDL2.SDL.SDL_bool.SDL_FALSE) 
-                    != SDL2.SDL.SDL_bool.SDL_FALSE;
+                var result = SDL.SDL_GetHintBoolean("FNA3D_ENABLE_HDR_COLORSPACE", default) 
+                    != default;
                 _IsHDREnabled = result;
                 return result;
             } catch {
@@ -737,6 +740,9 @@ namespace Squared.Render.Evil {
                         case "D3D11":
                             return true;
                         case "Vulkan":
+                            return IsHDREnabled();
+                        case "SDL_GPU":
+                            // FIXME
                             return IsHDREnabled();
                         default:
                             return false;

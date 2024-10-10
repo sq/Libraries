@@ -623,18 +623,14 @@ namespace Squared.Render {
             const int numVertexStages = 4;
 
             for (int i = 0; i < numStages; i++) {
-#if FNA
                 if (device.Textures[i] != null)
-#endif
-                device.Textures[i] = null;
+                    device.Textures[i] = null;
                 device.SamplerStates[i] = ResetSamplerState;
             }
 
             for (int i = 0; i < numVertexStages; i++) {
-#if FNA
                 if (device.VertexTextures[i] != null)
-#endif
-                device.VertexTextures[i] = null;
+                    device.VertexTextures[i] = null;
                 device.VertexSamplerStates[i] = ResetSamplerState;
             }
 
