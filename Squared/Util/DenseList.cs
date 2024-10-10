@@ -18,7 +18,7 @@ namespace Squared.Util {
         void Release (ref UnorderedList<T> items);
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T>, IOrderedEnumerable<T> {
 #if !NOSPAN
         public static class ElementTraits {

@@ -169,3 +169,36 @@ float sdStar (in float2 p, in float r, in int n, in float m) {
     p += ecs*clamp( -dot(p,ecs), 0.0, r*acs.y/ecs.y);
     return length(p)*sign(p.x);
 }
+
+// https://www.shadertoy.com/view/fdtGDH
+float sdHexagon(float2 position) {
+    position /= float2(2.0, sqrt(3.0));
+    position.y -= 0.5;
+    position.x -= frac(floor(position.y) * 0.5);
+    position = abs(frac(position) - 0.5);
+    return abs(1.0 - max(position.x + position.y * 1.5, position.x * 2.0));
+}
+
+float opRound(float distance, float radius) {
+    return distance - radius;
+}
+float opUnion( float d1, float d2 ) {
+    return min(d1,d2);
+}
+float opSubtraction( float from, float subtract ) {
+    return max(-from, subtract);
+}
+float opIntersection( float d1, float d2 ) {
+    return max(d1,d2);
+}
+float opXor(float d1, float d2 ) {
+    return max(min(d1,d2),-max(d1,d2));
+}
+float opOutlineUnion(float d, float unionWith) {
+    unionWith = max(0, unionWith);
+    return opSubtraction(unionWith, d);
+}
+float opOverlay(float below, float overlay) {
+    // FIXME: Is there a simpler way to implement this?
+    return opXor(opSubtraction(overlay, below), opIntersection(overlay, below));
+}
