@@ -509,13 +509,8 @@ namespace Squared.Render.Convenience {
             handlers.Add(mss.Apply);
 
             var result = new Material(
-                inner.Effect, null,
-                handlers.ToArray(), inner.EndHandlers
+                inner, handlers.ToArray(), inner.EndHandlers
             ) {
-                TechniqueName = inner.TechniqueName,
-                DelegatedHintPipeline = inner,
-                Name = inner.Name,
-                InheritDefaultParametersFrom = inner,
                 StateSet = mss,
             };
             return result;

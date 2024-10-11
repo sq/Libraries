@@ -43,12 +43,11 @@ namespace Squared.Render {
 
         public static readonly Material Null = new Material(null);
 
-        // We have to retain this to prevent finalization
-        private           Effect BaseEffect;
+        internal          Material InheritEffectFrom;
 
         // Now internal to make hot reload safer
-        internal          Effect Effect { get; private set; }
-        public            bool   OwnsEffect;
+        internal          Effect OwnedEffect { get; private set; }
+        internal          bool   DisposeEffect;
 
         public readonly   Thread OwningThread;
 
@@ -61,7 +60,7 @@ namespace Squared.Render {
         /// </summary>
         public Material InheritDefaultParametersFrom;
 
-        public readonly MaterialEffectParameters Parameters;
+        public MaterialEffectParameters Parameters { get; private set; }
 
         public readonly Action<DeviceManager>[] BeginHandlers;
         public readonly Action<DeviceManager>[] EndHandlers;
@@ -110,8 +109,8 @@ namespace Squared.Render {
             Action<DeviceManager>[] beginHandlers = null,
             Action<DeviceManager>[] endHandlers = null
         ) : this() {
-            TechniqueName = techniqueName ?? Effect?.CurrentTechnique?.Name;
-            Effect = effect;
+            TechniqueName = techniqueName ?? effect?.CurrentTechnique?.Name;
+            OwnedEffect = effect;
             HotReloadRequiresClone = false;
 
             OwningThread = Thread.CurrentThread;
@@ -119,10 +118,23 @@ namespace Squared.Render {
             BeginHandlers = beginHandlers;
             EndHandlers   = endHandlers;
 
-            // FIXME: This should probably never be null.
-            if (Effect != null)
-                Parameters = new MaterialEffectParameters(Effect);
+            InitializeForEffect(Effect);
+        }
 
+        public Material (
+            Material inheritFrom, Action<DeviceManager>[] beginHandlers, Action<DeviceManager>[] endHandlers
+        ) : this() {
+            if (inheritFrom == null)
+                throw new NullReferenceException();
+
+            InheritEffectFrom = inheritFrom;
+            TechniqueName = inheritFrom.TechniqueName;
+            DelegatedHintPipeline = inheritFrom;
+            Name = inheritFrom.Name;
+            InheritDefaultParametersFrom = inheritFrom;
+            OwningThread = Thread.CurrentThread;
+            BeginHandlers = beginHandlers;
+            EndHandlers = endHandlers;
             InitializeForEffect(Effect);
         }
 
@@ -132,9 +144,29 @@ namespace Squared.Render {
             TextureParameters.Clear();
             if (effect == null)
                 return;
+            if (Parameters == null)
+                Parameters = new MaterialEffectParameters(effect);
+            else
+                Parameters.Initialize(effect);
             foreach (var p in effect.Parameters) {
                 if (p.ParameterType == EffectParameterType.Texture2D)
                     TextureParameters.Add(p);
+            }
+        }
+
+        internal Effect Effect {
+            get {
+                if (OwnedEffect != null)
+                    return OwnedEffect;
+                if (InheritEffectFrom == null)
+                    return null;
+
+                if (HotReloadVersion < InheritEffectFrom.HotReloadVersion) {
+                    InitializeForEffect(InheritEffectFrom.Effect);
+                    HotReloadVersion = InheritEffectFrom.HotReloadVersion;
+                }
+
+                return InheritEffectFrom.Effect;
             }
         }
 
@@ -155,15 +187,7 @@ namespace Squared.Render {
             else if (additionalEndHandlers != null)
                 newEndHandlers = Enumerable.Concat(additionalEndHandlers, EndHandlers).ToArray();
 
-            var result = new Material(
-                Effect, null,
-                newBeginHandlers, newEndHandlers
-            ) {
-                TechniqueName = TechniqueName,
-                DelegatedHintPipeline = this,
-                InheritDefaultParametersFrom = this,
-            };
-            return result;
+            return new Material(this, newBeginHandlers, newEndHandlers);
         }
 
         public Material Clone () {
@@ -177,7 +201,7 @@ namespace Squared.Render {
             ) {
                 TechniqueName = TechniqueName,
                 HintPipeline = HintPipeline,
-                OwnsEffect = true,
+                DisposeEffect = true,
                 GetEffectForReload = GetEffectForReload,
                 HotReloadRequiresClone = true,
             };
@@ -229,6 +253,9 @@ namespace Squared.Render {
         private void Flush_Prologue (DeviceManager deviceManager) {
             if (Effect == null)
                 return;
+
+            if (Effect.IsDisposed)
+                throw new ObjectDisposedException("Effect");
 
             EffectTechnique tech = !string.IsNullOrWhiteSpace(TechniqueName)
                 ? Effect.Techniques[TechniqueName]
@@ -287,8 +314,8 @@ namespace Squared.Render {
             if (_IsDisposed)
                 return;
 
-            if (OwnsEffect)
-                Effect.Dispose();
+            if (DisposeEffect)
+                OwnedEffect?.Dispose();
 
             foreach (var de in DiscardedEffects)
                 de.Dispose();
@@ -330,7 +357,10 @@ namespace Squared.Render {
             return hint;
         }
 
-        public MaterialHotReloadResult TryHotReload () {
+        public MaterialHotReloadResult TryHotReload (RenderCoordinator coordinator) {
+            if (InheritEffectFrom != null)
+                return MaterialHotReloadResult.NotConfigured;
+
             var gefr = GetEffectForReload ?? InheritDefaultParametersFrom?.GetEffectForReload;
             if (gefr == null)
                 return MaterialHotReloadResult.NotConfigured;
@@ -342,12 +372,10 @@ namespace Squared.Render {
             if (newEffect == Effect)
                 return MaterialHotReloadResult.Unchanged;
 
-            if (OwnsEffect)
-                DiscardedEffects.Add(Effect);
+            if (DisposeEffect)
+                DiscardedEffects.Add(OwnedEffect);
 
-            BaseEffect = null;
-            Effect = newEffect;
-            Parameters.Initialize(newEffect);
+            OwnedEffect = newEffect;
             InitializeForEffect(newEffect);
             return MaterialHotReloadResult.Reloaded;
         }

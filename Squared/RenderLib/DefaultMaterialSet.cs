@@ -529,7 +529,8 @@ namespace Squared.Render {
             BuiltInShaderManifest = BuiltInShaders.ReadManifest();
 
             Clear = new Material(
-                null, null,
+                (Effect)null, 
+                null,
                 new Action<DeviceManager>[] { (dm) => ApplyShaderVariables(false, dm) }
             );
 
