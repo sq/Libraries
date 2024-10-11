@@ -159,8 +159,12 @@ namespace Squared.Render.Resources {
                 if (requiresClone)
                     effect = effect.Clone();
 
-                if (techniqueName == null)
-                    techniqueName = effectName.ToString();
+                if (techniqueName == null) {
+                    if (effect.Techniques[effectName.ToString()] != null)
+                        techniqueName = effectName.ToString();
+                    else
+                        techniqueName = effect.Techniques.FirstOrDefault()?.Name;
+                }
 
                 var technique = effect.Techniques[referenceMaterial?.TechniqueName ?? techniqueName];
                 if (technique == null) {

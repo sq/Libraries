@@ -479,15 +479,21 @@ namespace Squared.Game {
             if (provider == null)
                 provider = CultureInfo.InvariantCulture.NumberFormat;
 
+            var isIntegral = ((int)v4.X == v4.X) &&
+                ((int)v4.Y == v4.Y) &&
+                ((int)v4.Z == v4.Z) &&
+                ((int)v4.W == v4.W);
+            var fs = isIntegral ? "########0" : "F";
+
             var sb = GetVectorBuilder();
             sb.Append('{');
-            sb.Append(v4.X.ToString("F", provider));
+            sb.Append(v4.X.ToString(fs, provider));
             sb.Append(", ");
-            sb.Append(v4.Y.ToString("F", provider));
+            sb.Append(v4.Y.ToString(fs, provider));
             sb.Append(", ");
-            sb.Append(v4.Z.ToString("F", provider));
+            sb.Append(v4.Z.ToString(fs, provider));
             sb.Append(", ");
-            sb.Append(v4.W.ToString("F", provider));
+            sb.Append(v4.W.ToString(fs, provider));
             sb.Append('}');
             return sb.ToString();
         }
