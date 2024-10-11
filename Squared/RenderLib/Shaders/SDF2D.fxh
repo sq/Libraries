@@ -171,7 +171,7 @@ float sdStar (in float2 p, in float r, in int n, in float m) {
 }
 
 // https://www.shadertoy.com/view/fdtGDH
-float sdHexagon(float2 position) {
+float sdHexagonTile(float2 position) {
     position /= float2(2.0, sqrt(3.0));
     position.y -= 0.5;
     position.x -= frac(floor(position.y) * 0.5);
