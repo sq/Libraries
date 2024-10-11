@@ -156,6 +156,8 @@ void GenericVertexShader (
     out float4 newTexRgn1 : TEXCOORD1,
     out float2 texCoord2 : TEXCOORD2,
     out float4 newTexRgn2 : TEXCOORD3,
+    // scaleX, scaleY, viewSizeX, viewSizeY
+    out float4 originalSizeData : TEXCOORD6,
     // originX, originY, vertexX, vertexY
     out float4 originalPositionData : TEXCOORD7,
     out float4 result : POSITION0
@@ -171,7 +173,10 @@ void GenericVertexShader (
 
     if (worldSpace.x > 0.5) {
         adjustedPosition.xy -= GetViewportPosition().xy;
-        adjustedPosition.xy *= GetViewportScale().xy;
+        adjustedPosition.xy *= GetViewportScale().xy;    
+        originalSizeData = float4(scaleOrigin.xy, regionSize * BitmapTextureSize * scaleOrigin.xy * GetViewportScale().xy);
+    } else {
+        originalSizeData = float4(scaleOrigin.xy, regionSize * BitmapTextureSize * scaleOrigin.xy);
     }
     
     float z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
