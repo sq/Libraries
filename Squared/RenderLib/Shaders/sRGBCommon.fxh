@@ -156,4 +156,10 @@ float4 OkLChToOkLab(float4 oklch) {
         oklch.w
     );
 }
+
+float4 OkLChToLinearSRGB(float4 oklch) {
+    return float4(
+        OkLabToLinearSRGB(OkLChToOkLab(oklch).xyz), 1
+    ) * oklch.w;
+}
 // end oklab
