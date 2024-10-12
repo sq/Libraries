@@ -1061,13 +1061,16 @@ namespace Squared.PRGUI {
             return HitTest(position, in options, out _);
         }
 
+        internal bool ShouldModalBlockHitTests (IModal m) =>
+            (m != null) && m.BlockHitTests && !Control.IsRecursivelyTransparent((Control)m, includeOpacityAsOfTime: NowL);
+
         // Position is relative to the top-left corner of the canvas
         public Control HitTest (Vector2 position, in HitTestOptions options, out Vector2 localPosition) {
             localPosition = default;
 
             var areHitTestsBlocked = false;
             foreach (var m in ModalStack)
-                if (m.BlockHitTests)
+                if (ShouldModalBlockHitTests(m))
                     areHitTestsBlocked = true;
 
             var sorted = Controls.InDisplayOrder(FrameIndex);
