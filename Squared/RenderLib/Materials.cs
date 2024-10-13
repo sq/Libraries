@@ -464,6 +464,15 @@ namespace Squared.Render {
 
             return true;
         }
+
+        public void RecordUsedTextures (Action<Texture2D> markResourceAsInUseDelegate) {
+            foreach (var p in TextureParameters) {
+                var t = p.GetValueTexture2D();
+                if (t == null)
+                    continue;
+                markResourceAsInUseDelegate(t);
+            }
+        }
     }
     
     public class MaterialEffectParameters {
