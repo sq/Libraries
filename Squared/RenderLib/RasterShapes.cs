@@ -578,7 +578,6 @@ namespace Squared.Render.RasterShape {
             ShadowColorLinear,
             TextureModeAndSize,
             TexturePlacement,
-            TextureTraits,
             TextureOptions,
             TextureSizePx,
             CompositeCount,
@@ -603,7 +602,6 @@ namespace Squared.Render.RasterShape {
             ShadowColorLinear = p["ShadowColorLinear"];
             TextureModeAndSize = p["TextureModeAndSize"];
             TexturePlacement = p["TexturePlacement"];
-            TextureTraits = p["TextureTraits"];
             TextureOptions = p["TextureOptions"];
             TextureSizePx = p["TextureSizePx"];
             CompositeCount = p["CompositeCount"];
@@ -943,8 +941,6 @@ namespace Squared.Render.RasterShape {
                         mas.Z *= Texture.Width;
                         mas.W *= Texture.Height;
                     }
-                    var traits = Evil.TextureUtils.GetTraits(Texture.Format);
-                    rasterShader.TextureTraits?.SetValue(traits);
                 }
                 rasterShader.TextureModeAndSize?.SetValue(mas);
                 rasterShader.TexturePlacement?.SetValue(sb.TextureSettings.Placement);

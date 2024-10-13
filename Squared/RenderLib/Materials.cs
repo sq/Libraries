@@ -15,6 +15,7 @@ using System.Runtime.InteropServices;
 using System.Collections;
 using System.Runtime.CompilerServices;
 using System.Runtime;
+using System.Security.Cryptography.X509Certificates;
 
 namespace Squared.Render {
     public enum MaterialHotReloadResult {
@@ -26,6 +27,18 @@ namespace Squared.Render {
 
     public sealed class Material : IDisposable {
         public static bool LogPreloadTime = false;
+
+        internal enum SynthesizedParameterType {
+            None,
+            SizeInPixels,
+            TexelSize,
+            Traits
+        }
+
+        internal struct SynthesizedParameter {
+            public EffectParameter Source, Target;
+            public SynthesizedParameterType Type;
+        }
 
         public sealed class PipelineHint {
             public static readonly PipelineHint Default = new PipelineHint {
@@ -78,7 +91,8 @@ namespace Squared.Render {
 
         private DenseList<Effect> DiscardedEffects;
 
-        internal List<EffectParameter> TextureParameters = new List<EffectParameter>();
+        internal List<EffectParameter> TextureParameters = new ();
+        internal List<SynthesizedParameter> SynthesizedParameters = new ();
 
         public string Name;
 
@@ -142,15 +156,36 @@ namespace Squared.Render {
             UniformBindings.Clear();
             Name = TechniqueName;
             TextureParameters.Clear();
+            SynthesizedParameters.Clear();
             if (effect == null)
                 return;
             if (Parameters == null)
                 Parameters = new MaterialEffectParameters(effect);
             else
                 Parameters.Initialize(effect);
+
             foreach (var p in effect.Parameters) {
                 if (p.ParameterType == EffectParameterType.Texture2D)
                     TextureParameters.Add(p);
+
+                foreach (var a in p.Annotations) {
+                    var type = a.Name.ToLowerInvariant() switch {
+                        "sizeinpixelsof" => SynthesizedParameterType.SizeInPixels,
+                        "texelsizeof" => SynthesizedParameterType.TexelSize,
+                        "traitsof" => SynthesizedParameterType.Traits,
+                        _ => SynthesizedParameterType.None,
+                    };
+                    if (type == SynthesizedParameterType.None)
+                        continue;
+                    var sourceName = a.GetValueString();
+                    var source = effect.Parameters[sourceName];
+                    if (source == null)
+                        throw new Exception($"Synthesized effect parameter {p.Name}'s source {sourceName} does not exist!");
+                    SynthesizedParameters.Add(new SynthesizedParameter {
+                        Source = source, Target = p,
+                        Type = type
+                    });
+                }
             }
         }
 
@@ -263,8 +298,25 @@ namespace Squared.Render {
             Effect.CurrentTechnique = tech;
         }
 
+        private void SynthesizeParameters () {
+            foreach (var sp in SynthesizedParameters) {
+                Vector4 value = default;
+                var texture = sp.Source.GetValueTexture2D();
+                if (texture != null)
+                    value = sp.Type switch {
+                        SynthesizedParameterType.SizeInPixels => new Vector4(texture.Width, texture.Height, 0, 0),
+                        SynthesizedParameterType.TexelSize => new Vector4(1.0f / texture.Width, 1.0f / texture.Height, 0, 0),
+                        SynthesizedParameterType.Traits => Evil.TextureUtils.GetTraits(texture.Format),
+                        _ => Vector4.Zero,
+                    };
+                sp.Target.SetValue(value);
+            }
+        }
+
         private void Flush_Epilogue (DeviceManager deviceManager) {
             if (Effect != null) {
+                SynthesizeParameters();
+
                 UniformBinding.FlushEffect(Effect);
 
                 Effect.CurrentTechnique.Passes[0].Apply();
@@ -487,12 +539,6 @@ namespace Squared.Render {
         public EffectParameter ModelViewMatrix { get; private set; }
         public EffectParameter InverseProjection { get; private set; }
         public EffectParameter InverseModelView { get; private set; }
-        public EffectParameter BitmapTextureSize { get; private set; }
-        public EffectParameter BitmapTexelSize { get; private set; }
-        public EffectParameter BitmapTextureSize2 { get; private set; }
-        public EffectParameter BitmapTexelSize2 { get; private set; }
-        public EffectParameter BitmapTraits { get; private set; }
-        public EffectParameter BitmapTraits2 { get; private set; }
         public EffectParameter ShadowColor { get; private set; }
         public EffectParameter ShadowOffset { get; private set; }
         public EffectParameter ShadowMipBias { get; private set; }
@@ -533,12 +579,6 @@ namespace Squared.Render {
                 ModelViewMatrix = viewport.StructureMembers["ModelView"];
             }
 
-            BitmapTextureSize = this["BitmapTextureSize"];
-            BitmapTexelSize = this["BitmapTexelSize"];
-            BitmapTextureSize2 = this["BitmapTextureSize2"];
-            BitmapTraits = this["BitmapTraits"];
-            BitmapTraits2 = this["BitmapTraits2"];
-            BitmapTexelSize2 = this["BitmapTexelSize2"];
             Time = this["Time"];
             FrameIndex = this["FrameIndex"];
             ShadowColor = this["GlobalShadowColor"];

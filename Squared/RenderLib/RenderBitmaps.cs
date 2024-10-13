@@ -316,10 +316,6 @@ namespace Squared.Render {
             public readonly BufferSlice<BitmapVertex> Slice;
             public readonly TextureSet TextureSet;
 
-            public readonly Vector2 Texture1Size, Texture1TexelSize;
-            public readonly Vector2 Texture2Size, Texture2TexelSize;
-            public readonly Vector4 Texture1Traits, Texture2Traits;
-
             public readonly int LocalVertexOffset;
             public int VertexCount;
 
@@ -347,24 +343,8 @@ namespace Squared.Render {
                 var tex1 = textureSet.Texture1.GetInstance(textureCache);
                 var tex2 = textureSet.Texture2.GetInstance(textureCache);
                 if (tex1 == null) {
-                    Texture1Size = Texture2Size = default;
-                    Texture1TexelSize = Texture2TexelSize = default;
-                    Texture1Traits = Texture2Traits = default;
                     Invalid = true;
                     return;
-                }
-
-                Texture1Size = new Vector2(tex1.Width, tex1.Height);
-                Texture1TexelSize = new Vector2(1.0f / Texture1Size.X, 1.0f / Texture1Size.Y);
-                Texture1Traits = Evil.TextureUtils.GetTraits(tex1.Format);
-
-                if (textureSet.Texture2.IsInitialized) {
-                    Texture2Size = new Vector2(tex2.Width, tex2.Height);
-                    Texture2TexelSize = new Vector2(1.0f / Texture2Size.X, 1.0f / Texture2Size.Y);
-                    Texture2Traits = Evil.TextureUtils.GetTraits(tex2.Format);
-                } else {
-                    Texture2TexelSize = Texture2Size = Vector2.Zero;
-                    Texture2Traits = default;
                 }
 
                 Invalid = false;
@@ -702,13 +682,6 @@ namespace Squared.Render {
                     cnbs.Texture1?.SetValue(instance1);
                     cnbs.Texture2?.SetValue(instance2);
                 }
-
-                cnbs.Parameters.BitmapTextureSize?.SetValue(nb.Texture1Size);
-                cnbs.Parameters.BitmapTextureSize2?.SetValue(nb.Texture2Size);
-                cnbs.Parameters.BitmapTexelSize?.SetValue(nb.Texture1TexelSize);
-                cnbs.Parameters.BitmapTexelSize2?.SetValue(nb.Texture2TexelSize);
-                cnbs.Parameters.BitmapTraits?.SetValue(nb.Texture1Traits);
-                cnbs.Parameters.BitmapTraits2?.SetValue(nb.Texture2Traits);
             }
 
             manager.CurrentMaterial.Flush(manager);

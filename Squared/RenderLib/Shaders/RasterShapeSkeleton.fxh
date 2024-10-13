@@ -32,7 +32,7 @@ uniform const float2 TextureSizePx;
 uniform const float4 TextureModeAndSize;
 // Origin, Position
 uniform const float4 TexturePlacement;
-uniform const float4 TextureTraits;
+uniform const float4 TextureTraits <string traitsOf="RasterTexture";>;
 // Saturation, Brightness, Clamp X, Clamp Y
 uniform const float4 TextureOptions;
 
