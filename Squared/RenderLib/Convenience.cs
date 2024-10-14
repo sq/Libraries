@@ -358,11 +358,73 @@ namespace Squared.Render.Convenience {
         };
     }
 
-    public sealed class MaterialStateSet {
+    public struct SamplerStateSet {
+        public DenseList<SamplerState> FragmentStates,
+            VertexStates;
+
+        public SamplerState this [bool vertex, int index] {
+            get {
+                SamplerState result;
+                if (vertex)
+                    VertexStates.TryGetItem(index, out result);
+                else
+                    FragmentStates.TryGetItem(index, out result);
+                return result;
+            }
+            set {
+                ref DenseList<SamplerState> target = ref (vertex ? ref VertexStates : ref FragmentStates);
+                while (target.Count <= index)
+                    target.Add(null);
+                target[index] = value;
+            }
+        }
+
+        public void Apply (DeviceManager dm) {
+            var dev = dm.Device;
+            for (int i = 0; i < FragmentStates.Count; i++)
+                if (FragmentStates[i] != null)
+                    dev.SamplerStates[i] = FragmentStates[i];
+
+            for (int i = 0; i < VertexStates.Count; i++)
+                if (VertexStates[i] != null)
+                    dev.VertexSamplerStates[i] = VertexStates[i];
+        }
+
+        private static bool AreEqual (ref DenseList<SamplerState> lhs, ref DenseList<SamplerState> rhs) {
+            if (lhs.Count != rhs.Count)
+                return false;
+            for (int i = 0; i < lhs.Count; i++)
+                if (lhs[i] != rhs[i])
+                    return false;
+            return true;
+        }
+
+        public bool Equals (ref SamplerStateSet rhs) {
+            return AreEqual(ref FragmentStates, ref rhs.FragmentStates) &&
+                AreEqual(ref VertexStates, ref rhs.VertexStates);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is SamplerStateSet mss)
+                return Equals(ref mss);
+            else
+                return false;
+        }
+
+        public override int GetHashCode () => 0;
+
+        internal void Merge (ref SamplerStateSet samplers) {
+            for (int i = 0; i < samplers.FragmentStates.Count; i++)
+                this[false, i] = samplers.FragmentStates[i] ?? this[false, i];
+            for (int i = 0; i < samplers.VertexStates.Count; i++)
+                this[true, i] = samplers.VertexStates[i] ?? this[true, i];
+        }
+    }
+
+    public struct PipelineStateSet {
         public BlendState BlendState;
         public DepthStencilState DepthStencilState;
         public RasterizerState RasterizerState;
-        public SamplerState SamplerState1, SamplerState2, SamplerState3;
 
         public void Apply (DeviceManager dm) {
             var dev = dm.Device;
@@ -372,12 +434,38 @@ namespace Squared.Render.Convenience {
                 dev.DepthStencilState = DepthStencilState;
             if (RasterizerState != null)
                 dev.RasterizerState = RasterizerState;
-            if (SamplerState1 != null)
-                dev.SamplerStates[0] = SamplerState1;
-            if (SamplerState2 != null)
-                dev.SamplerStates[1] = SamplerState2;
-            if (SamplerState3 != null)
-                dev.SamplerStates[2] = SamplerState3;
+        }
+
+        public bool Equals (ref PipelineStateSet rhs) {
+            return (BlendState == rhs.BlendState) &&
+                (DepthStencilState == rhs.DepthStencilState) &&
+                (RasterizerState == rhs.RasterizerState);
+        }
+
+        public override bool Equals (object obj) {
+            if (obj is PipelineStateSet mss)
+                return Equals(ref mss);
+            else
+                return false;
+        }
+
+        public override int GetHashCode () => 0;
+
+        internal void Merge (ref PipelineStateSet pipeline) {
+            BlendState = pipeline.BlendState ?? BlendState;
+            DepthStencilState = pipeline.DepthStencilState ?? DepthStencilState;
+            RasterizerState = pipeline.RasterizerState ?? RasterizerState;
+        }
+    }
+
+    public sealed class MaterialStateSet {
+        public PipelineStateSet Pipeline;
+        public SamplerStateSet Samplers;
+
+        public void Apply (DeviceManager dm) {
+            var dev = dm.Device;
+            Pipeline.Apply(dm);
+            Samplers.Apply(dm);
         }
 
         public bool Equals (MaterialStateSet rhs) {
@@ -385,12 +473,9 @@ namespace Squared.Render.Convenience {
                 // FIXME: return true if all values are default?                
                 return false;
             } else {
-                return (BlendState == rhs.BlendState) &&
-                    (DepthStencilState == rhs.DepthStencilState) &&
-                    (RasterizerState == rhs.RasterizerState) &&
-                    (SamplerState1 == rhs.SamplerState1) &&
-                    (SamplerState2 == rhs.SamplerState2) &&
-                    (SamplerState3 == rhs.SamplerState3);
+                // FIXME
+                return Pipeline.Equals(ref rhs.Pipeline) &&
+                    Samplers.Equals(ref rhs.Samplers);
             }
         }
 
@@ -403,6 +488,13 @@ namespace Squared.Render.Convenience {
             else
                 return false;
         }
+
+        public BlendState BlendState => Pipeline.BlendState;
+        public DepthStencilState DepthStencilState => Pipeline.DepthStencilState;
+        public RasterizerState RasterizerState => Pipeline.RasterizerState;
+        public SamplerState SamplerState1 => Samplers[false, 0];
+        public SamplerState SamplerState2 => Samplers[false, 1];
+        public SamplerState SamplerState3 => Samplers[false, 2];
 
         public override int GetHashCode () => 0;
     }
@@ -451,18 +543,20 @@ namespace Squared.Render.Convenience {
         public static Action<DeviceManager> MakeDelegate (
             BlendState blendState = null,
             DepthStencilState depthStencilState = null, 
-            RasterizerState rasterizerState = null, 
+            RasterizerState rasterizerState = null,
             SamplerState samplerState1 = null,
             SamplerState samplerState2 = null,
             SamplerState samplerState3 = null
         ) {
             var mss = new MaterialStateSet {
-                RasterizerState = rasterizerState,
-                DepthStencilState = depthStencilState,
-                BlendState = blendState,
-                SamplerState1 = samplerState1,
-                SamplerState2 = samplerState2,
-                SamplerState3 = samplerState3
+                Pipeline = new PipelineStateSet {
+                    RasterizerState = rasterizerState,
+                    DepthStencilState = depthStencilState,
+                    BlendState = blendState,
+                },
+                Samplers = new SamplerStateSet {
+                    FragmentStates = new DenseList<SamplerState> { samplerState1, samplerState2, samplerState3 },
+                },
             };
             return mss.Apply;
         }
@@ -486,27 +580,21 @@ namespace Squared.Render.Convenience {
                 var bhs = bh.Target as MaterialStateSet;
 
                 if (bhs != null) {
-                    mss.RasterizerState = bhs.RasterizerState ?? mss.RasterizerState;
-                    mss.DepthStencilState = bhs.DepthStencilState ?? mss.DepthStencilState;
-                    mss.BlendState = bhs.BlendState ?? mss.BlendState;
-                    mss.SamplerState1 = bhs.SamplerState1 ?? mss.SamplerState1;
-                    mss.SamplerState2 = bhs.SamplerState2 ?? mss.SamplerState2;
-                    mss.SamplerState3 = bhs.SamplerState3 ?? mss.SamplerState3;
+                    mss.Pipeline.Merge(ref bhs.Pipeline);
+                    mss.Samplers.Merge(ref bhs.Samplers);
                 } else {
                     handlers.Add(bh);
                 }
             }
 
-            mss.BlendState = blendState ?? mss.BlendState;
-            mss.DepthStencilState = depthStencilState ?? mss.DepthStencilState;
-            mss.RasterizerState = rasterizerState ?? mss.RasterizerState;
-            mss.SamplerState1 = samplerState1 ?? mss.SamplerState1;
-            mss.SamplerState2 = samplerState2 ?? mss.SamplerState2;
-            mss.SamplerState3 = samplerState3 ?? mss.SamplerState3;
+            mss.Pipeline.BlendState = blendState ?? mss.BlendState;
+            mss.Pipeline.DepthStencilState = depthStencilState ?? mss.DepthStencilState;
+            mss.Pipeline.RasterizerState = rasterizerState ?? mss.RasterizerState;
+            mss.Samplers[false, 0] = samplerState1 ?? mss.SamplerState1;
+            mss.Samplers[false, 1] = samplerState2 ?? mss.SamplerState2;
+            mss.Samplers[false, 2] = samplerState3 ?? mss.SamplerState3;
             if (mss.Equals(oldMss))
                 return inner;
-
-            handlers.Add(mss.Apply);
 
             var result = new Material(
                 inner, handlers.ToArray(), inner.EndHandlers

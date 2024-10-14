@@ -87,7 +87,13 @@ namespace Squared.Render {
         internal uint ActiveViewTransformId;
         internal int RenderTargetChangeIndex;
         internal bool HotReloadRequiresClone;
-        internal MaterialStateSet StateSet;
+        internal MaterialStateSet StateSet = new MaterialStateSet();
+
+        public ref PipelineStateSet PipelineStates => ref StateSet.Pipeline;
+        public BlendState BlendState {
+            get => PipelineStates.BlendState;
+            set => PipelineStates.BlendState = value;
+        }
 
         private DenseList<Effect> DiscardedEffects;
 
@@ -205,6 +211,8 @@ namespace Squared.Render {
             }
         }
 
+        public Effect UnsafeEffect => Effect;
+
         public Material WrapWithHandlers (
             Action<DeviceManager>[] additionalBeginHandlers = null,
             Action<DeviceManager>[] additionalEndHandlers = null
@@ -271,6 +279,8 @@ namespace Squared.Render {
             CheckDevice(deviceManager);
             Flush(deviceManager);
 
+            var stateSet = StateSet ?? InheritDefaultParametersFrom?.StateSet;
+            stateSet?.Apply(deviceManager);
             if (BeginHandlers != null)
                 foreach (var handler in BeginHandlers)
                     handler(deviceManager);
@@ -280,6 +290,8 @@ namespace Squared.Render {
             CheckDevice(deviceManager);
             Flush(deviceManager, ref parameters);
 
+            var stateSet = StateSet ?? InheritDefaultParametersFrom?.StateSet;
+            stateSet?.Apply(deviceManager);
             if (BeginHandlers != null)
                 foreach (var handler in BeginHandlers)
                     handler(deviceManager);
@@ -459,6 +471,7 @@ namespace Squared.Render {
                             tempTexture = new Texture2D(deviceManager.Device, 1, 1, false, vtf);
                             coordinator.RegisterAutoAllocatedTextureResource(tempTexture);
                         }
+                        // NOTE: Sampler states aren't part of pipeline definitions so this is probably unnecessary
                         deviceManager.Device.VertexSamplerStates[i] = SamplerState.PointClamp;
                     } else {
                         deviceManager.Device.VertexSamplerStates[i] = RenderManager.ResetSamplerState;
@@ -474,7 +487,8 @@ namespace Squared.Render {
                 }
             }
 
-            deviceManager.Device.BlendState = RenderManager.ResetBlendState;
+            // Best guess
+            deviceManager.Device.BlendState = BlendState.AlphaBlend;
 
             lock (coordinator.UseResourceLock) {
                 deviceManager.Device.Indices = hint.HasIndices ? tempIb : null;
