@@ -17,6 +17,7 @@ using Squared.Render.Text;
 using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Text;
+using SDL3;
 
 namespace Squared.PRGUI.Controls {
     public class EditableText : Control, IScrollableControl, Accessibility.IReadingTarget, 
@@ -688,7 +689,7 @@ namespace Squared.PRGUI.Controls {
 
             try {
                 menu.Child<StaticText>(st => st.Text == "Paste").Enabled =
-                    !ReadOnly && !string.IsNullOrEmpty(SDL2.SDL.SDL_GetClipboardText());
+                    !ReadOnly && !string.IsNullOrEmpty(SDL.SDL_GetClipboardText());
             } catch {
             }
 
@@ -953,7 +954,7 @@ namespace Squared.PRGUI.Controls {
 
         public void Paste () {
             try {
-                SelectedText = SDL2.SDL.SDL_GetClipboardText();
+                SelectedText = SDL.SDL_GetClipboardText();
             } catch {
             }
         }
@@ -961,13 +962,13 @@ namespace Squared.PRGUI.Controls {
         public void CopySelection () {
             if (!AllowCopy)
                 return;
-            SDL2.SDL.SDL_SetClipboardText(SelectedText);
+           SDL.SDL_SetClipboardText(SelectedText);
         }
 
         public void CutSelection () {
             if (!AllowCopy)
                 return;
-            SDL2.SDL.SDL_SetClipboardText(SelectedText);
+            SDL.SDL_SetClipboardText(SelectedText);
             SelectedText = "";
         }
 

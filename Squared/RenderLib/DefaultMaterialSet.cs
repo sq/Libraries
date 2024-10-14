@@ -979,6 +979,8 @@ namespace Squared.Render {
             var shader = BuiltInShaders.Load(name, true, false);
             var material = NewMaterial(shader, name);
             material.Name = materialName;
+            // Set an appropriate default so that preloading will work
+            material.BlendState = RenderStates.RasterShapeAlphaBlend;
             FinishLoadingRasterShapeVariant(type, shadowed, textured, simple, ramp, material);
         }
 
