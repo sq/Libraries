@@ -387,6 +387,7 @@ void RasterShapeVertexShader_Core (
         (BlendInLinearSpace && !isSimple) ||
         BlendInOkLab
     ) {
+        REQUIRE_BRANCH
         if (BlendInOkLab) {
             // HACK: This isn't premultiplied since it doesn't make sense for it to be!
             centerColor = pSRGBToOkLab(centerColor);

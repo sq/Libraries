@@ -62,10 +62,5 @@ float4 clamp4 (float4 v, float4 minimum, float4 maximum) {
 #define REQUIRE_BRANCH [branch]
 #define REQUIRE_LOOP [loop]
 
-#if FNA
 #define PREFER_FLATTEN [flatten]
 #define PREFER_BRANCH [branch]
-#else
-#define PREFER_FLATTEN [flatten]
-#define PREFER_BRANCH [branch]
-#endif
