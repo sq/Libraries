@@ -501,6 +501,11 @@ namespace Squared.Render {
         private static readonly object ListPoolLock = new object();
 
         public event EventHandler<DeviceManager> DeviceChanged;
+        /// <summary>
+        /// This must be provided for synthesized distanceFieldOf parameters to work.
+        /// Note that this function must be thread-safe, as it can be called from render threads.
+        /// </summary>
+        public Func<Texture2D, Texture2D> DistanceFieldProvider;
 
         // When issuing batches we add them to this, then at the end of issue we release their resources
         internal readonly LowAllocConcurrentQueue<Batch> ReleaseQueue = new LowAllocConcurrentQueue<Batch>();

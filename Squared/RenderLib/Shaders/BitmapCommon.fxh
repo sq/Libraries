@@ -12,12 +12,12 @@ float4 TransformPosition (float4 position, bool unused) {
     return result;
 }
 
-uniform const float2 BitmapTextureSize <string sizeInPixelsOf="BitmapTexture";>;
-uniform const float2 BitmapTextureSize2 <string sizeInPixelsOf="SecondTexture";>;
-uniform const float4 BitmapTraits <string traitsOf="BitmapTexture";>;
-uniform const float4 BitmapTraits2 <string traitsOf="SecondTexture";>;
-uniform const float2 BitmapTexelSize <string texelSizeOf="BitmapTexture";>;
-uniform const float2 BitmapTexelSize2 <string texelSizeOf="SecondTexture";>;
+uniform const float2 BitmapTextureSize <string sizeInPixelsOf="BitmapTexture"; bool hidden=true;>;
+uniform const float2 BitmapTextureSize2 <string sizeInPixelsOf="SecondTexture"; bool hidden=true;>;
+uniform const float4 BitmapTraits <string traitsOf="BitmapTexture"; bool hidden=true;>;
+uniform const float4 BitmapTraits2 <string traitsOf="SecondTexture"; bool hidden=true;>;
+uniform const float2 BitmapTexelSize <string texelSizeOf="BitmapTexture"; bool hidden=true;>;
+uniform const float2 BitmapTexelSize2 <string texelSizeOf="SecondTexture"; bool hidden=true;>;
 
 Texture2D BitmapTexture : register(t0);
 

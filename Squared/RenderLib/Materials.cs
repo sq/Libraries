@@ -32,7 +32,11 @@ namespace Squared.Render {
             None,
             SizeInPixels,
             TexelSize,
-            Traits
+            Traits,
+            /// <summary>
+            /// Requires a DistanceFieldProvider
+            /// </summary>
+            DistanceField
         }
 
         internal struct SynthesizedParameter {
@@ -175,10 +179,12 @@ namespace Squared.Render {
                     TextureParameters.Add(p);
 
                 foreach (var a in p.Annotations) {
-                    var type = a.Name.ToLowerInvariant() switch {
+                    var aName = a.Name.ToLowerInvariant();
+                    var type = aName switch {
                         "sizeinpixelsof" => SynthesizedParameterType.SizeInPixels,
                         "texelsizeof" => SynthesizedParameterType.TexelSize,
                         "traitsof" => SynthesizedParameterType.Traits,
+                        "distancefieldof" => SynthesizedParameterType.DistanceField,
                         _ => SynthesizedParameterType.None,
                     };
                     if (type == SynthesizedParameterType.None)
@@ -310,24 +316,31 @@ namespace Squared.Render {
             Effect.CurrentTechnique = tech;
         }
 
-        private void SynthesizeParameters () {
+        private void SynthesizeParameters (RenderManager renderManager) {
+            var dfp = renderManager.DistanceFieldProvider;
             foreach (var sp in SynthesizedParameters) {
-                Vector4 value = default;
                 var texture = sp.Source.GetValueTexture2D();
-                if (texture != null)
-                    value = sp.Type switch {
-                        SynthesizedParameterType.SizeInPixels => new Vector4(texture.Width, texture.Height, 0, 0),
-                        SynthesizedParameterType.TexelSize => new Vector4(1.0f / texture.Width, 1.0f / texture.Height, 0, 0),
-                        SynthesizedParameterType.Traits => Evil.TextureUtils.GetTraits(texture.Format),
-                        _ => Vector4.Zero,
-                    };
-                sp.Target.SetValue(value);
+                switch (sp.Type) {
+                    case SynthesizedParameterType.SizeInPixels:
+                        sp.Target.SetValue(texture != null ? new Vector2(texture.Width, texture.Height) : default);
+                        break;
+                    case SynthesizedParameterType.TexelSize:
+                        sp.Target.SetValue(texture != null ? new Vector2(1.0f / texture.Width, 1.0f / texture.Height) : default);
+                        break;
+                    case SynthesizedParameterType.Traits:
+                        sp.Target.SetValue(texture != null ? TextureUtils.GetTraits(texture.Format) : default);
+                        break;
+                    case SynthesizedParameterType.DistanceField:
+                        // FIXME: This is potentially somewhat expensive
+                        sp.Target.SetValue((texture != null) && (dfp != null) ? dfp(texture) : null);
+                        break;
+                }
             }
         }
 
         private void Flush_Epilogue (DeviceManager deviceManager) {
             if (Effect != null) {
-                SynthesizeParameters();
+                SynthesizeParameters(deviceManager.RenderManager);
 
                 UniformBinding.FlushEffect(Effect);
 

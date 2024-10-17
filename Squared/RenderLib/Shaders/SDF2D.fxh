@@ -34,7 +34,7 @@ float msign (in float x) { return (x<0.0)?-1.0:1.0; }
 float sdEllipse (in float2 p, in float2 ab) {
     // sdEllipse produces garbage values if the x/y radiuses are identical, but since it's a circle,
     //  the math is trivial
-    PREFER_BRANCH
+    [branch]
     if (ab.x == ab.y)
         return length(p) - ab.x;
 

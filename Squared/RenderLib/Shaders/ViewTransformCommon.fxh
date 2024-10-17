@@ -5,7 +5,7 @@ struct ViewTransform {
     float4 InputAndOutputZRanges;
 };
 
-uniform const ViewTransform Viewport;
+uniform const ViewTransform Viewport <bool hidden=true;>;
 
 float4x4 GetViewportProjectionMatrix () {
     return Viewport.Projection;
