@@ -12,6 +12,8 @@ float4 TransformPosition (float4 position, bool unused) {
     return result;
 }
 
+// FIXME: The math for this is completely busted
+uniform const float2 BitmapMarginSize;
 uniform const float2 BitmapTextureSize <string sizeInPixelsOf="BitmapTexture"; bool hidden=true;>;
 uniform const float2 BitmapTextureSize2 <string sizeInPixelsOf="SecondTexture"; bool hidden=true;>;
 uniform const float4 BitmapTraits <string traitsOf="BitmapTexture"; bool hidden=true;>;
@@ -51,10 +53,8 @@ inline float2 ComputeTexCoord (
 ) {
     float2 texTL = min(texRgn.xy, texRgn.zw);
     float2 texBR = max(texRgn.xy, texRgn.zw);
-    newTexRgn = float4(texTL.x, texTL.y, texBR.x, texBR.y);
-    return clamp2(
-        texRgn.xy + corner, texTL, texBR
-    );
+    newTexRgn = float4(texTL, texBR);
+    return texRgn.xy + corner;
 }
 
 inline float2 ComputeTexCoord2 (
@@ -109,6 +109,7 @@ void ScreenSpaceVertexShader (
     float2 regionSize = ComputeRegionSize(texRgn1);
     float2 corner = ComputeCorner(cornerWeights, regionSize);
     texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
+    texCoord1 = clamp(texCoord1, texRgn1.xy, texRgn1.zw);
     texCoord2 = ComputeTexCoord2(cornerWeights.xy, texRgn1, texRgn2, newTexRgn2);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, positionAndRotation.w);
     
@@ -136,6 +137,7 @@ void WorldSpaceVertexShader (
     float2 regionSize = ComputeRegionSize(texRgn1);
     float2 corner = ComputeCorner(cornerWeights, regionSize);
     texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
+    texCoord1 = clamp(texCoord1, texRgn1.xy, texRgn1.zw);
     texCoord2 = ComputeTexCoord2(cornerWeights.xy, texRgn1, texRgn2, newTexRgn2);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, positionAndRotation.w);
     
@@ -165,11 +167,29 @@ void GenericVertexShader (
     out float4 originalPositionData : TEXCOORD7,
     out float4 result : POSITION0
 ) {
-    float2 regionSize = ComputeRegionSize(texRgn1);
+    // FIXME: All this margin math is a buggy hack and doesn't work right
+    float2 scaledMargin = BitmapMarginSize * scaleOrigin.xy,
+        texelMargin = scaledMargin * BitmapTexelSize;
+
+    // Pad the texrgn on all sides for the margin
+    float4 paddedTexRgn1 = texRgn1;
+    paddedTexRgn1.xy -= texelMargin;
+    paddedTexRgn1.zw += texelMargin;
+    
+    float2 regionSize = ComputeRegionSize(paddedTexRgn1);
+
+    float4 adjustedScaleOrigin = scaleOrigin;
+    // Convert fractional origin into origin in pixels
+    adjustedScaleOrigin.zw *= BitmapTextureSize * regionSize;
+    // Shift origin in pixels by margin
+    adjustedScaleOrigin.zw += scaledMargin;
+    // Convert new origin back to fractional
+    adjustedScaleOrigin.zw /= BitmapTextureSize * regionSize;
+
     float2 corner = ComputeCorner(cornerWeights, regionSize);
-    texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
-    texCoord2 = ComputeTexCoord2(cornerWeights.xy, texRgn1, texRgn2, newTexRgn2);
-    float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, positionAndRotation.w);
+    texCoord1 = ComputeTexCoord(corner, paddedTexRgn1, newTexRgn1);
+    texCoord2 = ComputeTexCoord2(cornerWeights.xy, paddedTexRgn1, texRgn2, newTexRgn2);
+    float2 rotatedCorner = ComputeRotatedCorner(corner, paddedTexRgn1, adjustedScaleOrigin, positionAndRotation.w);
     
     float2 adjustedPosition = positionAndRotation.xy + rotatedCorner;
     originalPositionData = float4(positionAndRotation.xy, adjustedPosition.xy);
@@ -184,6 +204,8 @@ void GenericVertexShader (
     
     float z = ScaleZIntoViewTransformSpace(positionAndRotation.z);
     result = TransformPosition(float4(adjustedPosition, z, 1), true);
+    // Undo addition of margin
+    newTexRgn1 = float4(min(texRgn1.xy, texRgn1.zw), max(texRgn1.xy, texRgn1.zw));
 }
 
 // FIXME: region is unused
