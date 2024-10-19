@@ -49,6 +49,11 @@ namespace Squared.PRGUI {
             FloatingContainerFill,
             WindowFill = new Color(60, 60, 60);
 
+        public Vector4 NormalTextUserData = default,
+            ShadedTextUserData = default,
+            SelectedTextLightUserData = new Vector4(0, 0, 0, 6),
+            SelectedTextDarkUserData = new Vector4(1, 1, 1, 6);
+
         public float GaugeFillAlpha1 = 0.5f, GaugeFillAlpha2 = 1.0f,
             GaugeLimitAlpha = 0.7f,
             GaugeFillBrightness1 = 1.0f, GaugeFillBrightness2 = 1.0f;
@@ -2077,7 +2082,7 @@ namespace Squared.PRGUI {
             );
         }
 
-        public bool GetTextSettings (
+        public virtual bool GetTextSettings (
             ref UIOperationContext context, ControlStates state, ref pSRGBColor backgroundColor, 
             out Material material, ref Color? color, out Vector4 userData, TextStyle style
         ) {
@@ -2091,15 +2096,15 @@ namespace Squared.PRGUI {
                 case TextStyle.Normal:
                 default:
                     material = TextMaterial;
-                    userData = default;
+                    userData = ColorScheme.NormalTextUserData;
                     break;
                 case TextStyle.Selected:
                     material = SelectedTextMaterial;
-                    userData = new Vector4(0.5f, 0.5f, 0.5f, 3);
+                    userData = ColorScheme.SelectedTextLightUserData;
                     break;
                 case TextStyle.Shaded:
                     material = ShadedTextMaterial;
-                    userData = default;
+                    userData = ColorScheme.ShadedTextUserData;
                     break;
             }
             return true;
@@ -2181,10 +2186,10 @@ namespace Squared.PRGUI {
             backgroundColor.ToOkLab(out var l, out _, out _, out var o);
             if ((l < 0.45f) && (o > 0.15f)) {
                 color = ColorScheme.SelectedTextLight;
-                userData = new Vector4(0, 0, 0, 6);
+                userData = ColorScheme.SelectedTextLightUserData;
             } else {
                 color = ColorScheme.SelectedTextDark;
-                userData = new Vector4(1, 1, 1, 6);
+                userData = ColorScheme.SelectedTextDarkUserData;
             }
             return true;
         }

@@ -335,6 +335,7 @@ namespace Squared.PRGUI.Controls {
 
         public virtual void UserClose () {
             FireEvent(UIEvents.Closed);
+            // FIXME: Make customizable
             var f = StartAnimation(Context.Animations?.HideModalDialog);
             if (f.CompletedSuccessfully && f.Result == false)
                 Context.Controls.Remove(this);

@@ -239,7 +239,7 @@ namespace Squared.PRGUI.Controls {
             if (IsActive)
                 return NextResultFuture;
             var f = NextResultFuture = new Future<TResult>();
-            var fadeIn = context.Animations?.ShowModalDialog;
+            var fadeIn = ShowAnimation;
             if (fadeIn != null)
                 StartAnimation(fadeIn);
             else
@@ -288,6 +288,9 @@ namespace Squared.PRGUI.Controls {
             return Close(GetResultForReason(reason), reason);
         }
 
+        protected virtual IControlAnimation HideAnimation => Context?.Animations?.HideModalDialog;
+        protected virtual IControlAnimation ShowAnimation => Context?.Animations?.ShowModalDialog;
+
         public bool Close (TResult result, ModalCloseReason reason) {
             CancelDrag();
             if (!IsActive)
@@ -307,13 +310,13 @@ namespace Squared.PRGUI.Controls {
             NextResultFuture?.SetResult(result, null);
             Intangible = true;
             IsFadingOut = (Context.TopLevelFocused == this);
-            var f = StartAnimation(Context.Animations?.HideModalDialog);
+            var f = StartAnimation(HideAnimation);
             Context.NotifyModalClosed(this);
             if ((reason == ModalCloseReason.UserConfirmed) && (Accepted != null))
                 Accepted(this, result);
             if (Closed != null)
                 Closed(this, reason);
-            if (f.CompletedSuccessfully && f.Result == false)
+            if ((f == null) || (f.CompletedSuccessfully && f.Result == false))
                 Context.Controls.Remove(this);
             AcceptsFocus = false;
             _FocusDonor = null;

@@ -773,7 +773,7 @@ namespace Squared.PRGUI.Controls {
             InvalidateLayout();
 
             if (!IsActive) {
-                var fadeIn = context.Animations?.ShowMenu;
+                var fadeIn = ShowAnimation;
                 if (fadeIn != null)
                     StartAnimation(fadeIn);
                 else
@@ -925,6 +925,9 @@ namespace Squared.PRGUI.Controls {
             return ShowInternalEpilogue(context, selectedItem);
         }
 
+        protected virtual IControlAnimation ShowAnimation => Context?.Animations?.ShowMenu;
+        protected virtual IControlAnimation HideAnimation => Context?.Animations?.HideMenu;
+
         public bool Close (ModalCloseReason reason) {
             if (!IsActive)
                 return false;
@@ -939,7 +942,7 @@ namespace Squared.PRGUI.Controls {
             Aligner.Enabled = false;
             IsActive = false;
             Intangible = true;
-            StartAnimation(Context.Animations?.HideMenu);
+            StartAnimation(HideAnimation);
             var fd = _FocusDonor;
             AcceptsFocus = false;
             Context.NotifyControlBecomingInvalidFocusTarget(this, false);

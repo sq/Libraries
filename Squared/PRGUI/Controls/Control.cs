@@ -1001,7 +1001,7 @@ namespace Squared.PRGUI {
             if (pa == null)
                 return;
             StartAnimationImpl(
-                PendingAnimation.Animation, 
+                pa.Animation, 
                 pa.Duration,
                 pa.Now
             );

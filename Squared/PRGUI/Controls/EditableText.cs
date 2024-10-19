@@ -1123,7 +1123,7 @@ namespace Squared.PRGUI.Controls {
             UIOperationContext context, ControlStates state, IMetricsProvider selectionDecorator
         ) {
             Color? selectedColor = DynamicLayout.Color;
-            selectionDecorator.GetTextSettings(ref context, state, default, out Material temp, ref selectedColor, out _);
+            selectionDecorator.GetTextSettings(ref context, state, default, out Material temp, ref selectedColor, out var userData);
             var selectedColorC = context.UIContext.ConvertColor(selectedColor ?? Color.Black);
             var nonSelectedColorC = context.UIContext.ConvertColor(DynamicLayout.Color ?? Color.White);
             var noColorizing = (selection == null) || 
@@ -1138,7 +1138,7 @@ namespace Squared.PRGUI.Controls {
                 drawCalls.Array[i + drawCalls.Offset].MultiplyColor = color;
                 // HACK: Suppress shadow
                 if (isSelected)
-                    drawCalls.Array[i + drawCalls.Offset].UserData = new Vector4(0, 0, 0, 1 / 256f);
+                    drawCalls.Array[i + drawCalls.Offset].UserData = userData == default ? new Vector4(0, 0, 0, 1 / 256f) : userData;
             }
         }
 
