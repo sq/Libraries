@@ -177,12 +177,43 @@ float sdStar (in float2 p, in float r, in int n, in float m) {
 }
 
 // https://www.shadertoy.com/view/fdtGDH
-float sdHexagonTile(float2 position) {
+float sdHexagonTile (float2 position) {
     position /= float2(2.0, sqrt(3.0));
     position.y -= 0.5;
     position.x -= frac(floor(position.y) * 0.5);
     position = abs(frac(position) - 0.5);
     return abs(1.0 - max(position.x + position.y * 1.5, position.x * 2.0));
+}
+
+void sdPolygonVertex (
+    in float2 worldPosition, in int i, 
+    in float2 previousVertex, in float2 vertex, 
+    inout float distance, inout float sign
+) {
+    float2 e = previousVertex - vertex,
+        w = worldPosition - vertex,
+        b = w - e * clamp(dot(w, e) / dot(e, e), 0, 1);
+    distance = min(distance, dot(b, b));
+    bool3 c = bool3(
+        worldPosition.y >= vertex.y, 
+        worldPosition.y < previousVertex.y, 
+        e.x * w.y > e.y * w.x
+    );
+    if (all(c) || !any(c))
+        sign *= -1;
+}
+
+void sdPolygonInit (
+    in float2 worldPosition, in float2 firstVertex, in float2 lastVertex,
+    out float distance, out float sign
+) {
+    distance = dot(worldPosition - firstVertex, worldPosition - firstVertex);
+    sign = 1.0;
+    sdPolygonVertex(worldPosition, 0, lastVertex, firstVertex, distance, sign);
+}
+
+float sdPolygonResolve (in float distance, in float sign) {
+    return sign * sqrt(distance);
 }
 
 float opRound(float distance, float radius) {

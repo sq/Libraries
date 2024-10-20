@@ -168,7 +168,7 @@ void GenericVertexShader (
     out float4 result : POSITION0
 ) {
     // FIXME: All this margin math is a buggy hack and doesn't work right
-    float2 scaledMargin = BitmapMarginSize * scaleOrigin.xy,
+    float2 scaledMargin = BitmapMarginSize,
         texelMargin = scaledMargin * BitmapTexelSize;
 
     // Pad the texrgn on all sides for the margin
