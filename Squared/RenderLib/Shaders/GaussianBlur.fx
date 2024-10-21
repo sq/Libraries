@@ -51,7 +51,7 @@ float tapA(
     // FIXME: Use extract value so this works with single channel textures
     // HACK: We can't use tex2dbias here because we're inside a loop and it forces it to unroll
     float4 texColor = tex2Dlod(TapSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, mipBias));
-    return AutoClampAlpha1(ExtractMask(texColor, BitmapTraits), texCoord, texRgn, BitmapTexelSize, TransparentExterior);
+    return AutoClampAlpha1(ExtractMask(texColor, BitmapTraits), texCoord, saturate(texRgn), BitmapTexelSize, TransparentExterior);
 }
 
 float tapO(

@@ -64,7 +64,7 @@ void BasicPixelShaderWithLUT(
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     texColor = ExtractRgba(texColor, AdaptTraits(BitmapTraits));
-    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
+    texColor = AutoClampAlpha4(texColor, texCoord, saturate(texRgn), BitmapTexelSize, TransparentExterior);
     texColor.rgb = ApplyLUT(texColor.rgb, LUT2Weight);
     texColor.rgb = ApplyDither(texColor.rgb, GET_VPOS);
 
@@ -88,7 +88,7 @@ void ToLinearPixelShader(
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     texColor = ExtractRgba(texColor, AdaptTraits(BitmapTraits));
-    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
+    texColor = AutoClampAlpha4(texColor, texCoord, saturate(texRgn), BitmapTexelSize, TransparentExterior);
     texColor = pSRGBToPLinear_Accurate(texColor);
     result = multiplyColor * texColor;
     result += (addColor * result.a);
@@ -108,7 +108,7 @@ void ToSRGBPixelShader(
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     texColor = ExtractRgba(texColor, AdaptTraits(BitmapTraits));
-    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
+    texColor = AutoClampAlpha4(texColor, texCoord, saturate(texRgn), BitmapTexelSize, TransparentExterior);
     result = multiplyColor * texColor;
     result += (addColor * result.a);
     result = pLinearToPSRGB_Accurate(result);
@@ -124,7 +124,7 @@ void SilhouettePixelShader(
 ) {
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     float alpha = ExtractAlpha(texColor, AdaptTraits(BitmapTraits));
-    alpha = AutoClampAlpha1(alpha, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
+    alpha = AutoClampAlpha1(alpha, texCoord, saturate(texRgn), BitmapTexelSize, TransparentExterior);
     result = (multiplyColor + addColor) * alpha;
 }
 
@@ -351,7 +351,7 @@ void DistanceFieldOutlinedPixelShader(
     if ((shadowColorIn.a < 0) || PremultiplyTexture)
         traits.z = 1;
     texColor = ExtractRgba(texColor, traits);
-    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
+    texColor = AutoClampAlpha4(texColor, texCoord, saturate(texRgn), BitmapTexelSize, TransparentExterior);
     shadowColorIn.a = abs(shadowColorIn.a);
 
     float2 offset = (ShadowOffset * BitmapTexelSize2);
