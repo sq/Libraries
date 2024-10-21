@@ -299,7 +299,14 @@ namespace Squared.Render {
             Manager = new RenderManager(deviceService.GraphicsDevice, mainThread, ThreadGroup);
             UseResourceLock = Manager.UseResourceLock;
             CreateResourceLock = Manager.CreateResourceLock;
-
+            lock (CreateResourceLock) {
+                Manager.DummyTexture = new Texture2D(deviceService.GraphicsDevice, 1, 1) {
+                    Name = "Dummy Texture",
+                    Tag = "Dummy Texture",
+                };
+                Manager.DummyTexture.SetData(new Color[1]);
+            }
+ 
             GetWindow = getWindow;
             _SyncBeginDraw = synchronousBeginDraw ?? DefaultBeginDraw;
             _SyncEndDraw = synchronousEndDraw ?? DefaultEndDraw;

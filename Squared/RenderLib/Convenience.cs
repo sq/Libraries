@@ -500,37 +500,13 @@ namespace Squared.Render.Convenience {
     }
 
     public static class MaterialUtil {
-        public static void ClearTexture (this EffectParameterCollection p, string parameterName) {
-            if (p == null)
-                return;
-            var param = p[parameterName];
-            if (param == null)
-                return;
-            param.SetValue((Texture2D)null);
-        }
-
-        public static void ClearTextures (this EffectParameterCollection p, params string[] parameterNames) {
-            if (p == null)
-                return;
-
-            // Right now FNA's EffectParameterCollection just loops over all the items, so we might as well do that ourselves once
-            foreach (var param in p) {
-                foreach (var name in parameterNames) {
-                    if (param.Name == name) {
-                        param.SetValue((Texture2D)null);
-                        break;
-                    }
-                }
-            }
-        }
-
-        public static void ClearTextures (this MaterialEffectParameters p, params string[] parameterNames) {
+        public static void ClearTextures (this MaterialEffectParameters p, RenderManager manager, params string[] parameterNames) {
             if (p == null)
                 return;
 
             foreach (var name in parameterNames) {
                 if (p.TryGetParameter(name, out var param)) {
-                    param.SetValue((Texture2D)null);
+                    param.SetValue(manager.DummyTexture);
                     break;
                 }
             }

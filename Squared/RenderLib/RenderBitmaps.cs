@@ -675,8 +675,8 @@ namespace Squared.Render {
                 var instance2 = tex2.GetInstance(textureCache);
 
                 if ((instance1?.IsDisposed == true) || (instance2?.IsDisposed == true)) {
-                    cnbs.Texture1?.SetValue((Texture2D)null);
-                    cnbs.Texture2?.SetValue((Texture2D)null);
+                    cnbs.Texture1?.SetValue(manager.DummyTexture);
+                    cnbs.Texture2?.SetValue(manager.DummyTexture);
                     return false;
                 } else {
                     cnbs.Texture1?.SetValue(instance1);
@@ -863,8 +863,8 @@ namespace Squared.Render {
                             previousSlice.Buffer.SetInactive();
                     }
 
-                    cnbs.Texture1?.SetValue((Texture2D)null);
-                    cnbs.Texture2?.SetValue((Texture2D)null);
+                    cnbs.Texture1?.SetValue(manager.DummyTexture);
+                    cnbs.Texture2?.SetValue(manager.DummyTexture);
 
                     device.SamplerStates[0] = previousSS1;
                     device.SamplerStates[1] = previousSS2;

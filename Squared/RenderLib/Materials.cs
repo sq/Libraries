@@ -258,14 +258,14 @@ namespace Squared.Render {
             return result;
         }
 
-        private void ValidateParameters () {
+        private void ValidateParameters (DeviceManager manager) {
             bool foundErrors = false;
 
             foreach (var ep in TextureParameters) {
                 if (ep.GetValueTexture2D()?.IsDisposed != true)
                     continue;
 
-                ep.SetValue((Texture2D)null);
+                ep.SetValue(manager.DummyTexture);
                 foundErrors = true;
             }
 
@@ -332,7 +332,9 @@ namespace Squared.Render {
                         break;
                     case SynthesizedParameterType.DistanceField:
                         // FIXME: This is potentially somewhat expensive
-                        sp.Target.SetValue((texture != null) && (dfp != null) ? dfp(texture) : null);
+                        // We need to make sure we never store a null texture, only the dummy texture. Otherwise the sampler doesn't get updated.
+                        // FIXME: Is that behavior a bug in FNA?
+                        sp.Target.SetValue((texture != null) && (dfp != null) ? dfp(texture) ?? renderManager.DummyTexture : renderManager.DummyTexture);
                         break;
                 }
             }
@@ -359,7 +361,7 @@ namespace Squared.Render {
             InheritDefaultParametersFrom?.DefaultParameters.Apply(this);
             DefaultParameters.Apply(this);
 
-            ValidateParameters();
+            ValidateParameters(deviceManager);
 
             Flush_Epilogue(deviceManager);
         }
@@ -374,7 +376,7 @@ namespace Squared.Render {
             DefaultParameters.Apply(this);
             parameters.Apply(this);
 
-            ValidateParameters();
+            ValidateParameters(deviceManager);
 
             Flush_Epilogue(deviceManager);
         }

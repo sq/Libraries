@@ -69,6 +69,8 @@ namespace Squared.Render {
         internal int RenderTargetChangeIndex = 0;
         internal RenderManager RenderManager;
 
+        public Texture2D DummyTexture => RenderManager.DummyTexture;
+
         internal struct RenderTargetStackEntry {
             private static readonly RenderTargetBinding[][] BindingArrays;
             static RenderTargetStackEntry () {
@@ -506,6 +508,11 @@ namespace Squared.Render {
         /// Note that this function must be thread-safe, as it can be called from render threads.
         /// </summary>
         public Func<Texture2D, Texture2D> DistanceFieldProvider;
+
+        /// <summary>
+        /// Needed because setting a texture to null doesn't work the way you'd expect
+        /// </summary>
+        public Texture2D DummyTexture;
 
         // When issuing batches we add them to this, then at the end of issue we release their resources
         internal readonly LowAllocConcurrentQueue<Batch> ReleaseQueue = new LowAllocConcurrentQueue<Batch>();
