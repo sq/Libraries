@@ -45,7 +45,8 @@ void BasicPixelShader(
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     texColor = ExtractRgba(texColor, AdaptTraits(BitmapTraits));
-    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
+    // HACK: This saturate is here for backwards compatibility. It sucks.
+    texColor = AutoClampAlpha4(texColor, texCoord, saturate(texRgn), BitmapTexelSize, TransparentExterior);
     result = multiplyColor * texColor;
     result += (addColor * result.a);
 }
@@ -409,7 +410,7 @@ void BasicPixelShaderWithDiscard (
 
     float4 texColor = tex2Dbias(TextureSampler, float4(clamp2(texCoord, texRgn.xy, texRgn.zw), 0, MIP_BIAS));
     texColor = ExtractRgba(texColor, BitmapTraits);
-    texColor = AutoClampAlpha4(texColor, texCoord, texRgn, BitmapTexelSize, TransparentExterior);
+    texColor = AutoClampAlpha4(texColor, texCoord, saturate(texRgn), BitmapTexelSize, TransparentExterior);
     result = multiplyColor * texColor;
     result += (addColor * result.a);
 

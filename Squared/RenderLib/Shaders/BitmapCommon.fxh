@@ -109,7 +109,6 @@ void ScreenSpaceVertexShader (
     float2 regionSize = ComputeRegionSize(texRgn1);
     float2 corner = ComputeCorner(cornerWeights, regionSize);
     texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
-    texCoord1 = clamp(texCoord1, texRgn1.xy, texRgn1.zw);
     texCoord2 = ComputeTexCoord2(cornerWeights.xy, texRgn1, texRgn2, newTexRgn2);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, positionAndRotation.w);
     
@@ -137,7 +136,6 @@ void WorldSpaceVertexShader (
     float2 regionSize = ComputeRegionSize(texRgn1);
     float2 corner = ComputeCorner(cornerWeights, regionSize);
     texCoord1 = ComputeTexCoord(corner, texRgn1, newTexRgn1);
-    texCoord1 = clamp(texCoord1, texRgn1.xy, texRgn1.zw);
     texCoord2 = ComputeTexCoord2(cornerWeights.xy, texRgn1, texRgn2, newTexRgn2);
     float2 rotatedCorner = ComputeRotatedCorner(corner, texRgn1, scaleOrigin, positionAndRotation.w);
     
@@ -208,7 +206,6 @@ void GenericVertexShader (
     newTexRgn1 = float4(min(texRgn1.xy, texRgn1.zw), max(texRgn1.xy, texRgn1.zw));
 }
 
-// FIXME: region is unused
 float AutoClampAlpha1 (
     in float value, in float2 uv, in float4 region, in float2 texelSize, in bool active
 ) {
@@ -217,12 +214,11 @@ float AutoClampAlpha1 (
     // Compute how far out the sample point is from the edges of the texture, then scale it down to
     //  0 alpha as it travels far enough away.
     float2 invTexelSize = rcp(texelSize);
-    float2 tl = -min(uv, 0), br = max(uv, 1) - 1;
+    float2 tl = abs(min(uv, region.xy) - region.xy), br = max(uv, region.zw) - region.zw;
     float2 a = 1 - saturate(max(tl * invTexelSize, br * invTexelSize));
     return value * min(a.x, a.y);
 }
 
-// FIXME: region is unused
 float4 AutoClampAlpha4 (
     in float4 value, in float2 uv, in float4 region, in float2 texelSize, in bool active
 ) {
@@ -232,7 +228,7 @@ float4 AutoClampAlpha4 (
     //  0 alpha as it travels far enough away.
     // FIXME: Should this be half a texel instead of a full texel?
     float2 invTexelSize = rcp(texelSize);
-    float2 tl = -min(uv, 0), br = max(uv, 1) - 1;
+    float2 tl = abs(min(uv, region.xy) - region.xy), br = max(uv, region.zw) - region.zw;
     float2 a = 1 - saturate(max(tl * invTexelSize, br * invTexelSize));
     return value * min(a.x, a.y);
 }

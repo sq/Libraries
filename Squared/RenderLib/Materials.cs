@@ -42,6 +42,9 @@ namespace Squared.Render {
         internal struct SynthesizedParameter {
             public EffectParameter Source, Target;
             public SynthesizedParameterType Type;
+
+            public override string ToString () =>
+                $"{Type} {Source.Name} => {Target.Name}";
         }
 
         public sealed class PipelineHint {
@@ -180,6 +183,8 @@ namespace Squared.Render {
 
                 foreach (var a in p.Annotations) {
                     var aName = a.Name.ToLowerInvariant();
+                    if (aName == "hidden")
+                        continue;
                     var type = aName switch {
                         "sizeinpixelsof" => SynthesizedParameterType.SizeInPixels,
                         "texelsizeof" => SynthesizedParameterType.TexelSize,
