@@ -1120,6 +1120,8 @@ namespace Squared.Render.Text {
                     if (RichText) {
                         rls = new RichTextLayoutState(_RichTextConfiguration, ref le2, glyphSource, this);
                         rls.UserData = RichTextUserData ?? rls.UserData;
+                        if (_RichTextConfiguration.ImageUserData.HasValue)
+                            le2.ImageUserData = _RichTextConfiguration.ImageUserData.Value;
                         rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
                         _RichTextConfiguration.Append(ref le2, ref rls, _Text, _StyleName);
                         var dependencies = _Satellite?.Dependencies ?? default;

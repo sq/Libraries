@@ -653,6 +653,7 @@ namespace Squared.Render.Text {
         /// Contains user-provided data that can be used by your ImageProvider or MarkedStringProcessor.
         /// </summary>
         public DenseList<string> Tags;
+        public Vector4? ImageUserData;
         public string DefaultStyle;
         public object UserData;
 
@@ -1204,7 +1205,8 @@ namespace Squared.Render.Text {
                 DefaultRubyScale = DefaultRubyScale,
                 DisableImages = DisableImages,
                 IgnoreUnhandledCommands = IgnoreUnhandledCommands,
-                UserData = UserData
+                UserData = UserData,
+                ImageUserData = ImageUserData
             };
             if (OnParseError != null)
                 result.OnParseError += OnParseError;
