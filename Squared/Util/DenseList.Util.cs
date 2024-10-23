@@ -133,6 +133,14 @@ namespace Squared.Util {
         public static T FirstOrDefault<T> (this List<T> list) => list.Count > 0 ? list[0] : default;
         public static T LastOrDefault<T> (this List<T> list) => list.Count > 0 ? list[list.Count - 1] : default;
         public static int Count<T> (this List<T> list) => list.Count;
+        public static int Count<T> (this List<T> list, Func<T, bool> predicate) {
+            int result = 0;
+            foreach (var item in list)
+                if (predicate(item))
+                    result++;
+
+            return result;
+        }
         public static bool All<T> (this List<T> list, Func<T, bool> predicate) {
             foreach (var item in list)
                 if (!predicate(item))

@@ -1,6 +1,7 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <XNAPropertiesOverridePath>$(SolutionDir)XNA.Override.props</XNAPropertiesOverridePath>
+    <EnableFNA>true</EnableFNA>
   </PropertyGroup>
 
   <Import Project="$(XNAPropertiesOverridePath)" Condition="Exists('$(XNAPropertiesOverridePath)')" />
@@ -54,87 +55,39 @@
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Platform)' == 'x86' ">
-    <AutoEnableFNA>false</AutoEnableFNA>
     <AutoPlatformTarget>x86</AutoPlatformTarget>
     <FNAPlatformTarget>x86</FNAPlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Platform)' == 'x64' ">
-    <AutoEnableFNA>false</AutoEnableFNA>
     <AutoPlatformTarget>x64</AutoPlatformTarget>
     <FNAPlatformTarget>x64</FNAPlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Platform)' == 'FNA' ">
-    <AutoEnableFNA>true</AutoEnableFNA>
     <AutoPlatformTarget>x86</AutoPlatformTarget>
     <FNAPlatformTarget>x86</FNAPlatformTarget>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Platform)' == 'FNA-x64' ">
-    <AutoEnableFNA>true</AutoEnableFNA>
     <AutoPlatformTarget>x64</AutoPlatformTarget>
     <FNAPlatformTarget>x64</FNAPlatformTarget>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(AutoPlatforms)' == 'true'">
-    <EnableFNA Condition="'$(EnableFNA)' == ''">$(AutoEnableFNA)</EnableFNA>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(AutoPlatforms)' != 'true'">
-    <EnableFNA Condition="'$(EnableFNA)' == ''">false</EnableFNA>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(EnableFNA)' == 'true'">
+  <PropertyGroup>
     <DefineConstants>$(DefineConstants);FNA;SDL2</DefineConstants>
     <PlatformTarget Condition=" '$(AutoPlatforms)' == 'true' ">$(AutoPlatformTarget)</PlatformTarget>
     <ShaderCompilerDefines>$(ShaderCompilerDefines)/D FNA=1 /D XNA=0</ShaderCompilerDefines>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(EnableFNA)' == 'false'">
-    <XnaFrameworkVersion>v4.0</XnaFrameworkVersion>
-    <XnaPlatform>Windows</XnaPlatform>
-    <XnaProfile>HiDef</XnaProfile>
-    <DefineConstants>$(DefineConstants);XNA;WINDOWS</DefineConstants>
-    <PlatformTarget>x86</PlatformTarget>
-    <Prefer32Bit>true</Prefer32Bit>
-    <XnaOutputType Condition="'$(OutputType)' == 'WinExe'">Game</XnaOutputType>
-    <ShaderCompilerDefines>$(ShaderCompilerDefines)/D FNA=0 /D XNA=1</ShaderCompilerDefines>
-  </PropertyGroup>
-
-  <Choose>
-    <When Condition="'$(EnableFNA)' == 'false'">
-      <ItemGroup>
-        <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-      <ItemGroup Condition="'$(XNAFrameworkOnly)' != 'true'">
-        <Reference Include="Microsoft.Xna.Framework.Game, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Microsoft.Xna.Framework.Graphics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86">
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Microsoft.Xna.Framework.Net, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL">
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Microsoft.Xna.Framework.Storage, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=MSIL">
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-    <When Condition="'$(EnableFNA)' == 'true'">
-      <ItemGroup>
-        <ProjectReference Include="$(FNAPath)\FNA.csproj">
-          <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
-          <Name>FNA</Name>
-        </ProjectReference>
-      </ItemGroup>
-      <ItemGroup>
-        <None Include="$(FNALibsPath)\$(FNAPlatformTarget)\*.dll;$(FNALibsPath)\$(FNAPlatformTarget)\*.pdb" Condition="'$(OutputType)' != 'Library'">
-          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </None>
-      </ItemGroup>
-    </When>
-  </Choose>  
+  <ItemGroup>
+    <ProjectReference Include="$(FNAPath)\FNA.csproj">
+      <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
+      <Name>FNA</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(FNALibsPath)\$(FNAPlatformTarget)\*.dll;$(FNALibsPath)\$(FNAPlatformTarget)\*.pdb" Condition="'$(OutputType)' != 'Library'">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
 
   <Target Name="ValidateFNAPaths" BeforeTargets="BeforeBuild">
     <Message Text="Configuration: $(Configuration)" />
@@ -142,25 +95,22 @@
     <Message Text="No property overrides found at '$(XNAPropertiesOverridePath)'" Condition="!Exists('$(XNAPropertiesOverridePath)')" />
     <Message Importance="High" Text="Loaded property overrides from '$(XNAPropertiesOverridePath)'" Condition="Exists('$(XNAPropertiesOverridePath)')" />
     <Message Importance="High" Text="Automatic platforms enabled? $(AutoPlatforms)" />
-    <Message Importance="High" Condition="'$(AutoPlatforms)' == 'true'" Text="Automatic platforms selected FNA? $(AutoEnableFNA)" />
-    <Message Importance="High" Text="FNA enabled? $(EnableFNA)" />
-    <Message Importance="High" Condition="'$(EnableFNA)' == 'false'" Text="Automatically forcing x86 for XNA." />
-    <Message Importance="High" Condition="'$(EnableFNA)' == 'true'" Text="FNA path: '$(FNAPath)'" />
+    <Message Importance="High" Text="FNA path: '$(FNAPath)'" />
     <Message Importance="High" Condition="'$(FNAPathWasAutoselected)' == 'true'" Text="FNA path was auto-selected" />
-    <Message Importance="High" Condition="'$(EnableFNA)' == 'true'" Text="FNAlibs path: '$(FNALibsPath)'" />
+    <Message Importance="High" Text="FNAlibs path: '$(FNALibsPath)'" />
     <Message Importance="High" Condition="'$(FNALibsPathWasAutoselected)' == 'true'" Text="FNALibs path was auto-selected" />
     <Message Importance="High" Text="testparse.exe path: '$(TestParsePath)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader compiler path: '$(ShaderCompilerPath)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader directory: '$(ShaderDirectory)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader output directory: '$(ShaderLocalBinDirectory)'" />
     <Message Importance="High" Condition="'$(ShaderDirectory)' != ''" Text="Shader optimization level: $(ShaderOptimizationLevel)" />
-    <Message Importance="High" Condition="'$(EnableFNA)' == 'true'" Text="Copying FNALibs from '$(FNALibsPath)\$(PlatformTarget)\*.dll'." />
+    <Message Importance="High" Text="Copying FNALibs from '$(FNALibsPath)\$(PlatformTarget)\*.dll'." />
     <Message Text="ParallelShaderCompile: '$(ParallelShaderCompile)'" />
     <Message Text="GenerateShaderDisassembly: '$(GenerateShaderDisassembly)'" />
     <Message Importance="High" Text="Shader compiler mode switches: '$(ShaderCompilerModeSwitches)'" />
 
-    <Error Text="EnableFNA is set and FNAPath could not be automatically detected after searching nearby folders." Condition=" ('$(FNAPath)' == '') And ('$(EnableFNA)' == 'true') " />
-    <Error Text="FNA3D.dll could not be found in the configured FNALibsPath\FNAPlatformTarget: '$(FNALibsPath)\$(FNAPlatformTarget)\FNA3D.dll'." Condition=" ('$(EnableFNA)' == 'true') And !Exists('$(FNALibsPath)\$(FNAPlatformTarget)\FNA3D.dll') " />
+    <Error Text="FNAPath could not be automatically detected after searching nearby folders." Condition="('$(FNAPath)' == '')" />
+    <Error Text="FNA3D.dll could not be found in the configured FNALibsPath\FNAPlatformTarget: '$(FNALibsPath)\$(FNAPlatformTarget)\FNA3D.dll'." Condition="!Exists('$(FNALibsPath)\$(FNAPlatformTarget)\FNA3D.dll')" />
 
     <Error Text="FNALibsPath '$(FNALibsPath)' does not exist or is not set" Condition=" !Exists('$(FNALibsPath)') And ('$(EnableFNA)' == 'true') " />
   </Target>
