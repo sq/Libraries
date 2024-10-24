@@ -176,11 +176,12 @@ namespace Squared.Render.Text {
                                     Message = "Unexpected ;"
                                 });
                         } else {
-                            result.Add(new RichProperty {
+                            var property = new RichProperty {
                                 Offset = i,
                                 Key = text.Substring(keyStart, keyEnd.Value - keyStart),
                                 Value = text.Substring(valueStart.Value, i - valueStart.Value),
-                            });
+                            };
+                            result.Add(property);
                             keyStart = i + 1;
                             keyEnd = valueStart = null;
                         }
@@ -686,7 +687,9 @@ namespace Squared.Render.Text {
                 Color? result;
                 if (NamedColor.TryParse(text, out Color named))
                     result = named;
-                else
+                else if (pSRGBColor.TryParse(text, out pSRGBColor pSRGB, null)) {
+                    result = ColorMode == ColorConversionMode.LinearToSRGB ? pSRGB.ToColor() : pSRGB.ToLinearColor();
+                } else 
                     result = null;
                 return AutoConvert(result);
             }
@@ -984,7 +987,7 @@ namespace Squared.Render.Text {
             AppendPlainRange(ref layoutEngine, state.GlyphSource ?? state.DefaultGlyphSource, text, currentRangeStart, count, false);
         }
 
-        private void ApplyStyleProperty (ref TLayoutEngine layoutEngine, ref RichTextLayoutState state, ref DenseList<RichParseError> parseErrors, RichProperty rule) {
+        public void ApplyStyleProperty (ref TLayoutEngine layoutEngine, ref RichTextLayoutState state, ref DenseList<RichParseError> parseErrors, RichProperty rule) {
             var value = rule.Value;
             PropertyNameTable.TryGetValue(rule.Key, out var ruleId);
 

@@ -554,7 +554,7 @@ namespace Squared.Util.Text {
             public static Pointer operator - (Pointer lhs, int delta) => new Pointer(lhs.String, lhs.Offset - delta);
         }
 
-        public static readonly AbstractString Empty;
+        public static readonly AbstractString Empty = new AbstractString(string.Empty);
 
         // NOTE: We seed all these hash providers to 0 to ensure we get the same hash no matter what thread we're on
         private static readonly ThreadLocal<XXHash32> HashProvider = new ThreadLocal<XXHash32>(() => new XXHash32(0));
@@ -942,6 +942,20 @@ namespace Squared.Util.Text {
             return -1;
         }
 
+        public int IndexOfAny (char[] chars) {
+            if (String != null)
+                return String.IndexOfAny(chars, SubstringOffset, Length) - SubstringOffset;
+
+            for (int i = 0, l = Length; i < l; i++) {
+                // FIXME: Optimize this
+                foreach (var ch in chars)
+                    if (this[i] == ch)
+                        return i;
+            }
+
+            return -1;
+        }
+
         public int IndexOf (string s) {
             if (string.IsNullOrEmpty(s))
                 return 0;
@@ -978,12 +992,72 @@ namespace Squared.Util.Text {
             return true;
         }
 
+        public bool EndsWith (char c) {
+            if (this.Length == 0)
+                return false;
+            return this[this.Length - 1] == c;
+        }
+
         public bool Contains (string s) {
             return IndexOf(s) > -1;
         }
 
         public bool Contains (char ch) {
             return IndexOf(ch) > -1;
+        }
+
+        public AbstractString Trim () {
+            int j = Length - 1;
+            int i = 0;
+            for (i = 0; i < Length && char.IsWhiteSpace(this[i]); i++)
+                ;
+            j = Length - 1;
+            while (j >= i && char.IsWhiteSpace(this[j]))
+                j--;
+            var c = j - i + 1;
+            if (c <= 0)
+                return Empty;
+            return Substring(i, c);
+        }
+
+        public void Split (string separator, ref DenseList<AbstractString> result, bool removeEmptyEntries = false) {
+            var remainder = this;
+            while (remainder.Length > 0) {
+                var offset = remainder.IndexOf(separator);
+                var item = remainder.Substring(0, offset);
+                if (!removeEmptyEntries || item.Length > 1)
+                    result.Add(item);
+                if (offset < 0)
+                    break;
+                else
+                    remainder = remainder.Substring(offset + 1);
+            }
+        }
+
+        public DenseList<AbstractString> Split (string separator, bool removeEmptyEntries = false) {
+            var result = new DenseList<AbstractString>();
+            Split(separator, ref result, removeEmptyEntries);
+            return result;
+        }
+
+        public void Split (char[] separators, ref DenseList<AbstractString> result, bool removeEmptyEntries = false) {
+            var remainder = this;
+            while (remainder.Length > 0) {
+                var offset = remainder.IndexOfAny(separators);
+                var item = remainder.Substring(0, offset);
+                if (!removeEmptyEntries || item.Length > 1)
+                    result.Add(item);
+                if (offset < 0)
+                    break;
+                else
+                    remainder = remainder.Substring(offset + 1);
+            }
+        }
+
+        public DenseList<AbstractString> Split (char[] separators, bool removeEmptyEntries = false) {
+            var result = new DenseList<AbstractString>();
+            Split(separators, ref result, removeEmptyEntries);
+            return result;
         }
 
         public AbstractString Substring (int start) => Substring(start, Length - start);

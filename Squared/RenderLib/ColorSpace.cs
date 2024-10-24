@@ -642,6 +642,7 @@ namespace Squared.Render {
             return $"{{{Math.Round(v4.X, digits, MidpointRounding.AwayFromZero)}, {Math.Round(v4.Y, digits, MidpointRounding.AwayFromZero)}, {Math.Round(v4.Z, digits, MidpointRounding.AwayFromZero)}, {Math.Round(v4.W, digits, MidpointRounding.AwayFromZero)}}}";
         }
 
+        // HACK: This exists for ParameterEditor. Don't change its signature!
         public static bool TryParse (string text, out object result) {
             if (TryParse(text, out pSRGBColor _result)) {
                 result = _result;
@@ -652,26 +653,26 @@ namespace Squared.Render {
             return false;
         }
 
-        public static bool TryParse (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
-            if (TryParseHex(text, out result, formatProvider))
+        public static bool TryParse (AbstractString text, out pSRGBColor result, IFormatProvider formatProvider = null) {
+            if (TryParseCSS(text, out result))
                 return true;
-            if (TryParseCSS(text, out result, formatProvider))
-                return true;
-            if (TryParseNumeric(text, out result, formatProvider))
+            if (TryParseNumeric(text, out result))
                 return true;
             if (NamedColor.TryParse(text, out Color namedColor)) {
                 result = new pSRGBColor(namedColor, true);
                 return true;
             }
+            if (TryParseHex(text, out result, formatProvider))
+                return true;
             result = default;
             return false;
         }
 
-        private static bool TryParseHex (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
+        private static bool TryParseHex (AbstractString text, out pSRGBColor result, IFormatProvider formatProvider = null) {
             // FIXME: rgb(), rgba(), hsl(), hsla()
 
             result = default;
-            if (!text.StartsWith("#"))
+            if (!text.StartsWith('#'))
                 return false;
 
             string r, g, b;
@@ -683,9 +684,9 @@ namespace Squared.Render {
                 b = new string(text[3], 2);
             } else if (text.Length == 7) {
                 // #aabbcc
-                r = text.Substring(1, 2);
-                g = text.Substring(3, 2);
-                b = text.Substring(5, 2);
+                r = text.Substring(1, 2).ToString();
+                g = text.Substring(3, 2).ToString();
+                b = text.Substring(5, 2).ToString();
             } else
                 return false;
 
@@ -700,38 +701,38 @@ namespace Squared.Render {
             return true;
         }
 
-        private static bool TryParseNumeric (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
+        private static bool TryParseNumeric (AbstractString text, out pSRGBColor result) {
             result = default;
-            if (string.IsNullOrWhiteSpace(text))
+            if (text.IsNullOrWhiteSpace)
                 return false;
             int o1 = 0, o2 = 0;
             text = text.Trim();
-            if (text.StartsWith("{"))
+            if (text.StartsWith('{'))
                 o1 += 1;
-            if (text.EndsWith("}"))
+            if (text.EndsWith('}'))
                 o2 += 1;
             text = text.Substring(o1, text.Length - o1 - o2).Trim();
-            if (string.IsNullOrWhiteSpace(text))
+            if (text.IsNullOrWhiteSpace)
                 return false;
-            var values = text.Split(',');
-            if ((values.Length < 3) || (values.Length > 4))
+            var values = text.Split(",");
+            if ((values.Count < 3) || (values.Count > 4))
                 return false;
-            if (!float.TryParse(values[0], NumberStyles.Float, formatProvider ?? CultureInfo.InvariantCulture, out float r))
+            if (!values[0].Trim().TryParse(out float r))
                 return false;
-            if (!float.TryParse(values[1], NumberStyles.Float, formatProvider ?? CultureInfo.InvariantCulture, out float g))
+            if (!values[1].Trim().TryParse(out float g))
                 return false;
-            if (!float.TryParse(values[2], NumberStyles.Float, formatProvider ?? CultureInfo.InvariantCulture, out float b))
+            if (!values[2].Trim().TryParse(out float b))
                 return false;
 
             float a = 1;
             bool isPremultiplied = true;
-            if (values.Length > 3) {
+            if (values.Count > 3) {
                 var v3 = values[3].Trim();
-                if (v3.StartsWith("*")) {
+                if (v3.StartsWith('*')) {
                     isPremultiplied = false;
                     v3 = v3.Substring(1);
                 }
-                if (!float.TryParse(v3, NumberStyles.Float, formatProvider ?? CultureInfo.InvariantCulture, out a))
+                if (!v3.TryParse(out a))
                     return false;
             }
 
@@ -739,64 +740,59 @@ namespace Squared.Render {
             return true;
         }
 
-        private static bool TryParseCSSFloat (string value, IFormatProvider formatProvider, out float result, float scale = 1.0f) {
-            formatProvider ??= CultureInfo.InvariantCulture;
-            if (value.EndsWith("%")) {
-                if (float.TryParse(value.Substring(0, value.Length - 1), NumberStyles.Float, formatProvider, out result)) {
+        private static bool TryParseCSSFloat (AbstractString value, out float result, float scale = 1.0f) {
+            if (value.EndsWith('%')) {
+                if (value.Substring(0, value.Length - 1).TryParse(out result)) {
                     result = result * scale / 100.0f;
                     return true;
                 }
             }
-            return float.TryParse(value, NumberStyles.Float, formatProvider, out result);
+            return value.TryParse(out result);
         }
 
-        private static bool TryParseCSS (string text, out pSRGBColor result, IFormatProvider formatProvider = null) {
+        private static bool TryParseCSS (AbstractString text, out pSRGBColor result) {
             result = default;
-            text = text?.Trim();
-            if (string.IsNullOrWhiteSpace(text))
+            text = text.Trim();
+            if (text.IsNullOrWhiteSpace)
                 return false;
             var openParen = text.IndexOf('(');
             if (openParen < 0)
                 return false;
-            if (!text.EndsWith(")"))
+            if (!text.EndsWith(')'))
                 return false;
 
             var mode = text.Substring(0, openParen);
             text = text.Substring(openParen + 1, text.Length - openParen - 2).Trim();
-            if (string.IsNullOrWhiteSpace(text))
+            if (text.IsNullOrWhiteSpace)
                 return false;
 
-            var values = text.Split([',', ' '], StringSplitOptions.RemoveEmptyEntries);
+            var values = text.Split([',', ' '], true);
             float scale = (mode == "rgb") ? 255 : 1.0f;
-            if ((values.Length < 3) || (values.Length > 4))
+            if ((values.Count < 3) || (values.Count > 4))
                 return false;
-            if (!TryParseCSSFloat(values[0].Trim(), formatProvider ?? CultureInfo.InvariantCulture, out float r, scale))
+            if (!TryParseCSSFloat(values[0].Trim(), out float r, scale))
                 return false;
-            if (!TryParseCSSFloat(values[1].Trim(), formatProvider ?? CultureInfo.InvariantCulture, out float g, scale))
+            if (!TryParseCSSFloat(values[1].Trim(), out float g, scale))
                 return false;
-            if (!TryParseCSSFloat(values[2].Trim(), formatProvider ?? CultureInfo.InvariantCulture, out float b, scale))
+            if (!TryParseCSSFloat(values[2].Trim(), out float b, scale))
                 return false;
 
             float a;
-            if ((values.Length <= 3) || !TryParseCSSFloat(values[3].Trim(), formatProvider ?? CultureInfo.InvariantCulture, out a))
+            if ((values.Count <= 3) || !TryParseCSSFloat(values[3].Trim(), out a))
                 a = 1.0f;
 
-            switch (mode) {
-                case "rgb":
-                    result = new pSRGBColor(r / 255.0f, g / 255.0f, b / 255.0f, a);
-                    return true;
-                case "oklab":
-                    result = pSRGBColor.FromOkLab(r, g, b, a);
-                    return true;
-                case "oklch":
-                    result = pSRGBColor.FromOkLCh(r, g, b, a);
-                    return true;
-                case "hsl":
-                    result = pSRGBColor.FromOkLCh(b, g, r / 360.0f, a);
-                    return true;
-            }
+            if (mode.TextEquals("rgb"))
+                result = new pSRGBColor(r / 255.0f, g / 255.0f, b / 255.0f, a);
+            else if (mode.TextEquals("oklab"))
+                result = FromOkLab(r, g, b, a);
+            else if (mode.TextEquals("oklch"))
+                result = FromOkLCh(r, g, b, a);
+            else if (mode.TextEquals("hsl"))
+                result = FromOkLCh(b, g, r / 360.0f, a);
+            else
+                return false;
 
-            return false;
+            return true;
         }
 
         public int CompareTo (pSRGBColor other) {
