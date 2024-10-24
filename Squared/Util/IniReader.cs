@@ -29,9 +29,9 @@ namespace Squared.Util.Ini {
         public IniLineType Type;
         public int Index;
         public AbstractString SectionName;
-        public string Key;
-        public string Value;
-        public string Comment;
+        public AbstractString Key;
+        public AbstractString Value;
+        public AbstractString Comment;
     }
 
     public class IniReader : IDisposable, IEnumerable<IniLine>, IEnumerator<IniLine> {
@@ -96,7 +96,7 @@ namespace Squared.Util.Ini {
                 _Current = new IniLine {
                     Index = index,
                     Type = IniLineType.Comment,
-                    Comment = line.Substring(1).ToString(),
+                    Comment = line.Substring(1),
                     SectionName = SectionName,
                 };
                 return true;
@@ -119,7 +119,7 @@ namespace Squared.Util.Ini {
                 return true;
             }
 
-            AbstractString comment = AbstractString.Empty;
+            var comment = AbstractString.Empty;
 
             var equalsLocation = line.IndexOf('=');
             if (equalsLocation <= 0) {
@@ -128,7 +128,7 @@ namespace Squared.Util.Ini {
                     Type = IniLineType.Error,
                     Value = "Missing key or =",
                     SectionName = SectionName,
-                    Comment = comment.ToString()
+                    Comment = comment
                 };
                 return true;
             }
@@ -145,7 +145,7 @@ namespace Squared.Util.Ini {
                         Type = IniLineType.Error,
                         Value = "End of file encountered after \\ line extender",
                         SectionName = SectionName,
-                        Comment = comment.ToString(),
+                        Comment = comment,
                     };
                     return true;
                 }
@@ -203,7 +203,7 @@ namespace Squared.Util.Ini {
                     Type = IniLineType.Error,
                     Value = "Unterminated double-quoted string",
                     SectionName = SectionName,
-                    Comment = comment.ToString(),
+                    Comment = comment,
                 };
                 return true;
             }
@@ -214,7 +214,7 @@ namespace Squared.Util.Ini {
                 Key = key.ToString(),
                 Value = value.ToString(),
                 SectionName = SectionName,
-                Comment = comment.ToString(),
+                Comment = comment,
             };
             return true;
         }
