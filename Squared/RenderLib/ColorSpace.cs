@@ -676,26 +676,27 @@ namespace Squared.Render {
             if (!text.StartsWith('#'))
                 return false;
 
-            string r, g, b;
+            AbstractString r, g, b;
 
             if (text.Length == 4) {
                 // #abc
+                // FIXME: Remove allocation somehow
                 r = new string(text[1], 2);
                 g = new string(text[2], 2);
                 b = new string(text[3], 2);
             } else if (text.Length == 7) {
                 // #aabbcc
-                r = text.Substring(1, 2).ToString();
-                g = text.Substring(3, 2).ToString();
-                b = text.Substring(5, 2).ToString();
+                r = text.Substring(1, 2);
+                g = text.Substring(3, 2);
+                b = text.Substring(5, 2);
             } else
                 return false;
 
-            if (!int.TryParse(r, NumberStyles.HexNumber, formatProvider, out int _r))
+            if (!r.TryParse(out int _r, @base: 16))
                 return false;
-            if (!int.TryParse(g, NumberStyles.HexNumber, formatProvider, out int _g))
+            if (!g.TryParse(out int _g, @base: 16))
                 return false;
-            if (!int.TryParse(b, NumberStyles.HexNumber, formatProvider, out int _b))
+            if (!b.TryParse(out int _b, @base: 16))
                 return false;
 
             result = new pSRGBColor(_r, _g, _b, 255, true);
