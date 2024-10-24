@@ -1106,6 +1106,42 @@ namespace Squared.Util.Text {
             return ok;
         }
 
+        public unsafe bool TryParse (out int result, int offset = 0, uint @base = 0) {
+            var ptr = new Pointer(this, offset);
+            fixed (sbyte * pTable = IntScan.table) {
+                result = unchecked((int)IntScan.__intscan(ref ptr, @base, 1, (UInt64)Int32.MinValue, (byte*)pTable, out _, out var ok));
+                return ok;
+            }
+        }
+
+        public unsafe bool TryParse (out long result, int offset = 0, uint @base = 0) {
+            var ptr = new Pointer(this, offset);
+            fixed (sbyte * pTable = IntScan.table) {
+                result = unchecked((int)IntScan.__intscan(ref ptr, @base, 1, (UInt64)Int64.MinValue, (byte*)pTable, out _, out var ok));
+                return ok;
+            }
+        }
+
+        public unsafe bool TryParse (out uint result, int offset = 0, uint @base = 0) {
+            var ptr = new Pointer(this, offset);
+            fixed (sbyte * pTable = IntScan.table) {
+                result = unchecked((uint)IntScan.__intscan(ref ptr, @base, 1, UInt32.MaxValue, (byte*)pTable, out int neg, out var ok));
+                if (neg != 0)
+                    ok = false;
+                return ok;
+            }
+        }
+
+        public unsafe bool TryParse (out ulong result, int offset = 0, uint @base = 0) {
+            var ptr = new Pointer(this, offset);
+            fixed (sbyte * pTable = IntScan.table) {
+                result = unchecked(IntScan.__intscan(ref ptr, @base, 1, UInt64.MinValue, (byte*)pTable, out int neg, out var ok));
+                if (neg != 0)
+                    ok = false;
+                return ok;
+            }
+        }
+
         public bool TryParse (out bool result, int offset = 0) {
             var substring = Substring(offset);
             if (substring.TextEquals("true", StringComparison.OrdinalIgnoreCase))

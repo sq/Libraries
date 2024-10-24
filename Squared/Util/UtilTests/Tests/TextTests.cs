@@ -84,143 +84,143 @@ namespace Squared.Util {
         }
 
         // Test cases from RealParserTestsBase.cs in dotnet/runtime
-        public static readonly ValueTuple<string, ulong>[] FloatInlineData = new[] {
-        new ValueTuple<string, ulong>("0.0", 0x00000000),
-        // Verify small and large exactly representable integers:
-        new ValueTuple<string, ulong>("1", 0x3f800000),
-        new ValueTuple<string, ulong>("2", 0x40000000),
-        new ValueTuple<string, ulong>("3", 0x40400000),
-        new ValueTuple<string, ulong>("4", 0x40800000),
-        new ValueTuple<string, ulong>("5", 0x40A00000),
-        new ValueTuple<string, ulong>("6", 0x40C00000),
-        new ValueTuple<string, ulong>("7", 0x40E00000),
-        new ValueTuple<string, ulong>("8", 0x41000000),
-        new ValueTuple<string, ulong>("16777208", 0x4b7ffff8),
-        new ValueTuple<string, ulong>("16777209", 0x4b7ffff9),
-        new ValueTuple<string, ulong>("16777210", 0x4b7ffffa),
-        new ValueTuple<string, ulong>("16777211", 0x4b7ffffb),
-        new ValueTuple<string, ulong>("16777212", 0x4b7ffffc),
-        new ValueTuple<string, ulong>("16777213", 0x4b7ffffd),
-        new ValueTuple<string, ulong>("16777214", 0x4b7ffffe),
-        new ValueTuple<string, ulong>("16777215", 0x4b7fffff), // 2^24 - 1
-        // Verify the smallest and largest denormal values:
-        new ValueTuple<string, ulong>("1.4012984643248170e-45", 0x00000001),
-        new ValueTuple<string, ulong>("2.8025969286496340e-45", 0x00000002),
-        new ValueTuple<string, ulong>("4.2038953929744510e-45", 0x00000003),
-        new ValueTuple<string, ulong>("5.6051938572992680e-45", 0x00000004),
-        new ValueTuple<string, ulong>("7.0064923216240850e-45", 0x00000005),
-        new ValueTuple<string, ulong>("8.4077907859489020e-45", 0x00000006),
-        new ValueTuple<string, ulong>("9.8090892502737200e-45", 0x00000007),
-        new ValueTuple<string, ulong>("1.1210387714598537e-44", 0x00000008),
-        new ValueTuple<string, ulong>("1.2611686178923354e-44", 0x00000009),
-        new ValueTuple<string, ulong>("1.4012984643248170e-44", 0x0000000a),
-        new ValueTuple<string, ulong>("1.5414283107572988e-44", 0x0000000b),
-        new ValueTuple<string, ulong>("1.6815581571897805e-44", 0x0000000c),
-        new ValueTuple<string, ulong>("1.8216880036222622e-44", 0x0000000d),
-        new ValueTuple<string, ulong>("1.9618178500547440e-44", 0x0000000e),
-        new ValueTuple<string, ulong>("2.1019476964872256e-44", 0x0000000f),
-        new ValueTuple<string, ulong>("1.1754921087447446e-38", 0x007ffff0),
-        new ValueTuple<string, ulong>("1.1754922488745910e-38", 0x007ffff1),
-        new ValueTuple<string, ulong>("1.1754923890044375e-38", 0x007ffff2),
-        new ValueTuple<string, ulong>("1.1754925291342839e-38", 0x007ffff3),
-        new ValueTuple<string, ulong>("1.1754926692641303e-38", 0x007ffff4),
-        new ValueTuple<string, ulong>("1.1754928093939768e-38", 0x007ffff5),
-        new ValueTuple<string, ulong>("1.1754929495238232e-38", 0x007ffff6),
-        new ValueTuple<string, ulong>("1.1754930896536696e-38", 0x007ffff7),
-        new ValueTuple<string, ulong>("1.1754932297835160e-38", 0x007ffff8),
-        new ValueTuple<string, ulong>("1.1754933699133625e-38", 0x007ffff9),
-        new ValueTuple<string, ulong>("1.1754935100432089e-38", 0x007ffffa),
-        new ValueTuple<string, ulong>("1.1754936501730553e-38", 0x007ffffb),
-        new ValueTuple<string, ulong>("1.1754937903029018e-38", 0x007ffffc),
-        new ValueTuple<string, ulong>("1.1754939304327482e-38", 0x007ffffd),
-        new ValueTuple<string, ulong>("1.1754940705625946e-38", 0x007ffffe),
-        new ValueTuple<string, ulong>("1.1754942106924411e-38", 0x007fffff),
-        // This number is exactly representable and should not be rounded in any
-        // mode:
-        // 0.1111111111111111111111100
-        //                          ^
-        new ValueTuple<string, ulong>("0.99999988079071044921875", 0x3f7ffffe),
-        // This number is below the halfway point between two representable values
-        // so it should round down in nearest mode:
-        // 0.11111111111111111111111001
-        //                          ^
-        new ValueTuple<string, ulong>("0.99999989569187164306640625", 0x3f7ffffe),
-        // This number is exactly halfway between two representable values, so it
-        // should round to even in nearest mode:
-        // 0.1111111111111111111111101
-        //                          ^
-        new ValueTuple<string, ulong>("0.9999999105930328369140625", 0x3f7ffffe),
-        // This number is above the halfway point between two representable values
-        // so it should round up in nearest mode:
-        // 0.11111111111111111111111011
-        //                          ^
-        new ValueTuple<string, ulong>("0.99999992549419403076171875", 0x3f7fffff),
-        // This is the exact string for the largest denormal value and contains
-        // the most significant digits of any single-precision floating-point value
-        new ValueTuple<string, ulong>("1.175494210692441075487029444849287348827052428745893333857174530571" +
-                    "588870475618904265502351336181163787841796875e-38", 0x007FFFFF),
-        new ValueTuple<string, ulong>("0.000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000020000000000000000000000000000000000000002000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000020000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000040000", 0x00000000),
-        new ValueTuple<string, ulong>("00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000020000000000000000000000000000000000000002000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000020000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000000000000000000000000000000000000000000000000" +
-                    "00000000000000000000000040000", 0x7F800000),
-                    new ValueTuple<string, ulong>("-0", 0x80000000u),
-                    new ValueTuple<string, ulong>("-0.0", 0x80000000u),
-                    new ValueTuple<string, ulong>("-infinity", 0xFF800000u),
-                    new ValueTuple<string, ulong>("-iNfInItY", 0xFF800000u),
-                    new ValueTuple<string, ulong>("-INFINITY", 0xFF800000u),
-                    new ValueTuple<string, ulong>("infinity", 0x7F800000),
-                    new ValueTuple<string, ulong>("InFiNiTy", 0x7F800000),
-                    new ValueTuple<string, ulong>("INFINITY", 0x7F800000),
-                    new ValueTuple<string, ulong>("+infinity", 0x7F800000),
-                    new ValueTuple<string, ulong>("+InFiNiTy", 0x7F800000),
-                    new ValueTuple<string, ulong>("+INFINITY", 0x7F800000),
-                    new ValueTuple<string, ulong>("-nan", 0xFFC00000u),
-                    new ValueTuple<string, ulong>("-nAn", 0xFFC00000u),
-                    new ValueTuple<string, ulong>("-NAN", 0xFFC00000u),
-                    new ValueTuple<string, ulong>("nan", 0xFFC00000u),
-                    new ValueTuple<string, ulong>("Nan", 0xFFC00000u),
-                    new ValueTuple<string, ulong>("NAN", 0xFFC00000u),
-                    new ValueTuple<string, ulong>("+nan", 0xFFC00000u),
-                    new ValueTuple<string, ulong>("+NaN", 0xFFC00000u),
-                    new ValueTuple<string, ulong>("+NAN", 0xFFC00000u),
+        public static readonly ValueTuple<string, ulong>[] FloatInlineData = new (string text, ulong expected)[] {
+            new("0.0", 0x00000000),
+            // Verify small and large exactly representable integers:
+            new("1", 0x3f800000),
+            new("2", 0x40000000),
+            new("3", 0x40400000),
+            new("4", 0x40800000),
+            new("5", 0x40A00000),
+            new("6", 0x40C00000),
+            new("7", 0x40E00000),
+            new("8", 0x41000000),
+            new("16777208", 0x4b7ffff8),
+            new("16777209", 0x4b7ffff9),
+            new("16777210", 0x4b7ffffa),
+            new("16777211", 0x4b7ffffb),
+            new("16777212", 0x4b7ffffc),
+            new("16777213", 0x4b7ffffd),
+            new("16777214", 0x4b7ffffe),
+            new("16777215", 0x4b7fffff), // 2^24 - 1
+            // Verify the smallest and largest denormal values:
+            new("1.4012984643248170e-45", 0x00000001),
+            new("2.8025969286496340e-45", 0x00000002),
+            new("4.2038953929744510e-45", 0x00000003),
+            new("5.6051938572992680e-45", 0x00000004),
+            new("7.0064923216240850e-45", 0x00000005),
+            new("8.4077907859489020e-45", 0x00000006),
+            new("9.8090892502737200e-45", 0x00000007),
+            new("1.1210387714598537e-44", 0x00000008),
+            new("1.2611686178923354e-44", 0x00000009),
+            new("1.4012984643248170e-44", 0x0000000a),
+            new("1.5414283107572988e-44", 0x0000000b),
+            new("1.6815581571897805e-44", 0x0000000c),
+            new("1.8216880036222622e-44", 0x0000000d),
+            new("1.9618178500547440e-44", 0x0000000e),
+            new("2.1019476964872256e-44", 0x0000000f),
+            new("1.1754921087447446e-38", 0x007ffff0),
+            new("1.1754922488745910e-38", 0x007ffff1),
+            new("1.1754923890044375e-38", 0x007ffff2),
+            new("1.1754925291342839e-38", 0x007ffff3),
+            new("1.1754926692641303e-38", 0x007ffff4),
+            new("1.1754928093939768e-38", 0x007ffff5),
+            new("1.1754929495238232e-38", 0x007ffff6),
+            new("1.1754930896536696e-38", 0x007ffff7),
+            new("1.1754932297835160e-38", 0x007ffff8),
+            new("1.1754933699133625e-38", 0x007ffff9),
+            new("1.1754935100432089e-38", 0x007ffffa),
+            new("1.1754936501730553e-38", 0x007ffffb),
+            new("1.1754937903029018e-38", 0x007ffffc),
+            new("1.1754939304327482e-38", 0x007ffffd),
+            new("1.1754940705625946e-38", 0x007ffffe),
+            new("1.1754942106924411e-38", 0x007fffff),
+            // This number is exactly representable and should not be rounded in any
+            // mode:
+            // 0.1111111111111111111111100
+            //                          ^
+            new("0.99999988079071044921875", 0x3f7ffffe),
+            // This number is below the halfway point between two representable values
+            // so it should round down in nearest mode:
+            // 0.11111111111111111111111001
+            //                          ^
+            new("0.99999989569187164306640625", 0x3f7ffffe),
+            // This number is exactly halfway between two representable values, so it
+            // should round to even in nearest mode:
+            // 0.1111111111111111111111101
+            //                          ^
+            new("0.9999999105930328369140625", 0x3f7ffffe),
+            // This number is above the halfway point between two representable values
+            // so it should round up in nearest mode:
+            // 0.11111111111111111111111011
+            //                          ^
+            new("0.99999992549419403076171875", 0x3f7fffff),
+            // This is the exact string for the largest denormal value and contains
+            // the most significant digits of any single-precision floating-point value
+            new("1.175494210692441075487029444849287348827052428745893333857174530571" +
+                        "588870475618904265502351336181163787841796875e-38", 0x007FFFFF),
+            new("0.000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000020000000000000000000000000000000000000002000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000020000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000040000", 0x00000000),
+            new("00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000020000000000000000000000000000000000000002000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000020000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000000000000000000000000000000000000000000000000" +
+                        "00000000000000000000000040000", 0x7F800000),
+            new("-0", 0x80000000u),
+            new("-0.0", 0x80000000u),
+            new("-infinity", 0xFF800000u),
+            new("-iNfInItY", 0xFF800000u),
+            new("-INFINITY", 0xFF800000u),
+            new("infinity", 0x7F800000),
+            new("InFiNiTy", 0x7F800000),
+            new("INFINITY", 0x7F800000),
+            new("+infinity", 0x7F800000),
+            new("+InFiNiTy", 0x7F800000),
+            new("+INFINITY", 0x7F800000),
+            new("-nan", 0xFFC00000u),
+            new("-nAn", 0xFFC00000u),
+            new("-NAN", 0xFFC00000u),
+            new("nan", 0xFFC00000u),
+            new("Nan", 0xFFC00000u),
+            new("NAN", 0xFFC00000u),
+            new("+nan", 0xFFC00000u),
+            new("+NaN", 0xFFC00000u),
+            new("+NAN", 0xFFC00000u),
         };
 
         [Test]
@@ -350,6 +350,36 @@ namespace Squared.Util {
                     Assert.AreEqual(comparer.GetHashCode(tuple.lhs), comparer.GetHashCode(tuple.rhs), "Expected {0} and {1} to have the same HashCode", tuple.lhs, tuple.rhs);
                 // Testing the inverse (they must have different hashcodes) isn't possible, and wouldn't be true given how we implement GetHashCode
             }
+        }
+
+        // Test cases from RealParserTestsBase.cs in dotnet/runtime
+        public static readonly ValueTuple<string, ulong, bool>[] UlongInlineData = new (string text, ulong expected, bool ok)[] {
+            new("0.0", 0, false),
+            // Verify small and large exactly representable integers:
+            new("1", 1, true),
+            new("2", 2, true),
+            new("3", 0x40400000, true),
+            new("4", 0x40800000, true),
+            new("5", 0x40A00000, true),
+            new("6", 0x40C00000, true),
+            new("7", 0x40E00000, true),
+            new("8", 0x41000000, true),
+            new("16777208", 0x4b7ffff8, true),
+            new("16777209", 0x4b7ffff9, true),
+            new("16777210", 0x4b7ffffa, true),
+            new("16777211", 0x4b7ffffb, true),
+            new("16777212", 0x4b7ffffc, true),
+            new("16777213", 0x4b7ffffd, true),
+            new("16777214", 0x4b7ffffe, true),
+            new("16777215", 0x4b7fffff, true), // 2^24 - 1
+            new ("-0", 0, false),
+        };
+
+        [Test]
+        public void TryParseUlong ([ValueSource("UlongInlineData")] (string text, ulong expected, bool ok) tup) {
+            var astr = new AbstractString(tup.text);
+            Assert.AreEqual(tup.expected, astr.TryParse(out ulong parsed));
+            Assert.AreEqual(tup.ok, parsed);
         }
     }
 }
