@@ -35,13 +35,15 @@ namespace Squared.Render.Resources {
                 foreach (var line in reader) {
                     switch (line.Type) {
                         case IniLineType.Section:
-                            entry = new Entry(line.SectionName);
+                            entry = new Entry(line.SectionName.ToString());
                             Entries.Add(entry);
                             break;
                         case IniLineType.Value:
                             if (!includeFxcParams && line.Key.Equals("FxcParams", StringComparison.OrdinalIgnoreCase))
                                 continue;
-                            entry.Dict[string.Intern(line.Key)] = (line.Value.Length <= 2) ? string.Intern(line.Value) : line.Value;
+                            entry.Dict[string.Intern(line.Key)] = (line.Value.Length <= 2) 
+                                ? string.Intern(line.Value) 
+                                : line.Value;
                             break;
                     }
                 }

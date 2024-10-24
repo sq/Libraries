@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Squared.Util.Text;
 
 namespace Squared.Util.Ini {
     public enum IniLineType {
@@ -27,7 +28,7 @@ namespace Squared.Util.Ini {
     public struct IniLine {
         public IniLineType Type;
         public int Index;
-        public string SectionName;
+        public AbstractString SectionName;
         public string Key;
         public string Value;
         public string Comment;
@@ -36,7 +37,7 @@ namespace Squared.Util.Ini {
     public class IniReader : IDisposable, IEnumerable<IniLine>, IEnumerator<IniLine> {
         private StreamReader Reader;
         private bool OwnsReader;
-        private string SectionName;
+        private AbstractString SectionName;
         private int LinesRead = 0;
         private IniLine _Current;
 
@@ -63,16 +64,25 @@ namespace Squared.Util.Ini {
         static readonly char[] ImportantCharacters = new[] { '\"', ';', '#' };
 
         bool IEnumerator.MoveNext () {
-            var line = Reader.ReadLine();
-            if (line == null) {
-                SectionName = null;
+            var _line = Reader.ReadLine();
+            if (_line == null) {
+                SectionName = AbstractString.Empty;
                 return false;
             }
+
+            var line = new AbstractString(_line);
 
             var index = LinesRead;
             LinesRead++;
 
-            line = line.Replace("\r", "").Trim();
+            if (line.EndsWith('\r'))
+                line = line.Substring(0, line.Length - 1);
+            line = line.Trim();
+            if (line.EndsWith('\r')) {
+                line = line.Substring(0, line.Length - 1);
+                line = line.Trim();
+            }
+
             if (line.Length <= 0) {
                 _Current = new IniLine {
                     Index = index,
@@ -82,51 +92,52 @@ namespace Squared.Util.Ini {
                 return true;
             }
 
-            if (line.StartsWith("#") || line.StartsWith(";")) {
+            if (line.StartsWith('#') || line.StartsWith(';')) {
                 _Current = new IniLine {
                     Index = index,
                     Type = IniLineType.Comment,
-                    Comment = line.Substring(1),
+                    Comment = line.Substring(1).ToString(),
                     SectionName = SectionName,
                 };
                 return true;
             }
 
-            if (line.StartsWith("[")) {
+            if (line.StartsWith('[')) {
                 _Current = new IniLine {
                     Index = index,
                     SectionName = SectionName,
                 };
 
-                if (!line.EndsWith("]")) {
+                if (!line.EndsWith(']')) {
                     _Current.Type = IniLineType.Error;
                     _Current.Value = "Missing ]";
                 } else {
                     _Current.Type = IniLineType.Section;
-                    SectionName = _Current.SectionName = line.Substring(1, line.Length - 2);
+                    SectionName = _Current.SectionName = line.Substring(1, line.Length - 2).ToString();
                 }
 
                 return true;
             }
 
-            string comment = null;
+            AbstractString comment = AbstractString.Empty;
 
-            var equalsLocation = line.IndexOf("=");
+            var equalsLocation = line.IndexOf('=');
             if (equalsLocation <= 0) {
                 _Current = new IniLine {
                     Index = index,
                     Type = IniLineType.Error,
                     Value = "Missing key or =",
                     SectionName = SectionName,
-                    Comment = comment
+                    Comment = comment.ToString()
                 };
                 return true;
             }
 
             var key = line.Substring(0, equalsLocation).Trim();
-            var value = line.Substring(equalsLocation + 1).TrimStart();
+            // FIXME: We want TrimStart here, but the whole line was already trimmed earlier.
+            var value = line.Substring(equalsLocation + 1).Trim();
             var needEndingQuote = value.StartsWith("\"");
-            while (value.EndsWith("\\")) {
+            while (value.EndsWith('\\')) {
                 line = Reader.ReadLine();
                 if (line == null) {
                     _Current = new IniLine {
@@ -134,20 +145,22 @@ namespace Squared.Util.Ini {
                         Type = IniLineType.Error,
                         Value = "End of file encountered after \\ line extender",
                         SectionName = SectionName,
-                        Comment = comment,
+                        Comment = comment.ToString(),
                     };
                     return true;
                 }
-                value += line;
+                value = value.ToString() + line;
             }
-            value = value.TrimEnd();
+            // FIXME: We want TrimEnd here
+            value = value.Trim();
 
             int startsWhere = needEndingQuote ? 1 : 0, endsWhere = value.Length, i = startsWhere;
             var needTrim = !needEndingQuote;
             while ((i < value.Length) && (i >= 0)) {
-                var nextImportantCharacter = value.IndexOfAny(ImportantCharacters, i);
+                var nextImportantCharacter = value.Substring(i).IndexOfAny(ImportantCharacters);
                 if (nextImportantCharacter < 0)
                     break;
+                nextImportantCharacter += i;
 
                 var ch = value[nextImportantCharacter];
                 switch (ch) {
@@ -181,7 +194,8 @@ namespace Squared.Util.Ini {
 
             value = value.Substring(startsWhere, endsWhere - startsWhere);
             if (needTrim)
-                value = value.TrimEnd();
+                // FIXME: Only TrimEnd wanted here
+                value = value.Trim();
 
             if (needEndingQuote) {
                 _Current = new IniLine {
@@ -189,7 +203,7 @@ namespace Squared.Util.Ini {
                     Type = IniLineType.Error,
                     Value = "Unterminated double-quoted string",
                     SectionName = SectionName,
-                    Comment = comment,
+                    Comment = comment.ToString(),
                 };
                 return true;
             }
@@ -197,10 +211,10 @@ namespace Squared.Util.Ini {
             _Current = new IniLine {
                 Index = index,
                 Type = IniLineType.Value,
-                Key = key,
-                Value = value,
+                Key = key.ToString(),
+                Value = value.ToString(),
                 SectionName = SectionName,
-                Comment = comment,
+                Comment = comment.ToString(),
             };
             return true;
         }

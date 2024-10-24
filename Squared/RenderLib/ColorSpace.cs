@@ -643,6 +643,7 @@ namespace Squared.Render {
         }
 
         // HACK: This exists for ParameterEditor. Don't change its signature!
+        [Obsolete("Use the overload which is out pSRGBColor")]
         public static bool TryParse (string text, out object result) {
             if (TryParse(text, out pSRGBColor _result)) {
                 result = _result;
