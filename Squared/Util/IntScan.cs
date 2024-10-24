@@ -76,16 +76,11 @@ namespace Squared.Util {
 					y = y*10 + (c-'0');
 				if (c-'0'>=10U) goto done;
 			} else if ((@base & @base-1) == 0) {
-				// FIXME
-				ok = false;
-				return 0;
-				/*
-				char bs = "\0\1\2\4\7\3\6\5"[(0x17*@base)>>5&7];
-				for (x=0; val[c]<@base && x<=UINT_MAX/32; c=shgetc(f))
+				char bs = "\0\x01\x02\x04\x07\x03\x06\x05"[unchecked((int)((0x17*@base)>>5&7))];
+				for (x=0; val[c]<@base && x<=UInt32.MaxValue/32; f = f.Next(out c))
 					x = x<<bs | val[c];
-				for (y=x; val[c]<@base && y<=ULLONG_MAX>>bs; c=shgetc(f))
+				for (y=x; val[c]<@base && y<=UInt64.MaxValue>>bs; f = f.Next(out c))
 					y = y<<bs | val[c];
-				*/
 			} else {
 				for (x=0; val[c]<@base && x<=UInt32.MaxValue/36-1; f = f.Next(out c))
 					x = x*@base + val[c];

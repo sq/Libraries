@@ -1117,7 +1117,7 @@ namespace Squared.Util.Text {
         public unsafe bool TryParse (out long result, int offset = 0, uint @base = 0) {
             var ptr = new Pointer(this, offset);
             fixed (sbyte * pTable = IntScan.table) {
-                result = unchecked((int)IntScan.__intscan(ref ptr, @base, 1, (UInt64)Int64.MinValue, (byte*)pTable, out _, out var ok));
+                result = unchecked((long)IntScan.__intscan(ref ptr, @base, 1, (UInt64)Int64.MinValue, (byte*)pTable, out _, out var ok));
                 return ok;
             }
         }
@@ -1135,7 +1135,7 @@ namespace Squared.Util.Text {
         public unsafe bool TryParse (out ulong result, int offset = 0, uint @base = 0) {
             var ptr = new Pointer(this, offset);
             fixed (sbyte * pTable = IntScan.table) {
-                result = unchecked(IntScan.__intscan(ref ptr, @base, 1, UInt64.MinValue, (byte*)pTable, out int neg, out var ok));
+                result = unchecked(IntScan.__intscan(ref ptr, @base, 1, UInt64.MaxValue, (byte*)pTable, out int neg, out var ok));
                 if (neg != 0)
                     ok = false;
                 return ok;

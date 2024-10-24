@@ -352,34 +352,90 @@ namespace Squared.Util {
             }
         }
 
-        // Test cases from RealParserTestsBase.cs in dotnet/runtime
         public static readonly ValueTuple<string, ulong, bool>[] UlongInlineData = new (string text, ulong expected, bool ok)[] {
-            new("0.0", 0, false),
-            // Verify small and large exactly representable integers:
+            // FIXME: Reject this
+            new("0.0", 0, true),
+            new("0", 0, true),
             new("1", 1, true),
             new("2", 2, true),
-            new("3", 0x40400000, true),
-            new("4", 0x40800000, true),
-            new("5", 0x40A00000, true),
-            new("6", 0x40C00000, true),
-            new("7", 0x40E00000, true),
-            new("8", 0x41000000, true),
-            new("16777208", 0x4b7ffff8, true),
-            new("16777209", 0x4b7ffff9, true),
-            new("16777210", 0x4b7ffffa, true),
-            new("16777211", 0x4b7ffffb, true),
-            new("16777212", 0x4b7ffffc, true),
-            new("16777213", 0x4b7ffffd, true),
-            new("16777214", 0x4b7ffffe, true),
-            new("16777215", 0x4b7fffff, true), // 2^24 - 1
-            new ("-0", 0, false),
+            new("3", 3, true),
+            new("4", 4, true),
+            new("5", 5, true),
+            new("6", 6, true),
+            new("7", 7, true),
+            new("8", 8, true),
+            new("9", 9, true),
+            new("16777208", 16777208, true),
+            new("16777209", 16777209, true),
+            new("16777210", 16777210, true),
+            new("16777211", 16777211, true),
+            new("16777212", 16777212, true),
+            new("16777213", 16777213, true),
+            new("16777214", 16777214, true),
+            new("16777215", 16777215, true), // 2^24 - 1
+            new(UInt32.MaxValue.ToString(), UInt32.MaxValue, true),
+            new(UInt64.MaxValue.ToString(), UInt64.MaxValue, true),
+            new("-0", unchecked((ulong)-0), false),
+            new("-1", unchecked((ulong)-1), false),
+            new("-2", unchecked((ulong)-2), false),
+            new("-3", unchecked((ulong)-3), false),
+            new("-4", unchecked((ulong)-4), false),
+            new("-5", unchecked((ulong)-5), false),
+            new("-6", unchecked((ulong)-6), false),
+            new("-7", unchecked((ulong)-7), false),
+            new("-8", unchecked((ulong)-8), false),
+            new("-9", unchecked((ulong)-9), false),
         };
 
         [Test]
         public void TryParseUlong ([ValueSource("UlongInlineData")] (string text, ulong expected, bool ok) tup) {
             var astr = new AbstractString(tup.text);
-            Assert.AreEqual(tup.expected, astr.TryParse(out ulong parsed));
-            Assert.AreEqual(tup.ok, parsed);
+            Assert.AreEqual(tup.ok, astr.TryParse(out ulong parsed));
+            Assert.AreEqual(tup.expected, parsed);
+        }
+
+        public static readonly ValueTuple<string, long, bool>[] LongInlineData = new (string text, long expected, bool ok)[] {
+            // FIXME: Reject this
+            new("0.0", 0, true),
+            new("0", 0, true),
+            new("1", 1, true),
+            new("2", 2, true),
+            new("3", 3, true),
+            new("4", 4, true),
+            new("5", 5, true),
+            new("6", 6, true),
+            new("7", 7, true),
+            new("8", 8, true),
+            new("9", 9, true),
+            new("16777208", 16777208, true),
+            new("16777209", 16777209, true),
+            new("16777210", 16777210, true),
+            new("16777211", 16777211, true),
+            new("16777212", 16777212, true),
+            new("16777213", 16777213, true),
+            new("16777214", 16777214, true),
+            new("16777215", 16777215, true), // 2^24 - 1
+            new(Int32.MaxValue.ToString(), Int32.MaxValue, true),
+            new(Int64.MaxValue.ToString(), Int64.MaxValue, true),
+            new(Int32.MinValue.ToString(), Int32.MinValue, true),
+            new(Int64.MinValue.ToString(), Int64.MinValue, true),
+            new("-0", -0, true),
+            new("-1", -1, true),
+            new("-2", -2, true),
+            new("-3", -3, true),
+            new("-4", -4, true),
+            new("-5", -5, true),
+            new("-6", -6, true),
+            new("-7", -7, true),
+            new("-8", -8, true),
+            new("-9", -9, true),
+        };
+
+        [Test]
+        public void TryParseLong ([ValueSource("LongInlineData")] (string text, long expected, bool ok) tup) {
+            var astr = new AbstractString(tup.text);
+            Assert.AreEqual(tup.ok, astr.TryParse(out long parsed));
+            Assert.AreEqual(tup.expected, parsed);
         }
     }
 }
