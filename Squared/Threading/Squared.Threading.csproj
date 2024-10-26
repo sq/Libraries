@@ -39,6 +39,7 @@
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.ValueTuple" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AsyncAwait.cs" />
@@ -47,6 +48,7 @@
     <Compile Include="LocallyReplicatedCache.cs" />
     <Compile Include="LowAllocConcurrentQueue.cs" />
     <Compile Include="LowAllocConcurrentQueueSegment.cs" />
+    <Compile Include="MethodPrecompiler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Superluminal.cs" />
     <Compile Include="ThreadGroup.cs" />

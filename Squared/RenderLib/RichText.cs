@@ -672,7 +672,7 @@ namespace Squared.Render.Text {
 
             if (
                 text.StartsWith("#") && 
-                uint.TryParse(text.SubstringCopy(1), NumberStyles.HexNumber, null, out uint decoded)
+                text.Substring(1).TryParse(out uint decoded, @base: 16)
             ) {
                 var result = new Color { PackedValue = decoded };
                 var temp = result.R;
