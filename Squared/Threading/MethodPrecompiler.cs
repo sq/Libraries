@@ -171,7 +171,8 @@ namespace Squared.Threading {
                     var builderType = typeof(AsyncTaskMethodBuilder<>).MakeGenericType(returnType.GetGenericArguments());
                     EnqueueType(threadGroup, builderType, queue);
                 } else if (returnType?.Name == "ValueTask`1") {
-                    var builderType = returnType.Assembly.GetType("AsyncValueTaskMethodBuilder`1").MakeGenericType(returnType.GetGenericArguments());
+                    var builderTypeDef = returnType.Assembly.GetType("System.Runtime.CompilerServices.AsyncValueTaskMethodBuilder`1", true, false);
+                    var builderType = builderTypeDef.MakeGenericType(returnType.GetGenericArguments());
                     EnqueueType(threadGroup, builderType, queue);
                 }
 
