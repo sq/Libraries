@@ -508,7 +508,11 @@ namespace Squared.Render {
             }
 
             // Best guess
-            deviceManager.Device.BlendState = BlendState.AlphaBlend;
+            deviceManager.Device.BlendState = StateSet.BlendState ?? BlendState.AlphaBlend;
+            // Best guess
+            deviceManager.Device.RasterizerState = StateSet.RasterizerState ?? RasterizerState.CullNone;
+            // Best guess
+            deviceManager.Device.DepthStencilState = StateSet.DepthStencilState ?? DepthStencilState.None;
 
             lock (coordinator.UseResourceLock) {
                 deviceManager.Device.Indices = hint.HasIndices ? tempIb : null;
