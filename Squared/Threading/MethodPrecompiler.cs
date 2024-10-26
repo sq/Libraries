@@ -150,6 +150,7 @@ namespace Squared.Threading {
                 }
 
                 workQueue.Enqueue(new PrecompileMethodWorkItem {
+                    Precompiler = this,
                     TypeName = (LogPrint != null) ? declaringType.FullName : null,
                     Name = (LogPrint != null) ? method.Name : null,
                     MethodHandle = method.MethodHandle,
@@ -205,6 +206,7 @@ namespace Squared.Threading {
                 ? fieldType.GetGenericArguments()[0]
                 : null;
             workQueue.Enqueue(new PrecompileMethodWorkItem {
+                Precompiler = this,
                 TypeName = (LogPrint != null) ? fieldType.FullName : null,
                 Name = $"Start<{stateMachineType}>",
                 MethodHandle = startMethod.MethodHandle,
