@@ -106,6 +106,7 @@ float IMPL_NAME (
         float4 color = 1;
 
         if (Textured) {
+            [branch]
             if (
                 outOfRange ||
                 any(abs(posSplatDerotated) > radius)
@@ -140,18 +141,18 @@ float IMPL_NAME (
         } else {
             // HACK: We do the early-out more conservatively because of the need to compute
             //  partial coverage at circle edges, so an exact rejection is not right
+            [branch]
             if (outOfRange || (g >= discardDistance))
                 continue;
             
-            float r;
+            // reduce maximum coverage as sizePx goes below 1.0
+            float r = min(radius, 0.5) * 2;
 
-            PREFER_BRANCH
-            if ((distance >= (radius - 1.1)) || (radius <= 3.1)) {
+            [branch]
+            if (abs(distance - radius) <= 3.333) {
                 // HACK: Approximate pixel coverage calculation near edges / for tiny circles
                 // FIXME: Does this work for shapefactor != 1.0? Probably not
-                r = approxPixelCoverage(worldPosition, center, radius);
-            } else {
-                r = 1;
+                r *= approxPixelCoverage(worldPosition, center, radius);
             }
 
             if (hardness < 1) {
