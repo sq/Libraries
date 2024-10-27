@@ -247,7 +247,7 @@ namespace Squared.Render.Text {
         public Vector2 Margin;
         public ImageHorizontalAlignment HorizontalAlignment;
         public float Scale;
-        public bool DoNotAdjustLineSpacing;
+        public bool DoNotAdjustLineSpacing, Clear;
         public readonly bool Dead;
 
         public AsyncRichImage (bool dead) : this() {
@@ -267,6 +267,7 @@ namespace Squared.Render.Text {
             Value = img;
             Future = null;
             DoNotAdjustLineSpacing = img.DoNotAdjustLineSpacing;
+            Clear = img.Clear;
             HorizontalAlignment = img.HorizontalAlignment;
             BaselineAlignment = img.BaselineAlignment;
             Dead = false;
@@ -318,6 +319,7 @@ namespace Squared.Render.Text {
                     Texture = tex,
                     HorizontalAlignment = HorizontalAlignment,
                     BaselineAlignment = BaselineAlignment,
+                    Clear = Clear,
                     DoNotAdjustLineSpacing = DoNotAdjustLineSpacing,
                     Scale = scale,
                     Margin = Margin,
@@ -345,7 +347,7 @@ namespace Squared.Render.Text {
         public Vector2 Margin;
         public ImageHorizontalAlignment HorizontalAlignment;
         public float? OverrideWidth, OverrideHeight, MaxWidthPercent, BaselineAlignment;
-        public bool DoNotAdjustLineSpacing;
+        public bool DoNotAdjustLineSpacing, Clear;
 
         private float ScaleMinusOne;
 

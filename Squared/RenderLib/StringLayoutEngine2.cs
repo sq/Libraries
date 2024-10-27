@@ -206,7 +206,8 @@ namespace Squared.Render.TextLayout2 {
         // Internal state
         Vector2 FragmentOffset;
         float Y, UnconstrainedY, UnconstrainedMaxWidth, UnconstrainedMaxY,
-            UnconstrainedLineTopDecorations, UnconstrainedLineBottomDecorations;
+            UnconstrainedLineTopDecorations, UnconstrainedLineBottomDecorations,
+            CurrentDefaultLineSpacing;
         Vector2 UnconstrainedLineSize;
         uint ColIndex, LineIndex, CharIndex, 
             DrawCallIndex, SpanIndex, FragmentIndex,
@@ -590,7 +591,7 @@ namespace Squared.Render.TextLayout2 {
             Vector2 effectiveScale = Scale * (1.0f / glyphSource.DPIScaleFactor),
                 effectiveSpacing = Spacing;
             // HACK: GlyphSource.LineSpacing does not apply the DPI scaling like glyph metrics do.
-            float defaultLineSpacing = glyphSource.LineSpacing * Scale.Y;
+            CurrentDefaultLineSpacing = glyphSource.LineSpacing * Scale.Y;
 
             for (int i = 0, l = text.Length; i < l; i++) {
                 if (LineLimit <= 0)
@@ -749,7 +750,7 @@ recalc:
 
                     if (lineBreakPending) {
                         lineBreakPending = false;
-                        PerformLineBreak(defaultLineSpacing, singleFragment.HasValue);
+                        PerformLineBreak(CurrentDefaultLineSpacing, singleFragment.HasValue);
                         goto recalc;
                     } else if (
                         overflowX &&
@@ -1402,6 +1403,10 @@ recalc:
             };
 
             FinishFragment(true);
+
+            // FIXME: SingleFragmentMode?
+            if (image.Clear)
+                PerformLineBreak(CurrentDefaultLineSpacing, false);
         }
 
         private void ArrangeFragments (ref Vector2 constrainedSize) {
