@@ -186,7 +186,7 @@ float sdHexagonTile (float2 position) {
 }
 
 void sdPolygonVertex (
-    in float2 worldPosition, in int i, 
+    in float2 worldPosition, 
     in float2 previousVertex, in float2 vertex, 
     inout float distance, inout float sign
 ) {
@@ -209,7 +209,7 @@ void sdPolygonInit (
 ) {
     distance = dot(worldPosition - firstVertex, worldPosition - firstVertex);
     sign = 1.0;
-    sdPolygonVertex(worldPosition, 0, lastVertex, firstVertex, distance, sign);
+    sdPolygonVertex(worldPosition, lastVertex, firstVertex, distance, sign);
 }
 
 float sdPolygonResolve (in float distance, in float sign) {

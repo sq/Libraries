@@ -672,6 +672,7 @@ namespace Squared.PRGUI {
             if (FixatedControl != PreviouslyFixated)
                 HandleFixationChange(PreviouslyFixated, FixatedControl);
             PreviouslyFixated = FixatedControl;
+            PreviousGlobalMousePosition = mousePosition;
         }
 
         private void TickControl (Control control, Vector2 globalPosition, Vector2? mouseDownPosition) {

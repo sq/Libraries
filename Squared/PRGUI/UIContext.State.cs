@@ -208,6 +208,7 @@ namespace Squared.PRGUI {
         private Control ReleasedCapture = null;
         private Control RetainCaptureRequested = null;
 
+        private Vector2 PreviousGlobalMousePosition;
         private Vector2 LastClickPosition;
         private double LastMouseDownTime, LastClickTime;
         private int SequentialClickCount;

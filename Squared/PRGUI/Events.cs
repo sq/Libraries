@@ -56,6 +56,10 @@ namespace Squared.PRGUI {
         public KeyboardModifiers Modifiers;
         public Control MouseOver, MouseOverLoose, MouseCaptured, Hovering, Focused;
         /// <summary>
+        /// The previous global mouse location.
+        /// </summary>
+        public Vector2 PreviousGlobalPosition;
+        /// <summary>
         /// The global mouse location.
         /// </summary>
         public Vector2 GlobalPosition;

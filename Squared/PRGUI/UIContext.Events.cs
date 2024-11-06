@@ -618,6 +618,7 @@ namespace Squared.PRGUI {
                 result.MouseOverLoose = MouseOverLoose;
                 result.Hovering = Hovering;
                 result.MouseCaptured = MouseCaptured;
+                result.PreviousGlobalPosition = PreviousGlobalMousePosition;
                 result.GlobalPosition = globalPosition;
                 result.RelativeGlobalPosition = transformedGlobalPosition;
                 result.LocalPosition = transformedGlobalPosition - contentBox.Position;

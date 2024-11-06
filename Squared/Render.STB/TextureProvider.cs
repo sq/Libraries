@@ -161,8 +161,13 @@ namespace Squared.Render {
         }
 
         protected unsafe override Future<Texture2D> CreateInstance (string name, Stream stream, object data, object preloadedData, bool async) {
-            var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
             var img = (STB.Image)preloadedData;
+            // Returning null from preload means you want the load to fail
+            if (img == null)
+                return null;
+
+            var options = (TextureLoadOptions)data ?? DefaultOptions ?? new TextureLoadOptions();
+
             if (async) {
                 var f = img.CreateTextureAsync(Coordinator, !EnableThreadedCreate, options.PadToPowerOfTwo, options.sRGBFromLinear || options.sRGB, name: name, existingInstance: options.ExistingInstance);
                 if (options.GenerateDistanceField)
