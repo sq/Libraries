@@ -366,6 +366,7 @@ namespace Squared.Render {
                 if (!string.Equals(key.Name, name, StringComparison.Ordinal))
                     continue;
 
+                FlushCopyOnWrite();
                 ref var value = ref Values.Item(key.ValueIndex);
                 value = default;
                 return true;
@@ -523,6 +524,8 @@ namespace Squared.Render {
                 case EntryValueType.Q:
                     p.SetValue(entry.Primitive.Q);
                     break;
+                case EntryValueType.None:
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException("entry.ValueType");
             }
@@ -539,6 +542,7 @@ namespace Squared.Render {
             if (count == 0)
                 return true;
 
+            // FIXME: Handle removed items
             for (int i = 0; i < count; i++) {
                 ref var lhsKey = ref Keys.Item(i);
                 var rhsIndex = pRhs.FindValue(ref lhsKey);
@@ -577,7 +581,10 @@ namespace Squared.Render {
                 return;
             for (int i = 0; i < count; i++) {
                 ref var key = ref Keys.Item(i);
-                rhs.Set(ref key, ref Values.Item(key.ValueIndex));
+                ref var value = ref Values.Item(key.ValueIndex);
+                if (value.Type == EntryValueType.None)
+                    continue;
+                rhs.Set(ref key, ref value);
             }
         }
     }

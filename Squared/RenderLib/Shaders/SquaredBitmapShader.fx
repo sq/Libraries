@@ -368,10 +368,6 @@ void DistanceFieldOutlinedPixelShader(
         OutlineRadiusSoftnessAndPower.z
     );
 
-    /*
-    shadowAlpha = saturate(shadowAlpha / OutlineSumDivisor);
-    shadowAlpha = pow(shadowAlpha, OutlineExponent);
-    */
     float4 shadowColor = float4(shadowColorIn.rgb, 1);
     shadowColor = lerp(GlobalShadowColor, shadowColor, shadowColorIn.a > 0 ? 1 : 0);
 
