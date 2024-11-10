@@ -356,12 +356,12 @@ void DistanceFieldOutlinedPixelShader(
 
     float2 offset = (ShadowOffset * BitmapTexelSize2);
     // HACK: 5 tap averaging because the SDF may be slightly inaccurate, and not at full pixel offsets
-    float3 step = float3(BitmapTexelSize2, 0);
-    float distance = distanceTap2(texCoord2 + offset, texRgn2, 0) + 
-        distanceTap2(texCoord2 + offset - step.xz, texRgn2, 0) +
-        distanceTap2(texCoord2 + offset + step.zy, texRgn2, 0) +
-        distanceTap2(texCoord2 + offset - step.zy, texRgn2, 0) +
-        distanceTap2(texCoord2 + offset, texRgn2, 0);
+    float3 step = float3(BitmapTexelSize2 * 0.5, 0);
+    float distance = distanceTap2(texCoord + offset, texRgn, 0) + 
+        distanceTap2(texCoord + offset - step.xz, texRgn, 0) +
+        distanceTap2(texCoord + offset + step.zy, texRgn, 0) +
+        distanceTap2(texCoord + offset - step.zy, texRgn, 0) +
+        distanceTap2(texCoord + offset, texRgn, 0);
     distance /= 5.0;
     float shadowAlpha = pow(
         smoothstep(OutlineRadiusSoftnessAndPower.x + OutlineRadiusSoftnessAndPower.y, OutlineRadiusSoftnessAndPower.x, distance),
