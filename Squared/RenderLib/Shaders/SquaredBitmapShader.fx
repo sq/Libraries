@@ -363,9 +363,10 @@ void DistanceFieldOutlinedPixelShader(
         distanceTap2(texCoord2 + offset - step.zy, texRgn2, 0) +
         distanceTap2(texCoord2 + offset, texRgn2, 0);
     distance /= 5.0;
-    distance -= OutlineRadiusSoftnessAndPower.x;
-    // FIXME
-    float shadowAlpha = pow(1 - saturate(distance / OutlineRadiusSoftnessAndPower.y), OutlineRadiusSoftnessAndPower.z);
+    float shadowAlpha = pow(
+        smoothstep(OutlineRadiusSoftnessAndPower.x + OutlineRadiusSoftnessAndPower.y, OutlineRadiusSoftnessAndPower.x, distance),
+        OutlineRadiusSoftnessAndPower.z
+    );
 
     /*
     shadowAlpha = saturate(shadowAlpha / OutlineSumDivisor);
@@ -378,16 +379,18 @@ void DistanceFieldOutlinedPixelShader(
     overColor += (addColor * overColor.a);
 
     // HACK: Ensure the outline does not paint under opaque pixels while faded out
-    if (multiplyColor.a < 1.0)
+    if (multiplyColor.a < (254.0 / 255.0))
         shadowAlpha -= texColor.a;
 
     // Significantly improves the appearance of colored outlines and/or colored text
     float4 overSRGB = overColor,
         shadowSRGB = shadowColor;
-    overSRGB.rgb /= overSRGB.a;
-    overSRGB.rgb = SRGBToLinear(saturate(overSRGB.rgb));
+    float overA = saturate(overSRGB.a);
+    overSRGB.rgb /= overA;
+    overSRGB.a = 1.0;
+    overSRGB.rgb = SRGBToLinear(overSRGB.rgb);
     shadowSRGB.rgb = SRGBToLinear(shadowSRGB.rgb);
-    result = over(overSRGB, overSRGB.a, shadowColor, shadowAlpha * saturate(shadowColorIn.a));
+    result = over(overSRGB, overA, shadowColor, saturate(shadowAlpha * shadowColorIn.a));
     
     // over() produces a premultiplied result, but it's in linear space so we need to depremultiply it, then
     //  turn it into premultiplied sRGB    

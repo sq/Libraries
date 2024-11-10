@@ -641,19 +641,22 @@ namespace Squared.PRGUI {
         protected virtual void OnControlEvent<T> (Control control, string name, T args) {
         }
 
-        public float GetHoveringAlpha (ref UIOperationContext context, ControlStates state, out bool isHovering, float? fadeLength = null) {
+        public float GetHoveringAlpha (ref UIOperationContext context, ControlStates state, out bool isHovering, float? fadeLength = null) =>
+            GetHoveringAlpha(context.UIContext, state, out isHovering, fadeLength);
+
+        public float GetHoveringAlpha (UIContext context, ControlStates state, out bool isHovering, float? fadeLength = null) {
             isHovering = state.IsFlagged(ControlStates.Hovering);
 
             float previousAlpha = 0f, newAlpha = 0f, length = (fadeLength ?? HoverFadeLength);
 
             if (state.IsFlagged(ControlStates.PreviouslyHovering)) {
                 if (length > 0)
-                    previousAlpha = 1f - Arithmetic.Saturate((float)Time.SecondsFromTicks(context.NowL - context.UIContext.LastHoverLoss) / length);
+                    previousAlpha = 1f - Arithmetic.Saturate((float)Time.SecondsFromTicks(context.NowL - context.LastHoverLoss) / length);
             }
 
             if (isHovering) {
                 if (length > 0)
-                    newAlpha = Arithmetic.Saturate((float)Time.SecondsFromTicks(context.NowL - context.UIContext.LastHoverGain) / length);
+                    newAlpha = Arithmetic.Saturate((float)Time.SecondsFromTicks(context.NowL - context.LastHoverGain) / length);
                 else
                     newAlpha = 1f;
             }
@@ -662,8 +665,10 @@ namespace Squared.PRGUI {
             //  we sum both alpha values to minimize any glitch and cause the edge to become bright faster
             return Arithmetic.Saturate(previousAlpha + newAlpha);
         }
+        public float GetFocusedAlpha (ref UIOperationContext context, ControlStates state, out bool isFocused, bool includeContains = true, float? fadeLength = null) =>
+            GetFocusedAlpha(context.UIContext, state, out isFocused, includeContains, fadeLength);
 
-        public float GetFocusedAlpha (ref UIOperationContext context, ControlStates state, out bool isFocused, bool includeContains = true, float? fadeLength = null) {
+        public float GetFocusedAlpha (UIContext context, ControlStates state, out bool isFocused, bool includeContains = true, float? fadeLength = null) {
             var previouslyFocused = state.IsFlagged(ControlStates.PreviouslyFocused);
             isFocused = state.IsFlagged(ControlStates.Focused);
             var fadeFlag = isFocused;
@@ -680,7 +685,7 @@ namespace Squared.PRGUI {
             if (state.IsFlagged(ControlStates.Hovering) && isFocused)
                 return 1;
 
-            var result = (float)Time.SecondsFromTicks(context.NowL - context.UIContext.LastFocusChange) / (fadeLength ?? FocusFadeLength);
+            var result = (float)Time.SecondsFromTicks(context.NowL - context.LastFocusChange) / (fadeLength ?? FocusFadeLength);
             if (!isFocused)
                 return state.IsFlagged(ControlStates.PreviouslyFocused)
                     ? 1 - Arithmetic.Saturate(result)

@@ -934,6 +934,49 @@ namespace Squared.PRGUI {
             return GetDefaultTextDecorator(provider);
         }
 
+        public ControlStates GetApproximateState (UIContext context = null) =>
+            GetCurrentStateInner(Context ?? context, default);
+
+        protected ControlStates GetCurrentStateInner (UIContext context, ControlStates result) {
+            if (!Enabled) {
+                result |= ControlStates.Disabled;
+            } else {
+                if (context.Hovering == this)
+                    result |= ControlStates.Hovering;
+
+                if (context.CurrentTooltipAnchor == this)
+                    result |= ControlStates.AnchorForTooltip;
+
+                if (context.MouseOver == this)
+                    result |= ControlStates.MouseOver;
+
+                // HACK: If a modal has temporarily borrowed focus from us, we should still appear
+                //  to be focused.
+                if (
+                    (context.Focused == this) || 
+                    (context.FocusedModal?.FocusDonor == this)
+                ) {
+                    result |= ControlStates.Focused;
+                    result |= ControlStates.ContainsFocus;
+                }
+
+                if (
+                    context.FocusChain.Contains(this) ||
+                    (context.ModalFocusDonor == this) ||
+                    (context.TopLevelModalFocusDonor == this)
+                )
+                    result |= ControlStates.ContainsFocus;
+
+                if (context.PreviousHovering == this)
+                    result |= ControlStates.PreviouslyHovering;
+
+                if (context.PreviousFocused == this)
+                    result |= ControlStates.PreviouslyFocused;
+            }
+
+            return result;
+        }
+
         protected virtual ControlStates GetCurrentState (ref UIOperationContext context) {
             var result = default(ControlStates);
             var ctx = context.UIContext;
@@ -941,41 +984,7 @@ namespace Squared.PRGUI {
             if (context.InsideSelectedControl)
                 result |= ControlStates.Selected;
 
-            if (!Enabled) {
-                result |= ControlStates.Disabled;
-            } else {
-                if (ctx.Hovering == this)
-                    result |= ControlStates.Hovering;
-
-                if (ctx.CurrentTooltipAnchor == this)
-                    result |= ControlStates.AnchorForTooltip;
-
-                if (ctx.MouseOver == this)
-                    result |= ControlStates.MouseOver;
-
-                // HACK: If a modal has temporarily borrowed focus from us, we should still appear
-                //  to be focused.
-                if (
-                    (ctx.Focused == this) || 
-                    (ctx.FocusedModal?.FocusDonor == this)
-                ) {
-                    result |= ControlStates.Focused;
-                    result |= ControlStates.ContainsFocus;
-                }
-
-                if (
-                    ctx.FocusChain.Contains(this) ||
-                    (ctx.ModalFocusDonor == this) ||
-                    (ctx.TopLevelModalFocusDonor == this)
-                )
-                    result |= ControlStates.ContainsFocus;
-
-                if (ctx.PreviousHovering == this)
-                    result |= ControlStates.PreviouslyHovering;
-
-                if (ctx.PreviousFocused == this)
-                    result |= ControlStates.PreviouslyFocused;
-            }
+            result = GetCurrentStateInner(context.UIContext, result);
 
             if ((ctx.MouseCaptured == this) || (context.ActivateKeyHeld && ctx.Focused == this))
                 result |= ControlStates.Pressed;

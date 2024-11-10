@@ -353,6 +353,27 @@ namespace Squared.Render {
             Set(ref key, ref entry);
         }
 
+        public bool Remove (string name) {
+            int count = Count;
+            if (count <= 0)
+                return false;
+
+            var hashCode = name.GetHashCode();
+            for (int i = 0; i < count; i++) {
+                ref var key = ref Keys.Item(i);
+                if (key.HashCode != hashCode)
+                    continue;
+                if (!string.Equals(key.Name, name, StringComparison.Ordinal))
+                    continue;
+
+                ref var value = ref Values.Item(key.ValueIndex);
+                value = default;
+                return true;
+            }
+
+            return false;
+        }
+
         public void Add (string name, int value) {
             Set(name, new Value {
                 Type = EntryValueType.I,
