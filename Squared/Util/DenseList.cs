@@ -19,7 +19,7 @@ namespace Squared.Util {
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T>, IOrderedEnumerable<T> {
+    public partial struct DenseList<T> : IDisposable, IEnumerable<T>, IList<T>, IOrderedEnumerable<T>, IList {
 #if !NOSPAN
         public static class ElementTraits {
             public static uint ListSize = ComputeListSize();
@@ -342,6 +342,15 @@ namespace Squared.Util {
 
         bool ICollection<T>.IsReadOnly => false;
 
+        bool IList.IsReadOnly => false;
+
+        bool IList.IsFixedSize => false;
+
+        object ICollection.SyncRoot => null;
+
+        bool ICollection.IsSynchronized => false;
+
+        object IList.this[int index] { get => this[index]; set => this[index] = (T)value; }
         T IList<T>.this[int index] { get => this[index]; set => this[index] = value; }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1397,6 +1406,24 @@ namespace Squared.Util {
                 return false;
             RemoveAt(index);
             return true;
+        }
+
+        int IList.Add (object value) {
+            Add((T)value);
+            return Count - 1;
+        }
+
+        bool IList.Contains (object value) =>
+            Contains((T)value);
+
+        int IList.IndexOf (object value) => IndexOf((T)value);
+
+        void IList.Insert (int index, object value) => Insert(index, (T)value);
+
+        void IList.Remove (object value) => Remove((T)value);
+
+        void ICollection.CopyTo (Array array, int index) {
+            throw new NotImplementedException();
         }
     }
 }

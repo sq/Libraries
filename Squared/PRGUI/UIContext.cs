@@ -545,7 +545,7 @@ namespace Squared.PRGUI {
 
             var wasInputBlocked = false;
             if (
-                (activeModal?.BlockInput == true) && 
+                (activeModal?.BlockInput == true) &&
                 (activeModal != topLevelTarget) &&
                 (topLevelTarget?.DisplayOrder <= (activeModal as Control)?.DisplayOrder)
             ) {
@@ -621,24 +621,28 @@ namespace Squared.PRGUI {
                 FireEvent(UIEvents.MouseButtonsChanged, mouseEventTarget, MakeMouseEventArgs(mouseEventTarget, mousePosition, mouseDownPosition));
             }
 
-            if (processClick && !wasInputBlocked) {
-                // FIXME: if a menu is opened by a mousedown event, this will
-                //  fire a click on the menu in response to its mouseup
-                if (
-                    ((Hovering == previouslyCaptured) && (previouslyCaptured != null)) ||
-                    ((previouslyCaptured == null) && (Hovering == PreviousMouseDownTarget))
-                ) {
-                    // FIXME: Is this ?? right
-                    var clickTarget = previouslyCaptured ?? PreviousMouseDownTarget;
+            if (processClick) {
+                if (wasInputBlocked) {
+                    HandleFailedClick(previouslyCaptured ?? PreviousMouseDownTarget, mousePosition, mouseDownPosition ?? mousePosition, $"Input blocked by modal {ActiveModal}");
+                } else {
+                    // FIXME: if a menu is opened by a mousedown event, this will
+                    //  fire a click on the menu in response to its mouseup
                     if (
-                        (clickTarget?.AcceptsNonLeftClicks == true) || 
-                        ((LastMouseButtons & MouseButtons.Left) == MouseButtons.Left)
-                    )
-                        HandleClick(clickTarget, mousePosition, mouseDownPosition ?? mousePosition);
-                    else
-                        ; // FIXME: Fire another event here?
-                } else
-                    HandleDrag(previouslyCaptured, Hovering);
+                        ((Hovering == previouslyCaptured) && (previouslyCaptured != null)) ||
+                        ((previouslyCaptured == null) && (Hovering == PreviousMouseDownTarget))
+                    ) {
+                        // FIXME: Is this ?? right
+                        var clickTarget = previouslyCaptured ?? PreviousMouseDownTarget;
+                        if (
+                            (clickTarget?.AcceptsNonLeftClicks == true) || 
+                            ((LastMouseButtons & MouseButtons.Left) == MouseButtons.Left)
+                        )
+                            HandleClick(clickTarget, mousePosition, mouseDownPosition ?? mousePosition);
+                        else
+                            HandleFailedClick(clickTarget, mousePosition, mouseDownPosition ?? mousePosition, "Non-left-click not accepted by target");
+                    } else
+                        HandleDrag(previouslyCaptured, Hovering);
+                }
             }
 
             var mouseWheelDelta = _CurrentInput.WheelValue - _LastInput.WheelValue;

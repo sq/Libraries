@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -261,6 +262,14 @@ namespace Squared.PRGUI {
             return false;
         }
 
+        private void HandleFailedClick (Control target, Vector2 mousePosition, Vector2 mouseDownPosition, object cause = null) {
+            if (target == null)
+                return;
+
+            TTS.ControlClicked(target, MouseOver);
+            Log($"Click on {target} failed because of {cause}");
+        }
+
         private void HandleClick (Control target, Vector2 mousePosition, Vector2 mouseDownPosition) {
             if (target == null)
                 return;
@@ -277,7 +286,7 @@ namespace Squared.PRGUI {
                 return;
 
             if (!target.IsValidMouseInputTarget) {
-                TTS.ControlClicked(target, MouseOver);
+                HandleFailedClick(target, mousePosition, mouseDownPosition, "Invalid mouse input target");
                 return;
             }
 

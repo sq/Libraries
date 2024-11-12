@@ -103,7 +103,11 @@ namespace Squared.Util {
             int repeatCount = 0, TweenRepeatMode repeatMode = TweenRepeatMode.Loop,
             long repeatDelay = 0, long repeatExtraDuration = 0
         ) {
-            From = from;
+            // For an implicitly constant tween ensure that both From and To are identical
+            if (endWhen <= startWhen)
+                From = to;
+            else
+                From = from;
             To = to;
             StartedWhen = startWhen;
             EndWhen = endWhen;
