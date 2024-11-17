@@ -169,20 +169,22 @@ void GenericVertexShader (
     float2 scaledMargin = BitmapMarginSize,
         texelMargin = scaledMargin * BitmapTexelSize;
 
+    float2 inputOrigin = scaleOrigin.zw,
+        inputRegionSize = ComputeRegionSize(texRgn1),
+        // Convert fractional origin into origin in pixels
+        paddedOriginPx = inputOrigin * BitmapTextureSize * inputRegionSize;
+    
     // Pad the texrgn on all sides for the margin
     float4 paddedTexRgn1 = texRgn1;
     paddedTexRgn1.xy -= texelMargin;
     paddedTexRgn1.zw += texelMargin;
+    // Offset the padded origin by the amount of margin we added on the top-left so it's valid in the
+    //  new coordinate space.
+    paddedOriginPx += BitmapMarginSize;
     
-    float2 regionSize = ComputeRegionSize(paddedTexRgn1);
-
-    float4 adjustedScaleOrigin = scaleOrigin;
-    // Convert fractional origin into origin in pixels
-    adjustedScaleOrigin.zw *= BitmapTextureSize * regionSize;
-    // Shift origin in pixels by margin
-    adjustedScaleOrigin.zw += scaledMargin;
+    float2 regionSize = ComputeRegionSize(paddedTexRgn1);    
     // Convert new origin back to fractional
-    adjustedScaleOrigin.zw /= BitmapTextureSize * regionSize;
+    float4 adjustedScaleOrigin = float4(scaleOrigin.xy, paddedOriginPx / (BitmapTextureSize * regionSize));
 
     float2 corner = ComputeCorner(cornerWeights, regionSize);
     texCoord1 = ComputeTexCoord(corner, paddedTexRgn1, newTexRgn1);
