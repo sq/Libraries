@@ -223,6 +223,7 @@ namespace Squared.Render {
 
         BitmapDrawCall FirstDrawCall { get; }
         BitmapDrawCall LastDrawCall { get; }
+        Vector2 BitmapMarginSize { get; set; }
     }
 
     public static class QuadUtils {
@@ -376,6 +377,8 @@ namespace Squared.Render {
   
         protected BufferGenerator<BitmapVertex> _BufferGenerator = null;
         protected BufferGenerator<CornerVertex>.GeometryBuffer _CornerBuffer = null;
+
+        public Vector2 BitmapMarginSize { get; set; }
 
         protected class ThreadLocals {
             public readonly VertexBufferBinding[] ScratchBindings = new VertexBufferBinding[2];
@@ -699,6 +702,11 @@ namespace Squared.Render {
             ref NativeBatch nb, ref CurrentNativeBatchState cnbs
         ) {
             var result = false;
+            var bms = nb.Material.Parameters.BitmapMarginSize;
+            if (bms != null) {
+                if (bms.GetValueVector2() != BitmapMarginSize)
+                    bms.SetValue(BitmapMarginSize);
+            }
 
             if (nb.Material != cnbs.Material) {
                 manager.ApplyMaterial(nb.Material, ref MaterialParameters);

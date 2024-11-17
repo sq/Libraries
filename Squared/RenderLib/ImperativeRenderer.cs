@@ -163,6 +163,7 @@ namespace Squared.Render.Convenience {
             public float RasterGammaMinusOne;
             public object BlendStateOrSelector;
             public List<RasterShape.RasterShapeComposite> RasterComposites;
+            public Vector2 BitmapMarginSize;
         }
 
         private CachedBatches Cache;
@@ -174,6 +175,13 @@ namespace Squared.Render.Convenience {
         /// All batches created by this renderer will have these material parameters applied
         /// </summary>
         public MaterialParameterValues Parameters;
+
+        public Vector2 BitmapMarginSize {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => Config.BitmapMarginSize;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => Config.BitmapMarginSize = value;
+        }
 
         public IBatchContainer Container {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1883,7 +1891,7 @@ namespace Squared.Render.Convenience {
                 samplerState1: desiredSamplerState1,
                 samplerState2: desiredSamplerState2,
                 extraData: customMaterial
-            )) {
+            ) || ((IBitmapBatch)cacheEntry.Batch).BitmapMarginSize != Config.BitmapMarginSize) {
                 Material material;
 
                 if (customMaterial != null) {
@@ -1917,6 +1925,7 @@ namespace Squared.Render.Convenience {
                     bb = _bb;
                 }
 
+                bb.BitmapMarginSize = BitmapMarginSize;
                 bb.Sorter = DeclarativeSorter;
                 cacheEntry.Batch = (Batch)bb;
                 Cache.InsertAtFront(ref cacheEntry, -1);

@@ -152,7 +152,7 @@ namespace Squared.Threading {
             bool enableCoarseTime = false
         ) {
             Name = name;
-            ThreadCount = Math.Min(threadCount.GetValueOrDefault(Environment.ProcessorCount), MaximumThreadCount);
+            ThreadCount = Math.Min(threadCount.GetValueOrDefault(Math.Max(Environment.ProcessorCount - 1, 2)), MaximumThreadCount);
             CreateBackgroundThreads = createBackgroundThreads;
             TimeProvider = timeProvider ?? Time.DefaultTimeProvider;
             COMThreadingModel = comThreadingModel;

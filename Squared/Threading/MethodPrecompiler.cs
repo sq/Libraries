@@ -20,6 +20,7 @@ namespace Squared.Threading {
                 // Reduce the overhead of processing each item, but also make sure that
                 //  the queue won't block things like frame prepares
                 new WorkItemConfiguration {
+                    MaxConcurrency = 3,
                     ConcurrencyPadding = 2,
                     DefaultStepCount = 3
                 };

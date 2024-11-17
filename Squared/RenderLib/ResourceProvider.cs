@@ -753,7 +753,8 @@ namespace Squared.Render.Resources {
         private string FixupName (string name) {
             var otherSeparator = System.IO.Path.DirectorySeparatorChar == '\\'
                 ? '/' : '\\';
-            name = name.Replace(otherSeparator, System.IO.Path.DirectorySeparatorChar);
+            name = name.Replace(otherSeparator, System.IO.Path.DirectorySeparatorChar)
+                .Replace("<", "lt").Replace(">", "gt").Replace(":", "colon");
             return name;
         }
 

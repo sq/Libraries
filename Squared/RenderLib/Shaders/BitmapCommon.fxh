@@ -165,7 +165,7 @@ void GenericVertexShader (
     out float4 originalPositionData : TEXCOORD7,
     out float4 result : POSITION0
 ) {
-    // FIXME: All this margin math is a buggy hack and doesn't work right
+    // FIXME: All this margin math is a buggy hack and doesn't work right if the origin isn't centered
     float2 scaledMargin = BitmapMarginSize,
         texelMargin = scaledMargin * BitmapTexelSize;
 

@@ -588,6 +588,7 @@ namespace Squared.Render {
         public EffectParameter RenderTargetInfo { get; private set; }
         public EffectParameter Palette { get; private set; }
         public EffectParameter PaletteSize { get; private set; }
+        public EffectParameter BitmapMarginSize { get; private set; }
 
         // Used by DefaultMaterialSet
         internal bool DitheringInitialized;
@@ -632,6 +633,7 @@ namespace Squared.Render {
             SecondTexture = this["SecondTexture"];
             InverseModelView = this["InverseModelView"];
             InverseProjection = this["InverseProjection"];
+            BitmapMarginSize = this["BitmapMarginSize"];
 
             Cache.Clear();
         }
