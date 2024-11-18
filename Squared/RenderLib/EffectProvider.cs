@@ -135,7 +135,7 @@ namespace Squared.Render.Resources {
 
         protected override Future<Effect> CreateInstance (string name, Stream stream, object data, object preloadedData, bool async) {
             lock (Coordinator.CreateResourceLock)
-                return new Future<Effect>(EffectUtils.EffectFromFxcOutput(Coordinator.Device, stream));
+                return new Future<Effect>(EffectUtils.EffectFromFxcOutput(Coordinator.Device, stream, name));
         }
 
         internal int HotReloadVersion;

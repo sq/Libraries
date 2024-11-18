@@ -274,6 +274,7 @@ namespace Squared.PRGUI {
         public AbstractTooltipContent TooltipContent = default(AbstractTooltipContent);
         internal int TooltipContentVersion = 0;
 
+        // FIXME: Is this the wrong default?
         protected virtual bool CreateNestedContextForChildren => true;
         protected virtual bool HasPreRasterizeHandler => (ActiveAnimation != null);
         protected virtual bool HasChildren => false;

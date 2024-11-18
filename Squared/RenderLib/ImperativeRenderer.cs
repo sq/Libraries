@@ -764,11 +764,12 @@ namespace Squared.Render.Convenience {
             Color? color = null,
             float? z = null,
             int? stencil = null,
-            Vector4? value = null
+            Vector4? value = null,
+            string name = null
         ) {
             int _layer = layer.GetValueOrDefault(Config.Layer);
 
-            ClearBatch.AddNew(Config.Container, _layer, Config.Materials.Clear, color, z, stencil, value);
+            ClearBatch.AddNew(Config.Container, _layer, Config.Materials.Clear, color, z, stencil, value, name);
 
             if (!layer.HasValue)
                 Config.Layer += 1;

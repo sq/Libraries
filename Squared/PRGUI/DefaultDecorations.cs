@@ -711,7 +711,8 @@ namespace Squared.PRGUI {
             var colorIsGray = hasColor && (baseColor.ColorDelta <= 0.05f);
             // HACK: If the background color isn't saturated, use the focused color for the outline
             pSRGBColor? outlineBaseColor = (colorIsGray && isFocused) ? ColorScheme.Focused : (pSRGBColor?)null;
-            var pulseThickness = Arithmetic.PulseSine(nowF / 3f, 0, 0.4f);
+            // FIXME: Pulsing the outline thickness looks bad for some reason
+            var pulseThickness = 0; // Arithmetic.PulseSine(nowF / 3f, 0, 0.4f);
 
             pulse = 0;
             if (
@@ -1630,13 +1631,16 @@ namespace Squared.PRGUI {
         protected virtual void None_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             if (!settings.BackgroundColor.HasValue)
                 return;
+            var color = settings.BackgroundColor.Value;
+            if (color == default)
+                return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,
                 radius: 0,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: settings.BackgroundColor.Value, outerColor: settings.BackgroundColor.Value
+                innerColor: color, outerColor: color
             );
         }
 

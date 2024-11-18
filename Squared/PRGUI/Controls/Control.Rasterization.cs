@@ -137,24 +137,32 @@ namespace Squared.PRGUI {
         ) {
             // If this is the first stencil pass instead of a nested one, clear the stencil buffer
             if (passSet.StackDepth < 1) {
-                contentRenderer.Clear(stencil: 0, layer: -9999);
+                // FIXME: We're currently doing this too often, but maybe that's fine since it's a hw clear op and not a draw?
+                contentRenderer.Clear(stencil: 0, layer: -9999, name: "Clear stencil for StackDepth <= 0");
             } else {
                 // Erase any siblings' clip regions
                 contentRenderer.DepthStencilState = context.UIContext.GetStencilRestore(previousStackDepth);
-                contentRenderer.FillRectangle(new Rectangle(-1, -1, 9999, 9999), Color.Transparent, blendState: RenderStates.DrawNone, layer: -1000);
+                var gb = contentRenderer.GetGeometryBatch(-1000, null, RenderStates.DrawNone);
+                gb.Name = "Erase sibling clip regions";
+                // Unbalanced vertices to draw one triangle instead of two
+                gb.AddFilledQuad(Vector2.One * -1, new Vector2(9999999, 9999), Color.Transparent);
             }
 
-            contentRenderer.DepthStencilState = context.UIContext.GetStencilWrite(previousStackDepth);
+            // HACK: If content clipping is disabled, painting our content region into the stencil buffer is unnecessary
+            // FIXME: Suppress the clears too? That might be wrong, and the clears are cheaper anyway since they don't use a decorator
+            if (ShouldClipContent) {
+                contentRenderer.DepthStencilState = context.UIContext.GetStencilWrite(previousStackDepth);
 
-            // FIXME
-            var temp = settings;
-            ApplyClipMargins(ref contentContext, ref temp.Box);
+                // FIXME
+                var temp = settings;
+                ApplyClipMargins(ref contentContext, ref temp.Box);
 
-            var crLayer = contentRenderer.Layer;
-            contentRenderer.Layer = -999;
-            settings.State = default;
-            decorations?.RasterizeClip(ref contentContext, ref contentRenderer, ref temp);
-            contentRenderer.Layer = crLayer + 1;
+                var crLayer = contentRenderer.Layer;
+                contentRenderer.Layer = -999;
+                settings.State = default;
+                decorations?.RasterizeClip(ref contentContext, ref contentRenderer, ref temp);
+                contentRenderer.Layer = crLayer + 1;
+            }
 
             // passSet.NextReferenceStencil = childrenPassSet.NextReferenceStencil;
         }
@@ -179,7 +187,7 @@ namespace Squared.PRGUI {
 
                 context.Clone(out var passContext);
                 var icrc = this as IClippedRasterizationControl;
-                var hasNestedContext = (ShouldClipContent) || (HasChildren && CreateNestedContextForChildren);
+                var hasNestedContext = ShouldClipContent || (HasChildren && CreateNestedContextForChildren);
 
                 int previousStackDepth = passSet.StackDepth, newStackDepth = previousStackDepth;
 

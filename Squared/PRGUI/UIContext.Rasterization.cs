@@ -263,7 +263,8 @@ namespace Squared.PRGUI {
                         // HACK: Push the post-fade controls and their its overlay plane above the previous one
                         renderer.Layer = 1000;
                         renderer.FillRectangle(
-                            Game.Bounds.FromPositionAndSize(Vector2.One * -9999, Vector2.One * 99999), 
+                            // Unbalanced vertices so only one triangle is visible
+                            Game.Bounds.FromPositionAndSize(Vector2.One * -9999, new Vector2(9999999, 9999)), 
                             new Color(opacity, opacity, opacity, 0), blendState: RenderStates.SubtractiveBlend
                         );
                         renderer.Layer += 1;

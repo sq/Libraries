@@ -561,6 +561,9 @@ namespace Squared.PRGUI.Controls {
             extraControls.Sort(IndexPreservingPaintOrderComparer.Instance);
             var lastOrder = 0;
             foreach (var ctl in extraControls) {
+                // FIXME
+                if (ctl == null)
+                    continue;
                 // HACK: Do a clumsy plane split so paint order isn't completely broken.
                 // This ensures that menu filter boxes actually paint over menu items.
                 if (ctl.DisplayOrder != lastOrder)

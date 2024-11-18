@@ -444,7 +444,7 @@ namespace Squared.PRGUI.Controls {
         }
 
         public override string ToString () {
-            return $"{GetType().Name} #{GetHashCode():X8} '{DebugLabel ?? Title}'";
+            return $"{GetType().Name} #{GetHashCode():X8} '{DebugLabel ?? (Title.IsNull ? Description : Title)}'";
         }
 
         bool IFuzzyHitTestTarget.WalkChildren => true;

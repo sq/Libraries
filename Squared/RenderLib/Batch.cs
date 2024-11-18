@@ -557,7 +557,12 @@ namespace Squared.Render {
                 );
         }
 
-        public static void AddNew (IBatchContainer container, int layer, Material material, Color? clearColor = null, float? clearZ = null, int? clearStencil = null, Vector4? clearValue = null) {
+        public static void AddNew (
+            IBatchContainer container, int layer, Material material,
+            Color? clearColor = null, float? clearZ = null,
+            int? clearStencil = null, Vector4? clearValue = null,
+            string name = null
+        ) {
             if (container == null)
                 throw new ArgumentNullException("container");
 
@@ -565,6 +570,7 @@ namespace Squared.Render {
             result.Initialize(container, layer, material, clearColor, clearZ, clearStencil, clearValue);
             result.CaptureStack(0);
             result.Dispose();
+            result.Name = name;
         }
     }
 
