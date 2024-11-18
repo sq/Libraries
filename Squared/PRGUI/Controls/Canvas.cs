@@ -141,7 +141,10 @@ namespace Squared.PRGUI.Controls {
         }
 
         public Matrix GetContentTransform () {
-            return Matrix.CreateScale(Zoom) * Matrix.CreateTranslation(Pan.X, Pan.Y, 0f);
+            return Matrix.CreateTranslation(-MostRecentRect.Left, -MostRecentRect.Top, 0) * 
+                Matrix.CreateScale(Zoom) * 
+                Matrix.CreateTranslation(MostRecentRect.Left, MostRecentRect.Top, 0) *
+                Matrix.CreateTranslation(Pan.X, Pan.Y, 0f);
         }
 
         void IMouseEventArgsFilter.FilterMouseEventArgs (MouseEventArgs args) {
@@ -200,6 +203,7 @@ namespace Squared.PRGUI.Controls {
 
             ref var renderer = ref passSet.Content;
             settings.ContentBox.SnapAndInset(out Vector2 a, out Vector2 b);
+            MostRecentRect = settings.ContentBox;
 
             if (_Buffered) {
                 var buffer = Buffer.Get();
@@ -211,6 +215,9 @@ namespace Squared.PRGUI.Controls {
                 );
             }
         }
+
+        // Used for unbuffered zoom transform
+        RectF MostRecentRect;
 
         void IClippedRasterizationControl.RasterizeClipped (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
             if (_Buffered)
