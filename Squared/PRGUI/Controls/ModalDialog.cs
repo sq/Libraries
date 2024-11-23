@@ -46,7 +46,10 @@ namespace Squared.PRGUI.Controls {
         private EventSubscription AcceptHandlerRegistered, CancelHandlerRegistered;
         private Control _AcceptControl, _CancelControl;
 
-        bool IModal.CanClose (ModalCloseReason reason) => true;
+        bool IModal.CanClose (ModalCloseReason reason) => (reason) switch {
+            ModalCloseReason.UserCancelled => AllowCancel,
+            _ => true,
+        };
 
         public bool AllowCancel = true;
 
