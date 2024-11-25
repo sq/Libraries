@@ -1,12 +1,10 @@
 ﻿#if DEBUG
-// #define TRACK_CODEPOINTS
+#define TRACK_CODEPOINTS
 #endif
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Util.Text;
 using Squared.Render.Text;
@@ -15,12 +13,6 @@ using Squared.Game;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Globalization;
-using Squared.Util.DeclarativeSort;
-using Microsoft.Xna.Framework.Graphics;
-using Squared.Threading;
-using System.Security.Cryptography;
-using static System.Net.Mime.MediaTypeNames;
-using System.Diagnostics.Eventing.Reader;
 
 namespace Squared.Render.TextLayout2 {
     public enum FragmentCategory : byte {
@@ -108,7 +100,7 @@ namespace Squared.Render.TextLayout2 {
         /// Invoked before a character is appended.
         /// </summary>
         /// <returns>Return true to append the character, or false to skip processing it.</returns>
-        bool BeforeAppendCharacter (ref StringLayoutEngine2 engine, uint codepoint, uint drawCallIndex);
+        bool BeforeAppendCharacter (ref StringLayoutEngine2 engine, uint codepoint, uint wordIndex, uint characterIndex, uint drawCallIndex);
         void FragmentArranged (ref StringLayoutEngine2 engine, ref readonly Fragment fragment);
     }
 
@@ -209,7 +201,7 @@ namespace Squared.Render.TextLayout2 {
             UnconstrainedLineTopDecorations, UnconstrainedLineBottomDecorations,
             CurrentDefaultLineSpacing;
         Vector2 UnconstrainedLineSize;
-        uint ColIndex, LineIndex, CharIndex, 
+        uint ColIndex, LineIndex, CharIndex, WordIndex,
             DrawCallIndex, SpanIndex, FragmentIndex,
             BoxIndex;
         bool SuppressUntilEnd;
@@ -605,11 +597,6 @@ namespace Squared.Render.TextLayout2 {
                 if (currentCodepointSize == 2)
                     CharIndex++;
 
-                if (Listener2?.BeforeAppendCharacter(ref this, codepoint, DrawCallIndex) == false) {
-                    CharIndex++;
-                    continue;
-                }
-
                 if (codepoint == TerminatorCodepoint)
                     SuppressLayoutForLimit();
                 if (MaskCodepoint > 0)
@@ -666,6 +653,11 @@ namespace Squared.Render.TextLayout2 {
 
                     if (cf.Category == FragmentCategory.Unknown)
                         cf.Category = category;
+                }
+
+                if (Listener2?.BeforeAppendCharacter(ref this, codepoint, WordIndex, CharIndex, DrawCallIndex) == false) {
+                    CharIndex++;
+                    continue;
                 }
 
                 if (glyph.LigatureProvider != null) {
@@ -1115,10 +1107,12 @@ recalc:
 
             switch (fragment.Category) {
                 case FragmentCategory.RubyText:
+                    WordIndex++;
                     UnconstrainedLineTopDecorations = Math.Max(UnconstrainedLineTopDecorations, fragment.Height);
                     line.TopDecorations = Math.Max(line.TopDecorations, fragment.Height);
                     break;
                 case FragmentCategory.Regular:
+                    WordIndex++;
                     UnconstrainedLineSize.X += fragment.Width; 
                     line.Width += fragment.Width + line.TrailingWhitespace;
                     line.TrailingWhitespace = 0f;
@@ -1192,6 +1186,7 @@ recalc:
 #if TRACK_CODEPOINTS
             CurrentFragmentCodepoints.UnsafeFastClear();
 #endif
+
             return ref result;
         }
 
