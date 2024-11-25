@@ -105,7 +105,7 @@ namespace Squared.Render.Text {
         private char? _TerminatorCharacter;
         private uint[] _WordWrapCharacters;
         private DenseList<uint> _WordWrapCharacterTable;
-        private Vector4 _UserData;
+        private Vector4 _CharacterUserData;
         private Vector4? _ImageUserData;
         private IStringLayoutListener _Listener;
         private IRichTextStateTracker _StateTracker;
@@ -860,10 +860,10 @@ namespace Squared.Render.Text {
         /// </summary>
         public Vector4 UserData {
             get {
-                return _UserData;
+                return _CharacterUserData;
             }
             set {
-                InvalidatingValueAssignment(ref _UserData, value);
+                InvalidatingValueAssignment(ref _CharacterUserData, value);
             }
         }
 
@@ -940,9 +940,9 @@ namespace Squared.Render.Text {
                 expandHorizontallyWhenAligning = ExpandHorizontallyWhenAligning,
                 splitAtWrapCharactersOnly = SplitAtWrapCharactersOnly,
                 includeTrailingWhitespace = IncludeTrailingWhitespace,
-                userData = _UserData,
-                imageUserData = _ImageUserData ?? _UserData,
-                clearUserData = _UserData != default,
+                userData = _CharacterUserData,
+                imageUserData = _ImageUserData ?? _CharacterUserData,
+                clearUserData = _CharacterUserData != default,
                 WordWrapCharacters = _WordWrapCharacterTable,
             };
 
@@ -995,10 +995,11 @@ namespace Squared.Render.Text {
                 Listener2 = Listener as IStringLayoutListener2,
                 MarkedRange = _Satellite?.MarkedRange,
                 HitTestLocation = _Satellite?.HitTest,
-                CharacterUserData = _UserData,
-                ImageUserData = _ImageUserData ?? _UserData,
+                CharacterUserData = _CharacterUserData,
+                ImageUserData = _ImageUserData ?? _CharacterUserData,
                 // FIXME
-                MinRubyScale = MinRubyScale
+                MinRubyScale = MinRubyScale,
+                UserData = _RichTextUserData
             };
         }
 

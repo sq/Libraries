@@ -228,6 +228,7 @@ namespace Squared.Render.TextLayout2 {
         public bool RightToLeft;
 
         // Configuration
+        public object UserData;
         public IStringLayoutListener Listener;
         public IStringLayoutListener2 Listener2;
 
