@@ -190,10 +190,11 @@ namespace Squared.PRGUI.Controls {
 
             AbstractString result = default(AbstractString);
             var item = m.TooltipTarget;
+            // FIXME: UserData
             if (item != null)
-                result = item.TooltipContent.Get(item);
+                result = item.TooltipContent.Get(item, out _);
             if (result == default(AbstractString))
-                result = m.TooltipContent.Get(m);
+                result = m.TooltipContent.Get(m, out _);
             return result;
         }
 

@@ -150,7 +150,8 @@ namespace Squared.PRGUI.Controls {
             var s = (Slider)c;
             s.TooltipBuilder.Clear();
             if (!s.TooltipContent.Equals(default(AbstractTooltipContent))) {
-                var ct = s.TooltipContent.Get(s);
+                // FIXME: UserData
+                var ct = s.TooltipContent.Get(s, out _);
                 s.TooltipBuilder.Append(ct.ToString());
                 s.TooltipBuilder.Append(": ");
             }

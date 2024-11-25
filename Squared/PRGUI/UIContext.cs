@@ -767,7 +767,8 @@ namespace Squared.PRGUI {
                 else
                     content = target.TooltipContent;
             }
-            return content.Get(target);
+            // FIXME: UserData
+            return content.Get(target, out _);
         }
 
         private AbstractString GetTooltipTextForControl (Control target, bool leftButtonPressed, out AbstractTooltipContent content) {
@@ -977,6 +978,7 @@ namespace Squared.PRGUI {
 
             var idealMaxSize = CanvasSize * (content.Settings.MaxSize ?? tts?.MaxSize ?? MaxTooltipSize);
             instance.Text = text;
+            instance.RichTextUserData = content.UserData;
             instance.ApplySettings(content.Settings);
             return idealMaxSize;
         }

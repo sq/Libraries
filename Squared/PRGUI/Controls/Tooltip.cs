@@ -78,6 +78,10 @@ namespace Squared.PRGUI.Controls {
             get => base.Text;
             set => base.Text = value;
         }
+        public object RichTextUserData {
+            get => Content.RichTextUserData;
+            set => Content.RichTextUserData = value;
+        }
 
         /// <param name="anchor">If set, alignment will be relative to this control. Otherwise, the screen will be used.</param>
         /// <param name="anchorPoint">Configures what point on the anchor [0 - 1] is used as the center for alignment</param>
@@ -263,30 +267,26 @@ namespace Squared.PRGUI {
         public AbstractString Text;
         public int Version;
         public TooltipSettings Settings;
+        public object UserData;
 
-        public AbstractTooltipContent (Func<Control, AbstractString> getText, int version = 0, TooltipSettings settings = default(TooltipSettings)) {
+        public AbstractTooltipContent (Func<Control, AbstractString> getText, int version = 0, TooltipSettings settings = default(TooltipSettings), object userData = null) {
             Text = default(AbstractString);
             GetText = getText;
             Version = version;
             Settings = settings;
-            /*
-            if (settings.DefaultGlyphSource?.IsDisposed == true)
-                throw new ObjectDisposedException("settings.DefaultGlyphSource");
-            */
+            UserData = userData;
         }
 
-        public AbstractTooltipContent (AbstractString text, int version = 0, TooltipSettings settings = default(TooltipSettings)) {
+        public AbstractTooltipContent (AbstractString text, int version = 0, TooltipSettings settings = default(TooltipSettings), object userData = null) {
             Text = text;
             GetText = null;
             Version = version;
             Settings = settings;
-            /*
-            if (settings.DefaultGlyphSource?.IsDisposed == true)
-                throw new ObjectDisposedException("settings.DefaultGlyphSource");
-            */
+            UserData = userData;
         }
 
-        public AbstractString Get (Control target) {
+        public AbstractString Get (Control target, out object userData) {
+            userData = UserData;
             if (GetText != null)
                 return GetText(target);
             else
@@ -294,7 +294,7 @@ namespace Squared.PRGUI {
         }
 
         public AbstractString GetPlainText (Control target) {
-            var result = Get(target);
+            var result = Get(target, out _);
             if (Settings.RichText)
                 result = Squared.Render.Text.RichText.ToPlainText(result.ToString());
             return result;

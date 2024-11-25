@@ -209,7 +209,7 @@ namespace Squared.PRGUI.Controls {
             var useTooltipByDefault = Text.IsNullOrWhiteSpace || (Text.Length <= 2);
             return (
                 (UseTooltipForReading ?? useTooltipByDefault)
-                    ? (TooltipContent.Get(this).ToString() ?? Text.ToString())
+                    ? (TooltipContent.Get(this, out _).ToString() ?? Text.ToString())
                     : Text.ToString()
             ) + (Checked ? ": Yes" : ": No");
         }
