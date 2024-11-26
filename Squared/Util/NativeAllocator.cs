@@ -1,4 +1,6 @@
-﻿using System;
+﻿// #define CAPTURE_ALLOCATION_STACKS
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -43,6 +45,10 @@ namespace Squared.Util {
     }
 
     public unsafe sealed class NativeAllocation : IDisposable {
+#if DEBUG
+        public readonly StackTrace AllocationStack;
+#endif
+
         private volatile int _RefCount;
         private volatile bool _Released;
         private void* _Data;
@@ -51,6 +57,7 @@ namespace Squared.Util {
         public bool IsReleased => _Released;
 
         public void* Data => _Released ? null : _Data;
+        public IntPtr IntPtr => (IntPtr)Data;
         public readonly int Size;
         public readonly NativeAllocator Allocator;
 
@@ -66,6 +73,14 @@ namespace Squared.Util {
             GC.AddMemoryPressure(size);
             MemoryUtil.Memset((byte*)_Data, 0, size);
             Size = size;
+
+#if DEBUG
+#if CAPTURE_ALLOCATION_STACKS
+            AllocationStack = new StackTrace(1);
+#else
+            AllocationStack = null;
+#endif
+#endif
         }
 
         public void AddReference () {
@@ -100,8 +115,11 @@ namespace Squared.Util {
 
 #if DEBUG
         ~NativeAllocation () {
-            if (!_Released)
+            if (!_Released) {
                 Debug.WriteLine($"Native allocation of {Size}b leaked from {Allocator}");
+                if (AllocationStack != null)
+                    Debug.WriteLine(AllocationStack.ToString());
+            }
         }
 #endif
     }
