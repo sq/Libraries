@@ -54,24 +54,11 @@
     <DefineConstants>TRACE;FNA;X64</DefineConstants>
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
-  <ItemGroup Condition=" '$(Platform)' == 'x86' ">
-    <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Microsoft.Xna.Framework.Game, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553">
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="Microsoft.Xna.Framework.Graphics, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86">
-      <Private>False</Private>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup Condition=" '$(Platform)' != 'x86' ">
+  <ItemGroup>
     <ProjectReference Include="..\..\..\FNA\FNA.csproj">
       <Project>{35253CE1-C864-4CD3-8249-4D1319748E8F}</Project>
       <Name>FNA</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="Microsoft.CSharp" />
