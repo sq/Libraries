@@ -271,6 +271,8 @@ namespace Squared.Render {
             else
                 return false;
         }
+
+        public override int GetHashCode () => StrengthUnitAndIndex.GetHashCode() ^ BandSizeAndRange.GetHashCode();
     }
 
     public class DefaultMaterialSet : MaterialSetBase {

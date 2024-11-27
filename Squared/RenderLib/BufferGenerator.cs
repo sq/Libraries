@@ -58,6 +58,8 @@ namespace Squared.Render.Buffers {
                 return false;
         }
 
+        public override int GetHashCode () => 0;
+
         public override string ToString () {
             return $"<Slice {VertexOffset}-{VertexOffset + VertexCount} {Buffer}>";
         }
