@@ -140,9 +140,8 @@ namespace Squared.Render {
         }
 
         protected void ReleaseMaterialCache () {
-            lock (Lock) {
+            lock (Lock)
                 MaterialCache.Clear();
-            }
         }
 
         internal void InitializeTypedUniformsForMaterial (Material m, List<ITypedUniform> uniforms) {
@@ -238,7 +237,8 @@ namespace Squared.Render {
             }
         }
 
-        public IEnumerable<Material> AllMaterials {
+        // Unsafe to use unless locked
+        private IEnumerable<Material> AllMaterials {
             get {
                 if (IsDisposed)
                     throw new ObjectDisposedException("MaterialSetBase");
@@ -313,7 +313,7 @@ namespace Squared.Render {
             lock (Lock) {
                 if (registerInList)
                     ExtraMaterials.Add(extraMaterial);
-                MaterialCache.UnsafeFastClear();
+                MaterialCache.Clear();
             }
         }
 

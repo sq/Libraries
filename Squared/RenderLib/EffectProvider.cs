@@ -182,11 +182,8 @@ namespace Squared.Render.Resources {
                 return effect;
             }
 
+            material.BlendState = blendState;
             materialSet?.Add(material);
-            if (blendState != null) {
-                material = material.SetStates(blendState: blendState);
-                materialSet?.Add(material);
-            }
             return material;
         }
     }
