@@ -427,7 +427,7 @@ namespace Squared.Render {
             Device.Disposing += OnDeviceDisposing;
         }
 
-        protected bool DefaultBeginDraw () {
+        private bool DefaultBeginDraw () {
             if (IsDisposed)
                 return false;
 
@@ -443,7 +443,7 @@ namespace Squared.Render {
             return false;
         }
 
-        protected void DefaultEndDraw () {
+        private void DefaultEndDraw () {
             if (IsDisposed)
                 return;
 
@@ -460,12 +460,12 @@ namespace Squared.Render {
             );
         }
 
-        protected void OnDeviceDisposing (object sender, EventArgs args) {
+        private void OnDeviceDisposing (object sender, EventArgs args) {
             _DeviceIsDisposed = true;
             _DeviceLost = true;
         }
 
-        protected void OnDeviceLost (object sender, EventArgs args) {
+        private void OnDeviceLost (object sender, EventArgs args) {
             TimeOfLastResetOrDeviceChange = Time.Ticks;
             FirstFrameSinceReset = true;
             _DeviceLost = true;
@@ -473,7 +473,7 @@ namespace Squared.Render {
         }
 
         // We must acquire both locks before resetting the device to avoid letting the reset happen during a paint or content load operation.
-        protected void OnDeviceResetting (object sender, EventArgs args) {
+        private void OnDeviceResetting (object sender, EventArgs args) {
 
             TimeOfLastResetOrDeviceChange = Time.Ticks;
             FirstFrameSinceReset = true;
@@ -489,7 +489,7 @@ namespace Squared.Render {
             UniformBinding.HandleDeviceReset();
         }
 
-        protected void EndReset () {
+        private void EndReset () {
             if (Device == null) {
             }
 
@@ -508,7 +508,7 @@ namespace Squared.Render {
             }
         }
 
-        protected void OnDeviceReset (object sender, EventArgs args) {
+        private void OnDeviceReset (object sender, EventArgs args) {
             TimeOfLastResetOrDeviceChange = Time.Ticks;
 
             if (IsResetting)
@@ -769,7 +769,7 @@ namespace Squared.Render {
             }
         }
 
-        protected void CheckMainThread (bool allowThreading) {
+        private void CheckMainThread (bool allowThreading) {
             if (allowThreading)
                 return;
 
@@ -777,7 +777,7 @@ namespace Squared.Render {
                 throw new ThreadStateException("Function running off main thread in single threaded mode");
         }
 
-        protected void PrepareFrame (Frame frame, bool threaded) {
+        private void PrepareFrame (Frame frame, bool threaded) {
             if (DoThreadedPrepare)
                 Monitor.Enter(PrepareLock);
 
@@ -798,7 +798,7 @@ namespace Squared.Render {
         /// <summary>
         /// Finishes preparing the current Frame and readies it to be sent to the graphics device for rendering.
         /// </summary>
-        protected void PrepareNextFrame (Frame newFrame, bool threaded) {
+        private void PrepareNextFrame (Frame newFrame, bool threaded) {
             PresentBegunSignal.Reset();
 
             if (newFrame != null)
@@ -983,7 +983,7 @@ namespace Squared.Render {
             PresentEndedSignal.Set();
         }
 
-        protected void RenderFrameToDraw (Frame frameToDraw, bool endDraw) {
+        private void RenderFrameToDraw (Frame frameToDraw, bool endDraw) {
             Squared.Threading.Profiling.Superluminal.BeginEventFormat("Issue Frame", "SRFrame #{0}", frameToDraw.Index, color: 0x10CFCF);
             try {
                 if (IssueLag > 0)
@@ -1019,7 +1019,7 @@ namespace Squared.Render {
             }
         }
 
-        protected void ThreadedDraw (Frame frame) {
+        private void ThreadedDraw (Frame frame) {
             var list = PendingDisposes.FreezeCurrentList();
             var rmList = Manager.PendingDisposes.FreezeCurrentList();
 
@@ -1056,7 +1056,7 @@ namespace Squared.Render {
             }
         }
 
-        protected bool IsDeviceLost {
+        private bool IsDeviceLost {
             get {
                 var device = Device;
                 if (device == null)

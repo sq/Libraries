@@ -701,8 +701,8 @@ namespace Squared.Render {
     }
 
     public sealed class SetRenderTargetBatch : Batch {
-        protected AutoRenderTarget AutoRenderTarget;
-        protected RenderTarget2D RenderTarget;
+        private AutoRenderTarget AutoRenderTarget;
+        private RenderTarget2D RenderTarget;
 
         public void Initialize (IBatchContainer container, int layer, AutoRenderTarget autoRenderTarget) {
             base.Initialize(container, layer, null, true);

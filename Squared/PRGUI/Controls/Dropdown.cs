@@ -46,7 +46,7 @@ namespace Squared.PRGUI.Controls {
         private int _Version;
         protected ItemListManager<T> Manager;
 
-        public IEqualityComparer<T> Comparer {
+        new public IEqualityComparer<T> Comparer {
             get => Manager.Comparer;
             set => Manager.Comparer = value;
         }

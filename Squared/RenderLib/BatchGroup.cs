@@ -336,7 +336,7 @@ namespace Squared.Render {
             _DrawCalls.Remove(batch);
         }
 
-        new public void Add (Batch batch) {
+        public void Add (Batch batch) {
             if (batch == null)
                 throw new ArgumentNullException("batch");
             if (batch.Container != null)

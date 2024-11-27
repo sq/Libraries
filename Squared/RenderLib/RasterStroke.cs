@@ -793,7 +793,7 @@ namespace Squared.Render.RasterStroke {
             _SoftwareBuffer = null;
         }
 
-        new public void Add (RasterStrokeDrawCall dc) {
+        public void Add (RasterStrokeDrawCall dc) {
             Add(ref dc);
         }
 

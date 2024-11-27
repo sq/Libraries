@@ -122,7 +122,7 @@ namespace Squared.Render.Buffers {
     {
         public static bool Tracing = false;
 
-        protected sealed class SoftwareBufferPool {
+        private sealed class SoftwareBufferPool {
             public sealed class BucketComparer : IComparer<GeometryBuffer> {
                 public static readonly BucketComparer Instance = new BucketComparer();
 
@@ -145,7 +145,7 @@ namespace Squared.Render.Buffers {
                     return $"Bucket #{Index} Count={Count}";
                 }
 
-                new public void Sort () {
+                public void Sort () {
                     FastCLRSort(BucketComparer.Instance);
                 }
             }

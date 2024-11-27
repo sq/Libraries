@@ -241,10 +241,10 @@ namespace Squared.Render.Basis {
 
         private GCHandle DataPin;
         internal IntPtr pTranscoder;
-        protected MemoryMappedFile MappedFile { get; private set; }
-        protected MemoryMappedViewAccessor MappedView { get; private set; }
-        protected MemoryMappedViewStream MappedViewStream { get; private set; }
-        protected byte[] Data { get; private set; }
+        private MemoryMappedFile MappedFile { get; set; }
+        private MemoryMappedViewAccessor MappedView { get; set; }
+        private MemoryMappedViewStream MappedViewStream { get; set; }
+        private byte[] Data { get; set; }
         public uint DataSize { get; private set; }
         public void* pData { get; private set; }
         public bool IsDisposed { get; private set; }

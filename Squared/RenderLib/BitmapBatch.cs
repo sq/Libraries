@@ -206,7 +206,7 @@ namespace Squared.Render {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        new public void Add (BitmapDrawCall item) {
+        public void Add (BitmapDrawCall item) {
             if (!BitmapDrawCall.CheckValid(ref item))
                 throw new InvalidOperationException("Invalid draw call");
 

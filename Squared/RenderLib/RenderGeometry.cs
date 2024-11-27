@@ -108,14 +108,7 @@ namespace Squared.Render {
             PrepareQuadBorder = _PrepareQuadBorder;
             PrepareLine = _PrepareLine;
             
-#if !PSM
             PrepareRing = _PrepareRing;
-#else
-            PSMBufferGenerator<VertexPositionColor>.VertexFormat = new Sce.PlayStation.Core.Graphics.VertexFormat[] {
-                Sce.PlayStation.Core.Graphics.VertexFormat.Float3, 
-                Sce.PlayStation.Core.Graphics.VertexFormat.UByte4N
-            };
-#endif
         }
 
         #endregion
@@ -153,7 +146,7 @@ namespace Squared.Render {
             Count = VertexCount = IndexCount = 0;
         }
 
-        protected void Add (in GeometryDrawCall drawCall, int vertexCount, int indexCount) {
+        private void Add (in GeometryDrawCall drawCall, int vertexCount, int indexCount) {
             Count += 1;
             VertexCount += vertexCount;
             IndexCount += indexCount;
@@ -467,7 +460,6 @@ namespace Squared.Render {
             iw.Write(LineIndices);
         }
         
-#if !PSM
         public void AddFilledRing (Vector2 center, float innerRadius, float outerRadius, Color innerColor, Color outerColor, float quality = 0) {
             AddFilledRing(
                 center, 
@@ -477,7 +469,7 @@ namespace Squared.Render {
             );
         }
 
-        protected static int ComputeRingPoints (ref Vector2 radius, float quality) {
+        private static int ComputeRingPoints (ref Vector2 radius, float quality) {
             float scale = Arithmetic.Clamp(3.75f - quality, 2, 5);
             var result = (int)Math.Ceiling(Math.Abs(radius.X + radius.Y) / scale) + 8;
             if (result < 8)
@@ -560,7 +552,6 @@ namespace Squared.Render {
                 colorA += colorStep;
             }
         }
-#endif
 
         #endregion
     }

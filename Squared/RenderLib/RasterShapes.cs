@@ -679,7 +679,7 @@ namespace Squared.Render.RasterShape {
         private BufferGenerator<CornerVertex>.GeometryBuffer _CornerBuffer = null;
         private PolygonBuffer _PolygonBuffer = null;
 
-        protected static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
+        private static ThreadLocal<VertexBufferBinding[]> _ScratchBindingArray = 
             new ThreadLocal<VertexBufferBinding[]>(() => new VertexBufferBinding[2]);
 
         internal ArrayPoolAllocator<RasterShapeVertex> VertexAllocator;
@@ -1002,7 +1002,7 @@ namespace Squared.Render.RasterShape {
             _SoftwareBuffer = default;
         }
 
-        new public void Add (RasterShapeDrawCall dc) => Add(ref dc);
+        public void Add (RasterShapeDrawCall dc) => Add(ref dc);
 
         new public void Add (ref RasterShapeDrawCall dc) {
             // HACK: This is permissible since these are internal fields
