@@ -434,6 +434,7 @@ namespace Squared.Task {
             });
         }
 
+        // Accessed via reflection
         private void _OnResolvedDispatcher_SkipQueue_Generic<T> (Future<T> future, object _handler) {
             if (Thread.CurrentThread == MainThread) {
                 if (_handler is Action<T> a)
@@ -549,7 +550,13 @@ namespace Squared.Task {
                 }
                 f.RegisterOnResolved2((OnFutureResolvedWithData<T>)handler, onComplete);
             } else {
-                f.RegisterOnResolved(OnResolvedDispatcher, onComplete);
+                if (onComplete is Action<T> at)
+                    // FIXME
+                    throw new Exception("Unimplemented OnResolved type. Try skipQueueOnMainThread for now.");
+                if (onComplete is Action<IFuture> aif)
+                    f.RegisterOnResolved(OnResolvedDispatcher, aif);
+                else
+                    throw new Exception("Unimplemented OnResolved type");
             }
         }
 

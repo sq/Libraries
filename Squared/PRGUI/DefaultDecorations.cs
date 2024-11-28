@@ -1679,7 +1679,7 @@ namespace Squared.PRGUI {
                     var expansionContentPx = expansionFrac * divisor;
                     divisor = Math.Max(divisor + expansionContentPx, 0.1f);
                     // FIXME
-                    scrollDivisor = scrollDivisor;
+                    // scrollDivisor = scrollDivisor;
                     thumbSizePx = ScrollbarMinThumbSize;
                 }
                 var thumbSizeFrac = thumbSizePx / data.ViewportSize;

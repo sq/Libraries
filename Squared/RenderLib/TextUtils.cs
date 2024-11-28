@@ -1423,6 +1423,8 @@ namespace Squared.Render.Text {
             else
                 return false;
         }
+
+        public override int GetHashCode () => 0;
     }
 
     public interface IKerningProvider {
