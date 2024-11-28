@@ -353,7 +353,7 @@ namespace Squared.Render {
             }
 
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
-            _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container);
+            _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container.RenderManager);
 
             if (Material == null) {
                 if (!WarnedAboutNullMaterial) {

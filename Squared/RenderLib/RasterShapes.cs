@@ -771,7 +771,7 @@ namespace Squared.Render.RasterShape {
                 _DrawCalls.Sort(ShapeDrawCallSorter);
 
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<RasterShapeVertex>>();
-                _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container, CornerBufferRepeatCount);
+                _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container.RenderManager, CornerBufferRepeatCount);
                 var swb = BufferSlicer<RasterShapeVertex>.GetOrAllocateBuffer(_BufferGenerator, vertexCount);
                 _SoftwareBuffer = swb;
 
@@ -1054,7 +1054,7 @@ namespace Squared.Render.RasterShape {
             ArraySegment<RasterPolygonVertex> vertices, out int indexOffset, out int vertexCount, bool closed,
             Matrix? vertexTransform = null, Func<RasterPolygonVertex, RasterPolygonVertex> vertexModifier = null
         ) {
-            _PolygonBuffer = Container.Frame.PrepareData.GetPolygonBuffer(Container);
+            _PolygonBuffer = Container.Frame.PrepareData.GetPolygonBuffer();
             _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount, closed, vertexTransform, vertexModifier);
         }
 

@@ -46,21 +46,23 @@ namespace Squared.Render {
             private BufferGenerator<CornerVertex>.GeometryBuffer[] CornerBuffers =
                 new BufferGenerator<CornerVertex>.GeometryBuffer[8];
             private Lazy<PolygonBuffer> _PolygonBuffer = 
-                new Lazy<PolygonBuffer>(() => new PolygonBuffer(), LazyThreadSafetyMode.ExecutionAndPublication);
+                new (() => new PolygonBuffer(), LazyThreadSafetyMode.ExecutionAndPublication);
 
-            public void Initialize () {
+            public void Initialize (RenderManager manager) {
                 _PolygonBuffer.Value.Clear();
                 Array.Clear(CornerBuffers, 0, CornerBuffers.Length);
+                for (int i = 1; i < CornerBuffers.Length; i++)
+                    CornerBuffers[i] = QuadUtils.CreateCornerBuffer(manager, i);
             }
 
-            internal PolygonBuffer GetPolygonBuffer (IBatchContainer container) {
+            internal PolygonBuffer GetPolygonBuffer () {
                 return _PolygonBuffer.Value;
             }
 
-            public BufferGenerator<CornerVertex>.GeometryBuffer GetCornerBuffer (IBatchContainer container, int repeatCount = 1) {
+            public BufferGenerator<CornerVertex>.GeometryBuffer GetCornerBuffer (RenderManager manager, int repeatCount = 1) {
                 var result = Volatile.Read(ref CornerBuffers[repeatCount]);
                 if (result == null) {
-                    result = QuadUtils.CreateCornerBuffer(container, repeatCount);
+                    result = QuadUtils.CreateCornerBuffer(manager, repeatCount);
                     var exchanged = Interlocked.CompareExchange(ref CornerBuffers[repeatCount], result, null);
                     if (exchanged != null)
                         // FIXME: Dispose result?
@@ -99,8 +101,6 @@ namespace Squared.Render {
             ChangeRenderTargets = true;
             if (PrepareData == null)
                 PrepareData = new FramePrepareData();
-            else
-                PrepareData.Initialize();
         }
 
         public void Readback (Texture2D source, Array destination) {
@@ -149,6 +149,10 @@ namespace Squared.Render {
         public void Prepare (bool parallel) {
             if (Interlocked.Exchange(ref State, (int)States.Preparing) != (int)States.Initialized)
                 throw new InvalidOperationException("Frame was not in initialized state when prepare operation began ");
+
+            // This has to happen late, right before we prepare our batches, because the buffer generators
+            //  get reset pretty late instead of when the frame is initialized.
+            PrepareData.Initialize(RenderManager);
 
             var numRemoved = BatchCombiner.CombineBatches(ref Batches, ref BatchesToRelease);
             // Batch combining shuffles the batches around to group by type. Once it's done,

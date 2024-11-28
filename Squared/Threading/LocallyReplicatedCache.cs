@@ -83,25 +83,29 @@ namespace Squared.Threading {
         }
         
         public sealed class Table {
-            private UnorderedList<Entry> ValuesById;
+            private sealed class IdComparer : IEqualityComparer<Id> {
+                public static readonly IdComparer Instance = new ();
+
+                public bool Equals (int x, int y) => x == y;
+                public int GetHashCode (int obj) => obj;
+            }
+
+            private Dictionary<Id, Entry> ValuesById;
             private Dictionary<Entry, Id> IdsByValue;
+            private List<Entry> DeadEntries = new ();
 
             internal Table (EntryComparer comparer) {
-                ValuesById = new UnorderedList<Entry>(1024) {
-                    default
-                };
-                IdsByValue = new Dictionary<Entry, Id>(comparer);
+                ValuesById = new (1024, IdComparer.Instance);
+                IdsByValue = new (1024, comparer);
             }
 
             public void ReplicateFrom (Table source) {
-                var sourceArray = source.ValuesById;
-                var sourceCount = sourceArray.Count;
-                var i = ValuesById.Count;
-                while (i < sourceCount) {
-                    var item = sourceArray.DangerousGetItem(i);
-                    ValuesById.Add(item);
-                    IdsByValue[item] = i;
-                    i++;
+                var sourceDict = source.ValuesById;
+                ValuesById.Clear();
+                IdsByValue.Clear();
+                foreach (var kvp in sourceDict) {
+                    ValuesById[kvp.Key] = kvp.Value;
+                    IdsByValue[kvp.Value] = kvp.Key;
                 }
             }
 
@@ -112,36 +116,27 @@ namespace Squared.Threading {
             }
 
             public void Set (Id id, Entry value) {
-                var count = ValuesById.Count;
                 // We convert the entry's strong reference (if present) into a weak reference,
                 //  so that the table does not prevent its values from being collected.
                 value = value.ConvertToWeak();
-                if (count == id) {
-                    ValuesById.Add(value);
-                } else {
-                    throw new InvalidOperationException();
-                }
+                ValuesById[id] = value;
                 IdsByValue[value] = id;
             }
 
-            public Entry GetValue (Id id) {
-                return ValuesById.DangerousGetItem(id);
-            }
+            public Entry GetValue (Id id) =>
+                ValuesById[id];
 
-            public bool TryGetValue (Id id, out Entry value) {
-                return ValuesById.DangerousTryGetItem(id, out value);
-            }
+            public bool TryGetValue (Id id, out Entry value) =>
+                ValuesById.TryGetValue(id, out value);
 
-            public bool TryGetId (Entry value, out Id id) {
-                return IdsByValue.TryGetValue(value, out id) && (id > 0);
-            }
+            public bool TryGetId (Entry value, out Id id) =>
+                IdsByValue.TryGetValue(value, out id) && (id > 0);
 
             internal int RemoveDeadEntries () {
                 var result = 0;
-                var dead = default(Entry);
 
-                using (var e = ValuesById.GetEnumerator())
-                while (e.GetNext(out var entry)) {
+                DeadEntries.Clear();
+                foreach (var entry in ValuesById.Values) {
                     // HACK: Preserve #0 == null
                     if (entry.Weak == null)
                         continue;
@@ -149,10 +144,16 @@ namespace Squared.Threading {
                     if (entry.Weak.TryGetTarget(out _))
                         continue;
 
-                    IdsByValue.Remove(entry);
-                    e.ReplaceCurrent(ref dead);
+                    DeadEntries.Add(entry);
+                }
+
+                foreach (var deadEntry in DeadEntries) {
+                    var id = IdsByValue[deadEntry];
+                    ValuesById.Remove(id);
+                    IdsByValue.Remove(deadEntry);
                     result++;
                 }
+                DeadEntries.Clear();
 
                 return result;
             }

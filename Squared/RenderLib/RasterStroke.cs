@@ -535,7 +535,7 @@ namespace Squared.Render.RasterStroke {
                 _DrawCalls.Sort(StrokeDrawCallSorter);
 
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<RasterStrokeVertex>>();
-                _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container, CornerBufferRepeatCount);
+                _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container.RenderManager, CornerBufferRepeatCount);
                 var swb = _BufferGenerator.Allocate(vertexCount, 0);
                 _SoftwareBuffer = swb;
 
@@ -836,7 +836,7 @@ namespace Squared.Render.RasterStroke {
                 }
             }
 
-            _PolygonBuffer = Container.Frame.PrepareData.GetPolygonBuffer(Container);
+            _PolygonBuffer = Container.Frame.PrepareData.GetPolygonBuffer();
             _PolygonBuffer.AddVertices(vertices, out indexOffset, out vertexCount, false, vertexTransform, vertexModifier);
 
             return containsBezier;

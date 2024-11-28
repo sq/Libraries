@@ -232,7 +232,7 @@ namespace Squared.Render {
             var count = _DrawCalls.Count;
 
             _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<BitmapVertex>>();
-            _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container);
+            _CornerBuffer = Container.Frame.PrepareData.GetCornerBuffer(Container.RenderManager);
 
             var textureCache = manager.TextureCache;
 

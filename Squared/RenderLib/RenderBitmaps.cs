@@ -241,13 +241,13 @@ namespace Squared.Render {
                 CornerBufferNames[i] = string.Intern("QuadCorners" + i);
         }
 
-        public unsafe static BufferGenerator<CornerVertex>.GeometryBuffer CreateCornerBuffer (IBatchContainer container, int repeatCount = 1) {
+        public unsafe static BufferGenerator<CornerVertex>.GeometryBuffer CreateCornerBuffer (RenderManager manager, int repeatCount = 1) {
             if ((repeatCount < 1) || (repeatCount >= RepeatLimit))
                 throw new ArgumentOutOfRangeException(nameof(repeatCount));
 
             int vertCount = 4 * repeatCount;
             int indexCount = 6 * repeatCount;
-            var cornerGenerator = container.RenderManager.GetBufferGenerator<BufferGenerator<CornerVertex>>();
+            var cornerGenerator = manager.GetBufferGenerator<BufferGenerator<CornerVertex>>();
             var result = cornerGenerator.GetOrCreateCachedBuffer(CornerBufferNames[repeatCount], vertCount, indexCount, out bool isNew);
 
             if (isNew) {
