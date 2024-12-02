@@ -283,6 +283,16 @@ namespace Squared.Render.Convenience {
             ColorSourceBlend = Blend.DestinationColor
         };
 
+        public static readonly BlendState InvertDestination = new BlendState {
+            Name = "InvertDestination",
+            AlphaBlendFunction = BlendFunction.Add,
+            AlphaDestinationBlend = Blend.One,
+            AlphaSourceBlend = Blend.Zero,
+            ColorBlendFunction = BlendFunction.Subtract,
+            ColorDestinationBlend = Blend.DestinationColor,
+            ColorSourceBlend = Blend.One
+        };
+
         public static readonly RasterizerState ScissorOnly = new RasterizerState {
             Name = "ScissorOnly",
             CullMode = CullMode.None,

@@ -373,14 +373,15 @@ namespace Squared.PRGUI {
         /// </summary>
         /// <param name="animation">An animation to apply. If null, this method will return after canceling any existing animation.</param>
         /// <param name="duration">A custom duration for the animation. If unset, the animation's default length will be used.</param>
+        /// <param name="forcePending">Forces the animation to be pending, waiting for <see cref="StartPendingAnimation(Control)"/> to trigger it.</param>
         /// <returns>A custom completion future for the animation. When the animation finishes this future will be completed (with true if cancelled).</returns>
-        public Future<bool> StartAnimation (IControlAnimation animation, float? duration = null, long? now = null) {
+        public Future<bool> StartAnimation (IControlAnimation animation, float? duration = null, long? now = null, bool forcePending = false) {
             CancelActiveAnimation(now);
             if (animation == null)
                 return new Future<bool>(false);
 
             ActiveAnimationFuture = new Future<bool>();
-            if (Context == null) {
+            if ((Context == null) || forcePending) {
                 PendingAnimation = new PendingAnimationRecord {
                     Animation = animation,
                     Duration = duration,
@@ -1006,11 +1007,15 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void InitializeForContext () {
-            var pa = PendingAnimation;
-            PendingAnimation = null;
+            StartPendingAnimation(this);
+        }
+
+        public static void StartPendingAnimation (Control control) {
+            var pa = control.PendingAnimation;
+            control.PendingAnimation = null;
             if (pa == null)
                 return;
-            StartAnimationImpl(
+            control.StartAnimationImpl(
                 pa.Animation, 
                 pa.Duration,
                 pa.Now
