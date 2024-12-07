@@ -46,6 +46,8 @@ namespace Squared.PRGUI.Controls {
         private EventSubscription AcceptHandlerRegistered, CancelHandlerRegistered;
         private Control _AcceptControl, _CancelControl;
 
+        public virtual Control BackgroundFadeCutout { get; set; }
+
         bool IModal.CanClose (ModalCloseReason reason) => (reason) switch {
             ModalCloseReason.UserCancelled => AllowCancel,
             _ => true,

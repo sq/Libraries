@@ -194,7 +194,7 @@ namespace Squared.Render {
             "D3D11" => true,
             "Vulkan" => true,
             // FIXME
-            "SDL_GPU" => false,
+            "SDL_GPU" => true,
             _ => false,
         };
 

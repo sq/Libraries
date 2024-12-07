@@ -60,6 +60,10 @@ namespace Squared.PRGUI {
         /// </summary>
         float BackgroundFadeLevel { get; }
         /// <summary>
+        /// While this modal is topmost, slice the rectangle of this specified control out of the background fade.
+        /// </summary>
+        Control BackgroundFadeCutout { get; }
+        /// <summary>
         /// Returns true if the modal can be closed for this reason.
         /// </summary>
         bool CanClose (ModalCloseReason reason);

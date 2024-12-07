@@ -162,7 +162,7 @@ namespace Squared.Render.Convenience {
             public int Layer, FrameIndex;
             public float RasterGammaMinusOne;
             public object BlendStateOrSelector;
-            public List<RasterShape.RasterShapeComposite> RasterComposites;
+            public List<RasterShapeComposite> RasterComposites;
             public Vector2 BitmapMarginSize;
         }
 
@@ -424,6 +424,13 @@ namespace Squared.Render.Convenience {
         public void AddRasterComposite (RasterShapeComposite value) {
             Config.RasterComposites ??= new ();
             Config.RasterComposites.Add(value);
+        }
+
+        /// <summary>
+        /// Attaches an existing list of composites to this renderer. It will be copied into each raster shape batch created.
+        /// </summary>
+        public void SetRasterComposites (List<RasterShapeComposite> list) {
+            Config.RasterComposites = list;
         }
 
         private bool TryGetCachedBatch<T> (
@@ -703,7 +710,7 @@ namespace Squared.Render.Convenience {
             result.NextSortKey = NextSortKey;
 
             if ((result.Config.RasterComposites?.Count ?? 0) > 0)
-                result.Config.RasterComposites = new List<RasterShapeComposite>(result.Config.RasterComposites);
+                result.Config.RasterComposites = new (result.Config.RasterComposites);
             
             if (nextLayer)
                 Config.Layer += 1;
@@ -2047,7 +2054,7 @@ namespace Squared.Render.Convenience {
                     Config.RasterizerState, Config.DepthStencilState, desiredBlendState, rampTexture,
                     rampUVOffset
                 );
-                batch.Composites = Config.RasterComposites;
+                batch.Composites.AddRange(Config.RasterComposites);
                 batch.Dispose();
                 if (DisableDithering)
                     batch.DitheringSettings = DitheringSettings.Disable;

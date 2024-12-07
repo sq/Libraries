@@ -74,6 +74,8 @@ namespace Squared.PRGUI.Controls {
 
         // FIXME: Attach to the menu item?
         Control ICustomTooltipTarget.Anchor => null;
+        // FIXME: Attach to the focus donor?
+        Control IModal.BackgroundFadeCutout => null;
 
         public string Description { get; set; }
 

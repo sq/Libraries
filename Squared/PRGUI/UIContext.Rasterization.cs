@@ -11,6 +11,7 @@ using Squared.PRGUI.Controls;
 using Squared.PRGUI.Input;
 using Squared.Render;
 using Squared.Render.Convenience;
+using Squared.Render.RasterShape;
 using Squared.Util;
 
 namespace Squared.PRGUI {
@@ -139,7 +140,8 @@ namespace Squared.PRGUI {
             new Color(0, 96, 96),
         };
 
-        private StringBuilder LayoutTreeBuilder = new StringBuilder();
+        private StringBuilder LayoutTreeBuilder = new ();
+        private List<RasterShapeComposite> BackgroundFadeCompositesList = new ();
 
         private void RasterizeLayoutTree (
             ref ImperativeRenderer renderer, Render.Text.IGlyphSource font, ref NewEngine.BoxRecord record, 
@@ -225,6 +227,7 @@ namespace Squared.PRGUI {
                 var seq = Controls.InDisplayOrder(FrameIndex);
 
                 var activeModal = ActiveModal;
+                Control fadeCutout = null;
                 var maxFadeLevel = 0f;
                 int fadeBackgroundAtIndex = -1;
                 for (int i = 0; i < ModalStack.Count; i++) {
@@ -232,6 +235,7 @@ namespace Squared.PRGUI {
                     if (modal.BackgroundFadeLevel > 0f) {
                         maxFadeLevel = Math.Max(maxFadeLevel, modal.BackgroundFadeLevel);
                         fadeBackgroundAtIndex = seq.IndexOf((Control)modal);
+                        fadeCutout = modal.BackgroundFadeCutout;
                     }
                 }
 
@@ -262,11 +266,31 @@ namespace Squared.PRGUI {
                         var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity;
                         // HACK: Push the post-fade controls and their its overlay plane above the previous one
                         renderer.Layer = 1000;
-                        renderer.FillRectangle(
-                            // Unbalanced vertices so only one triangle is visible
-                            Game.Bounds.FromPositionAndSize(Vector2.One * -9999, new Vector2(9999999, 9999)), 
-                            new Color(opacity, opacity, opacity, 0), blendState: RenderStates.SubtractiveBlend
-                        );
+                        if (fadeCutout != null) {
+                            var rect = fadeCutout.GetRect(displayRect: true, context: this);
+                            var r = renderer.MakeSubgroup();
+                            BackgroundFadeCompositesList.Clear();
+                            BackgroundFadeCompositesList.Add(new Render.RasterShape.RasterShapeComposite {
+                                Type = Render.RasterShape.RasterShapeCompositeType.Rectangle,
+                                Center = rect.Center,
+                                Size = rect.Size * 0.5f,
+                                Mode = Render.RasterShape.RasterShapeCompositeMode.Subtract,
+                            });
+                            r.SetRasterComposites(BackgroundFadeCompositesList);
+                            r.RasterizeRectangle(
+                                Vector2.One * -9999,
+                                new Vector2(9999999, 9999),
+                                0f,
+                                new Color(opacity, opacity, opacity, 1.0f),
+                                blendState: RenderStates.SubtractiveBlend
+                            );
+                        } else {
+                            renderer.FillRectangle(
+                                // Unbalanced vertices so only one triangle is visible
+                                Game.Bounds.FromPositionAndSize(Vector2.One * -9999, new Vector2(9999999, 9999)), 
+                                new Color(opacity, opacity, opacity, 0), blendState: RenderStates.SubtractiveBlend
+                            );
+                        }
                         renderer.Layer += 1;
                         renderer.MakeSubgroup(out OverlayRenderer, layer: 9999);
                     }

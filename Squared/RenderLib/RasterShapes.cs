@@ -710,7 +710,7 @@ namespace Squared.Render.RasterShape {
         public RasterShadowSettings ShadowSettings;
         public DitheringSettings? DitheringSettings;
 
-        public List<RasterShapeComposite> Composites = new List<RasterShapeComposite>();
+        public DenseList<RasterShapeComposite> Composites;
         private Vector4[] CompositeArray = new Vector4[8];
 
         static RasterShapeBatch () {
@@ -730,7 +730,11 @@ namespace Squared.Render.RasterShape {
             Texture = null;
             RampTexture = null;
             ShadowSettings = default;
+            DitheringSettings = default;
             RampUVOffset = default;
+            UseUbershader = false;
+            RampIsLinearSpace = false;
+            Composites.Clear();
             BatchManager.Instance.Clear(this, ref _SubBatches);
 
             if (VertexAllocator == null)
@@ -754,7 +758,7 @@ namespace Squared.Render.RasterShape {
 
         protected override void Prepare (PrepareManager manager) {
             Array.Clear(CompositeArray, 0, CompositeArray.Length);
-            var compositeCount = Composites?.Count ?? 0;
+            var compositeCount = Composites.Count;
             if (compositeCount > (CompositeArray.Length / 2))
                 throw new Exception("Too many composites in raster shape batch");
             for (int i = 0; i < compositeCount; i++) {
@@ -855,7 +859,7 @@ namespace Squared.Render.RasterShape {
             DynamicVertexBuffer vb, cornerVb;
             DynamicIndexBuffer ib, cornerIb;
 
-            var compositeCount = Composites?.Count ?? 0;
+            var compositeCount = Composites.Count;
 
             var cornerHwb = _CornerBuffer;
             cornerHwb.SetActive();
@@ -1060,24 +1064,27 @@ namespace Squared.Render.RasterShape {
 
         internal bool CompositesEqual (List<RasterShapeComposite> rasterComposites) {
             var rhsCount = rasterComposites?.Count ?? 0;
-            var lhsCount = Composites?.Count ?? 0;
+            var lhsCount = Composites.Count;
             if (lhsCount != rhsCount)
                 return false;
             if (lhsCount == 0)
                 return true;
             // FIXME: Optimize this
-            return Composites.SequenceEqual(rasterComposites);
+            for (int i = 0; i < lhsCount; i++)
+                if (!Composites[i].Equals(rasterComposites[i]))
+                    return false;
+            return true;
         }
     }
 
-    public enum RasterShapeCompositeType {
+    public enum RasterShapeCompositeType : byte {
         Ellipse,
         Rectangle,
         // Or just add 2d orientation value?
         Diamond,
     }
 
-    public enum RasterShapeCompositeMode {
+    public enum RasterShapeCompositeMode : byte {
         Union,
         Subtract,
         Xor,
@@ -1085,9 +1092,9 @@ namespace Squared.Render.RasterShape {
     }
 
     public struct RasterShapeComposite {
+        internal Vector4 CenterAndSize;
         public RasterShapeCompositeType Type;
         public RasterShapeCompositeMode Mode;
-        internal Vector4 CenterAndSize;
 
         public Vector2 Center {
             get => new Vector2(CenterAndSize.X, CenterAndSize.Y);
@@ -1103,5 +1110,20 @@ namespace Squared.Render.RasterShape {
                 CenterAndSize.W = value.Y;
             }
         }
+
+        public bool Equals (RasterShapeComposite rhs) =>
+            CenterAndSize.Equals(rhs.CenterAndSize) &&
+            (Type == rhs.Type) &&
+            (Mode == rhs.Mode);
+
+        public override bool Equals (object obj) {
+            if (obj is RasterShapeComposite rsc)
+                return Equals(rsc);
+            else
+                return false;
+        }
+
+        public override int GetHashCode () =>
+            CenterAndSize.GetHashCode();
     }
 }
