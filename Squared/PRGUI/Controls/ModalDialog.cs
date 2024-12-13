@@ -391,9 +391,9 @@ namespace Squared.PRGUI.Controls {
         IEnumerable<AcceleratorInfo> IAcceleratorSource.Accelerators {
             get {
                 if (AcceptControl != null)
-                    yield return new AcceleratorInfo(AcceptControl, Keys.Enter);
+                    yield return new AcceleratorInfo(AcceptControl, Keys.Enter, suppressSyntheticEvents: true);
                 if (CancelControl != null)
-                    yield return new AcceleratorInfo(CancelControl, Keys.Escape);
+                    yield return new AcceleratorInfo(CancelControl, Keys.Escape, suppressSyntheticEvents: true);
             }
         }
 

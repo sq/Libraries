@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.Remoting.Contexts;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Controls;
 using Squared.PRGUI.Input;
 using Squared.Render;
@@ -393,8 +395,36 @@ namespace Squared.PRGUI {
             if (needsToClearFocus)
                 Focused = null;
 
-            if (OnKeyEvent != null)
-                return OnKeyEvent(name, key, ch);
+            var result = OnKeyEvent(name, key, ch);
+            if (!result) {
+                evt.IsAccelerator = true;
+                var focusedSource = (Focused as IAcceleratorSource) ??
+                    (Focused as IControlContainer)?.AcceleratorSource;
+                if ((focusedSource != null) && !result)
+                    result = DispatchAccelerators(focusedSource, name, evt);
+
+                var topLevelSource = (TopLevelFocused as IAcceleratorSource) ??
+                    (TopLevelFocused as IControlContainer)?.AcceleratorSource;
+                if ((topLevelSource != null) && (topLevelSource != focusedSource) && !result)
+                    result = DispatchAccelerators(topLevelSource, name, evt);
+            }
+
+            return result;
+        }
+
+        private bool DispatchAccelerators (IAcceleratorSource source, string name, KeyEventArgs evt) {
+            foreach (var a in source.Accelerators) {
+                if (a.SuppressSyntheticEvents)
+                    continue;
+                if (a.Key != evt.Key)
+                    continue;
+                if (!a.Modifiers.Equals(evt.Modifiers))
+                    continue;
+
+                Log($"Dispatching {name} {evt.Key} {evt.Modifiers} to {a.Target} for accelerator");
+                if (FireEvent(name, a.Target, evt))
+                    return true;
+            }
 
             return false;
         }

@@ -24,19 +24,26 @@ namespace Squared.PRGUI.Accessibility {
         public string Text;
         public Keys Key;
         public KeyboardModifiers Modifiers;
+        /// <summary>
+        /// If true, the UI context will not automatically synthesize and dispatch keyboard events to <see cref="Target"/>.
+        /// This allows you to handle accelerator events yourself, turning this accelerator into a display-only one.
+        /// </summary>
+        public bool SuppressSyntheticEvents;
 
         public AcceleratorInfo (Control target, string text) {
             Target = target;
             Text = text;
             Key = default(Keys);
             Modifiers = default(KeyboardModifiers);
+            SuppressSyntheticEvents = true;
         }
 
-        public AcceleratorInfo (Control target, Keys key, bool ctrl = false, bool alt = false, bool shift = false) {
+        public AcceleratorInfo (Control target, Keys key, bool ctrl = false, bool alt = false, bool shift = false, bool suppressSyntheticEvents = false) {
             Target = target;
             Text = null;
             Key = key;
             Modifiers = new KeyboardModifiers { LeftControl = ctrl, LeftAlt = alt, LeftShift = shift };
+            SuppressSyntheticEvents = suppressSyntheticEvents;
         }
     }
 
@@ -382,7 +389,8 @@ namespace Squared.PRGUI {
             // FIXME: This looks confusing
             // RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, Focused, null);
 
-            var topLevelSource = TopLevelFocused as IAcceleratorSource;
+            var topLevelSource = (TopLevelFocused as IAcceleratorSource) ??
+                (TopLevelFocused as IControlContainer)?.AcceleratorSource;
             if (topLevelSource != null) {
                 // labelGroup = renderer.MakeSubgroup();
 
@@ -401,7 +409,8 @@ namespace Squared.PRGUI {
                     RasterizeAcceleratorOverlay(context, ref passSet, ctrlShiftTab, WindowFocusBackward);
             }
 
-            var focusedSource = Focused as IAcceleratorSource;
+            var focusedSource = (Focused as IAcceleratorSource) ??
+                (Focused as IControlContainer)?.AcceleratorSource;
             if ((focusedSource != null) && (focusedSource != topLevelSource)) {
                 // labelGroup = renderer.MakeSubgroup();
 

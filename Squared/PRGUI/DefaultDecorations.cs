@@ -448,7 +448,7 @@ namespace Squared.PRGUI {
                 Padding = new Margins(6, 4, 6, 4),
                 GetTextSettings = GetTextSettings_AcceleratorLabel,
                 GetFont = () => AcceleratorFont ?? TooltipFont ?? DefaultFont,
-                Below = AcceleratorLabel_Below
+                Content = AcceleratorLabel_Content
             };
 
             AcceleratorTarget = new DelegateDecorator {
@@ -1954,7 +1954,7 @@ namespace Squared.PRGUI {
             );
         }
 
-        protected virtual void AcceleratorLabel_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
+        protected virtual void AcceleratorLabel_Content (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
             ConfigureFill("AcceleratorLabel", ref settings, out var texture, out var textureRegion, out var textureSettings, out var fillSettings);
 
             // HACK

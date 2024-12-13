@@ -21,6 +21,7 @@ namespace Squared.PRGUI.Controls {
         public Action<HyperText, HyperTextHotspot> OnHotSpotClicked;
         public GetTooltipForMarkedStringHandler GetTooltipForString;
 
+        public IAcceleratorSource AcceleratorSource { get; set; }
         Control IControlContainer.DefaultFocusTarget => null;
         bool IControlContainer.ChildrenAcceptFocus => true;
         public IControlEventFilter ChildEventFilter { get; set; }

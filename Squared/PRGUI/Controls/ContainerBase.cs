@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Game;
+using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Flags;
 using Squared.PRGUI.Imperative;
@@ -36,6 +37,7 @@ namespace Squared.PRGUI.Controls {
         ControlCollection IControlContainer.Children => Children;
         int IControlContainer.ChildrenToSkipWhenBuilding => ChildrenToSkipWhenBuilding;
 
+        public IAcceleratorSource AcceleratorSource { get; set; }
         public IControlEventFilter ChildEventFilter { get; set; }
 
         protected ControlParentBase () 

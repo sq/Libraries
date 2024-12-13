@@ -98,7 +98,7 @@ namespace Squared.PRGUI {
     public struct KeyEventArgs {
         public UIContext Context;
 
-        public bool IsVirtualInput, IsRepeat;
+        public bool IsVirtualInput, IsRepeat, IsAccelerator;
         public KeyboardModifiers Modifiers;
         public Keys? Key;
         public char? Char;

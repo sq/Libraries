@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Squared.PRGUI.Accessibility;
 using Squared.PRGUI.Decorations;
 using Squared.PRGUI.Layout;
 using Squared.Render;
@@ -115,6 +116,7 @@ namespace Squared.PRGUI {
         bool ClipChildren { get; set; }
         bool ChildrenAcceptFocus { get; }
         Control DefaultFocusTarget { get; }
+        IAcceleratorSource AcceleratorSource { get; }
         ControlFlags ContainerFlags { get; }
         ControlCollection Children { get; }
         /// <summary>
