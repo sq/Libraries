@@ -493,13 +493,17 @@ namespace Squared.PRGUI {
                 }
             }
 
+            bool purgeTopLevelFocus = false;
+            if ((TopLevelFocused != null) && (Controls.IndexOf(TopLevelFocused) < 0))
+                purgeTopLevelFocus = true;
+
             if (
                 (Focused != null) && 
-                (!Focused.IsValidFocusTarget || (FindTopLevelAncestor(Focused) == null))
+                (!Focused.IsValidFocusTarget || (FindTopLevelAncestor(Focused) == null) || purgeTopLevelFocus)
             ) {
                 // If the current focused control is no longer enabled or present, attempt to
                 //  focus something else in the current top level control, if possible
-                if (Controls.Contains(TopLevelFocused)) {
+                if (!purgeTopLevelFocus) {
                     // HACK: Unfortunately, there's probably nothing useful to do here
                     // I suppose a focusable child could appear out of nowhere? But I don't think we'd want to
                     //  suddenly change focus if that happened. If we don't do this we waste a ton of CPU
