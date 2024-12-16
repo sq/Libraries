@@ -957,8 +957,8 @@ namespace Squared.Render.Text {
                 result.HitTests.Add(new LayoutHitTest { Position = _Satellite.HitTest.Value });
         }
 
-        public void MakeLayoutEngine2 (out StringLayoutEngine2 result, MeasurementSettings? measureOnly = null) {
-            if (_GlyphSource == null)
+        public void MakeLayoutEngine2 (out StringLayoutEngine2 result, MeasurementSettings? measureOnly = null, bool performingTextOutput = false) {
+            if (!performingTextOutput && (_GlyphSource == null))
                 throw new ArgumentNullException("GlyphSource");
 
             result = new StringLayoutEngine2 {
@@ -1058,12 +1058,13 @@ namespace Squared.Render.Text {
             }
 
             // HACK: Perform a measurement-only layout in a special mode that appends text to a stringbuilder
-            MakeLayoutEngine2(out var le2, default(MeasurementSettings));
+            MakeLayoutEngine2(out var le2, default(MeasurementSettings), true);
             le2.Initialize();
             le2.TextOutput = output;
             var rls = new RichTextLayoutState(_RichTextConfiguration, ref le2, null, this);
             rls.UserData = RichTextUserData ?? rls.UserData;
-            rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
+            if (_RichTextConfiguration != null)
+                rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
             _RichTextConfiguration.Append(ref le2, ref rls, _Text, _StyleName);
         }
 

@@ -893,10 +893,13 @@ namespace Squared.PRGUI.Controls {
             return false;
         }
 
-        protected string GetPlainText () {
-            return RichText
-                ? Content.FormatAsText()
-                : Text.ToString();
+        protected AbstractString GetPlainText () {
+            if (RichText) {
+                Content.RichTextConfiguration = GetRichTextConfiguration();
+                return Content.FormatAsText();
+            }
+
+            return Text;
         }
 
         public static string GetTrimmedText (string text) {
@@ -912,23 +915,34 @@ namespace Squared.PRGUI.Controls {
 
         public override string ToString () {
             if (DebugLabel != null)
-                return $"{DebugLabel} '{GetTrimmedText(GetPlainText())}'";
+                return $"{DebugLabel} '{GetTrimmedText(GetPlainText().ToString())}'";
             else
-                return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText(GetPlainText())}'";
+                return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText(GetPlainText().ToString())}'";
         }
 
         protected virtual AbstractString GetReadingText () {
             var plainText = GetPlainText();
-            var useTooltipByDefault = string.IsNullOrWhiteSpace(plainText) || (plainText.Length <= 2);
-            // FIXME: Format this tooltip content as rich text too
-            if (UseTooltipForReading ?? useTooltipByDefault)
-                return TooltipContent.GetPlainText(this);
+            var useTooltipByDefault = plainText.IsNullOrWhiteSpace || (plainText.Length <= 2);
+
+            if (UseTooltipForReading ?? useTooltipByDefault) {
+                if (TooltipContent.Settings.RichText) {
+                    // HACK: Create a dummy StaticText containing the tooltip text, then run the rich text engine
+                    //  to convert it into plain text.
+                    var dummy = new StaticText {
+                        RichText = TooltipContent.Settings.RichText,
+                        RichTextConfiguration = TooltipContent.Settings.RichTextConfiguration,
+                        Text = TooltipContent.Text,
+                    };
+                    return dummy.GetReadingText();
+                } else
+                    return TooltipContent.GetPlainText(this);
+            }
 
             return plainText;
         }
 
         protected virtual void FormatValueInto (StringBuilder sb) {
-            sb.Append(Text);
+            GetReadingText().CopyTo(sb);
         }
 
         AbstractString Accessibility.IReadingTarget.Text => GetReadingText();
