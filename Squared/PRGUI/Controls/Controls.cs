@@ -150,7 +150,7 @@ namespace Squared.PRGUI.Controls {
             return provider?.Button;
         }
 
-        protected override AbstractString GetReadingText () {
+        public override AbstractString GetReadingText () {
             return $"Button {base.GetReadingText()}";
         }
     }
@@ -205,7 +205,7 @@ namespace Squared.PRGUI.Controls {
             return provider?.Checkbox;
         }
 
-        protected override AbstractString GetReadingText () {
+        public override AbstractString GetReadingText () {
             var useTooltipByDefault = Text.IsNullOrWhiteSpace || (Text.Length <= 2);
             return (
                 (UseTooltipForReading ?? useTooltipByDefault)
@@ -328,7 +328,7 @@ namespace Squared.PRGUI.Controls {
             return provider?.RadioButton;
         }
 
-        protected override AbstractString GetReadingText () {
+        public override AbstractString GetReadingText () {
             if (Checked)
                 return Text.ToString() + ": Selected";
             else

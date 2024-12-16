@@ -920,7 +920,7 @@ namespace Squared.PRGUI.Controls {
                 return $"{GetType().Name} #{GetHashCode():X8} '{GetTrimmedText(GetPlainText().ToString())}'";
         }
 
-        protected virtual AbstractString GetReadingText () {
+        public virtual AbstractString GetReadingText () {
             var plainText = GetPlainText();
             var useTooltipByDefault = plainText.IsNullOrWhiteSpace || (plainText.Length <= 2);
 
@@ -931,7 +931,7 @@ namespace Squared.PRGUI.Controls {
                     var dummy = new StaticText {
                         RichText = TooltipContent.Settings.RichText,
                         RichTextConfiguration = TooltipContent.Settings.RichTextConfiguration,
-                        Text = TooltipContent.Text,
+                        Text = TooltipContent.GetText(this),
                     };
                     return dummy.GetReadingText();
                 } else
