@@ -1016,6 +1016,10 @@ namespace Squared.PRGUI.Controls {
             get => base.AcceptsMouseInput;
             set => base.AcceptsMouseInput = value;
         }
+        new public bool AcceptsFocus {
+            get => base.AcceptsFocus;
+            set => base.AcceptsFocus = value;
+        }
         new public StringLayoutFilter LayoutFilter {
             get => base.LayoutFilter;
             set => base.LayoutFilter = value;
