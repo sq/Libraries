@@ -476,7 +476,6 @@ namespace Squared.Render.RasterStroke {
         public DefaultMaterialSet Materials;
 
         private static readonly RasterStrokeDrawCallSorter StrokeDrawCallSorter = new RasterStrokeDrawCallSorter();
-        private static Texture2D CachedNoiseTexture;
         private Texture2D NoiseTexture;
         private PolygonBuffer _PolygonBuffer = null;
 
@@ -574,39 +573,6 @@ namespace Squared.Render.RasterStroke {
             }
         }
 
-        private unsafe Texture2D GetNoiseTexture (RenderManager renderManager) {
-            // FIXME
-            var result = Volatile.Read(ref CachedNoiseTexture);
-            if (result?.IsDisposed == false)
-                return result;
-
-            CachedNoiseTexture = null;
-            lock (renderManager.CreateResourceLock)
-                result = new Texture2D(renderManager.DeviceManager.Device, NoiseTextureSize, NoiseTextureSize, false, SurfaceFormat.Rgba64) {
-                    Name = "RasterStrokeBatch.CachedNoiseTexture"
-                };
-
-            // FIXME: Do this on a worker thread?
-            var rng = new CoreCLR.Xoshiro(null);
-            int c = NoiseTextureSize * NoiseTextureSize * 2;
-            var buffer = new uint[c];
-            for (int i = 0; i < c; i++)
-                buffer[i] = rng.NextUInt32();
-
-            lock (renderManager.UseResourceLock) {
-                fixed (uint * pData = buffer)
-                    result.SetDataPointerEXT(0, null, (IntPtr)pData, c * sizeof(uint));
-            }
-
-            Interlocked.CompareExchange(ref CachedNoiseTexture, result, null);
-            var actualResult = Volatile.Read(ref CachedNoiseTexture);
-            // FIXME
-            if (actualResult != result)
-                renderManager.DisposeResource(result);
-
-            return actualResult;
-        }
-
         public override void Issue (DeviceManager manager) {
             base.Issue(manager);
 
@@ -627,11 +593,10 @@ namespace Squared.Render.RasterStroke {
                 (Brush.Scale.NoiseFactor != 0) ||
                 (Brush.Color.NoiseFactor != 0);
 
-            // HACK: Workaround for D3D11 debug layer shouting about no texture bound :(
-            if (hasNoise || true)
-                NoiseTexture = GetNoiseTexture(Container.RenderManager);
+            if (hasNoise)
+                NoiseTexture = manager.RenderManager.GetNoiseTexture(128);
             else
-                NoiseTexture = null;
+                NoiseTexture = manager.RenderManager.DummyTexture;
 
             DynamicVertexBuffer vb, cornerVb;
             DynamicIndexBuffer ib, cornerIb;

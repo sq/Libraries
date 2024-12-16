@@ -299,13 +299,6 @@ namespace Squared.Render {
             Manager = new RenderManager(deviceService.GraphicsDevice, mainThread, ThreadGroup);
             UseResourceLock = Manager.UseResourceLock;
             CreateResourceLock = Manager.CreateResourceLock;
-            lock (CreateResourceLock) {
-                Manager.DummyTexture = new Texture2D(deviceService.GraphicsDevice, 1, 1) {
-                    Name = "Dummy Texture",
-                    Tag = "Dummy Texture",
-                };
-                Manager.DummyTexture.SetData(new Color[1]);
-            }
  
             GetWindow = getWindow;
             _SyncBeginDraw = synchronousBeginDraw ?? DefaultBeginDraw;
@@ -1258,6 +1251,7 @@ namespace Squared.Render {
 
                 Manager.PendingDisposes.DisposeListContents(Manager.PendingDisposes.FreezeCurrentList());
                 PendingDisposes.DisposeListContents(PendingDisposes.FreezeCurrentList());
+                Manager.Dispose();
             } catch (ObjectDisposedException) {
             } catch (DeviceLostException) {
             } catch (DeviceNotResetException) {

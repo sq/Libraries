@@ -36,15 +36,22 @@ namespace Squared.Render {
             /// <summary>
             /// Requires a DistanceFieldProvider
             /// </summary>
-            DistanceField
+            DistanceField,
+            /// <summary>
+            /// Automatically creates a noise texture of requested size (NxN)
+            /// </summary>
+            NoiseTextureSize,
         }
 
         internal struct SynthesizedParameter {
             public EffectParameter Source, Target;
+            public int Size;
             public SynthesizedParameterType Type;
 
             public override string ToString () =>
-                $"{Type} {Source.Name} => {Target.Name}";
+                (Source != null)
+                    ? $"{Type} {Source.Name} => {Target.Name}"
+                    : $"{Type} Size={Size}";
         }
 
         public sealed class PipelineHint {
@@ -190,18 +197,27 @@ namespace Squared.Render {
                         "texelsizeof" => SynthesizedParameterType.TexelSize,
                         "traitsof" => SynthesizedParameterType.Traits,
                         "distancefieldof" => SynthesizedParameterType.DistanceField,
+                        "noisetexturesize" => SynthesizedParameterType.NoiseTextureSize,
                         _ => SynthesizedParameterType.None,
                     };
                     if (type == SynthesizedParameterType.None)
                         continue;
-                    var sourceName = a.GetValueString();
-                    var source = effect.Parameters[sourceName];
-                    if (source == null)
-                        throw new Exception($"Synthesized effect parameter {p.Name}'s source {sourceName} does not exist!");
-                    SynthesizedParameters.Add(new SynthesizedParameter {
-                        Source = source, Target = p,
-                        Type = type
-                    });
+
+                    if (type == SynthesizedParameterType.NoiseTextureSize) {
+                        SynthesizedParameters.Add(new SynthesizedParameter {
+                            Size = a.GetValueInt32(), Target = p,
+                            Type = SynthesizedParameterType.NoiseTextureSize,
+                        });
+                    } else {
+                        var sourceName = a.GetValueString();
+                        var source = effect.Parameters[sourceName];
+                        if (source == null)
+                            throw new Exception($"Synthesized effect parameter {p.Name}'s source {sourceName} does not exist!");
+                        SynthesizedParameters.Add(new SynthesizedParameter {
+                            Source = source, Target = p,
+                            Type = type
+                        });
+                    }
                 }
             }
         }
@@ -324,8 +340,11 @@ namespace Squared.Render {
         private void SynthesizeParameters (RenderManager renderManager) {
             var dfp = renderManager.DistanceFieldProvider;
             foreach (var sp in SynthesizedParameters) {
-                var texture = sp.Source.GetValueTexture2D();
+                var texture = sp.Source?.GetValueTexture2D();
                 switch (sp.Type) {
+                    case SynthesizedParameterType.NoiseTextureSize:
+                        sp.Target.SetValue(renderManager.GetNoiseTexture(sp.Size));
+                        break;
                     case SynthesizedParameterType.SizeInPixels:
                         sp.Target.SetValue(texture != null ? new Vector2(texture.Width, texture.Height) : default);
                         break;

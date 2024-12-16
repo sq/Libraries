@@ -457,7 +457,7 @@ namespace Squared.Render {
     }
 
     // Thread-safe
-    public sealed class RenderManager {
+    public sealed class RenderManager : IDisposable {
         public static int DefaultBatchPoolCapacity = 1024;
 
         public struct MemoryStatistics {
@@ -512,7 +512,9 @@ namespace Squared.Render {
         /// <summary>
         /// Needed because setting a texture to null doesn't work the way you'd expect
         /// </summary>
-        public Texture2D DummyTexture;
+        public readonly Texture2D DummyTexture;
+
+        private readonly Dictionary<int, Texture2D> NoiseTextures = new ();
 
         // When issuing batches we add them to this, then at the end of issue we release their resources
         internal readonly LowAllocConcurrentQueue<Batch> ReleaseQueue = new LowAllocConcurrentQueue<Batch>();
@@ -539,6 +541,19 @@ namespace Squared.Render {
             CreateNewBufferGenerators();
 
             _Frame = null;
+
+            DummyTexture = new Texture2D(device, 1, 1) {
+                Name = "Dummy Texture",
+                Tag = "Dummy Texture",
+            };
+            DummyTexture.SetData(new Color[1]);
+        }
+
+        public void Dispose () {
+            DummyTexture.Dispose();
+            foreach (var kvp in NoiseTextures)
+                kvp.Value.Dispose();
+            NoiseTextures.Clear();
         }
 
         private BatchPool<T> CreateBatchAllocator<T> (int id)
@@ -863,6 +878,41 @@ namespace Squared.Render {
             tcd?.AutoCaptureTraceback();
 
             PendingDisposes.Enqueue(resource);
+        }
+
+        public unsafe Texture2D GetNoiseTexture (int size) {
+            Texture2D result;
+            lock (NoiseTextures) {
+                if (NoiseTextures.TryGetValue(size, out result))
+                    return result;
+            }
+
+            lock (CreateResourceLock)
+                result = new Texture2D(DeviceManager.Device, size, size, false, SurfaceFormat.Rgba64) {
+                    Name = $"NoiseTexture[{size}]"
+                };
+
+            // FIXME: Do this on a worker thread?
+            var rng = new CoreCLR.Xoshiro(null);
+            int c = size * size;
+            var buffer = new ulong[c];
+            for (int i = 0; i < c; i++)
+                buffer[i] = rng.NextUInt64();
+
+            lock (UseResourceLock) {
+                fixed (ulong * pData = buffer)
+                    result.SetDataPointerEXT(0, null, (IntPtr)pData, c * sizeof(ulong));
+            }
+
+            lock (NoiseTextures) {
+                if (NoiseTextures.TryGetValue(size, out var existing)) {
+                    result.Dispose();
+                    return existing;
+                } else
+                    NoiseTextures[size] = result;
+            }
+
+            return result;
         }
     }
 

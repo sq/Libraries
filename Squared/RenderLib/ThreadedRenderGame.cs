@@ -120,11 +120,6 @@ namespace Squared.Render {
                 RenderManager = RenderCoordinator.Manager;
             } else {
                 RenderManager = new RenderManager(GraphicsDevice, Thread.CurrentThread, ThreadGroup);
-                RenderManager.DummyTexture = new Texture2D(GraphicsDevice, 1, 1) {
-                    Name = "Dummy Texture",
-                    Tag = "Dummy Texture",
-                };
-                RenderManager.DummyTexture.SetData(new Color[1]);
                 RenderCoordinator = new RenderCoordinator(
                     RenderManager, () => Window, base.BeginDraw, base.EndDraw
                 );
