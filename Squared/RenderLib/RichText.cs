@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Game;
+using Squared.Render.TextLayout2;
 using Squared.Threading;
 using Squared.Util;
 using Squared.Util.Text;
@@ -586,7 +587,7 @@ namespace Squared.Render.Text {
 
     public interface IRichTextStateTracker {
         RichCommandResult TryProcessCommand (AbstractString value, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine);
-        void MarkString (RichTextConfiguration config, AbstractString originalText, AbstractString text, AbstractString id, uint spanIndex);
+        void MarkString (RichTextConfiguration config, ref StringLayoutEngine2 engine, AbstractString originalText, AbstractString text, AbstractString id, uint spanIndex);
         void ReferencedImage (RichTextConfiguration config, ref AsyncRichImage image);
         void ResetStyle (ref RichTextLayoutState state, ref TLayoutEngine layoutEngine);
         RichStyleResult TryApplyStyleProperty (ref RichTextLayoutState state, ref TLayoutEngine layoutEngine, RichProperty rule);
@@ -951,7 +952,7 @@ namespace Squared.Render.Text {
                             else if (config.Action != MarkedStringAction.Omit) {
                                 var l = astr.Length;
                                 if (!config.Unmarked)
-                                    state.Tracker?.MarkString(this, bracketed.Value, astr, id, span.Index);
+                                    state.Tracker?.MarkString(this, ref layoutEngine, bracketed.Value, astr, id, span.Index);
 
                                 if (config.Action == MarkedStringAction.RichText)
                                     AppendRichRange(ref layoutEngine, ref state, astr, ref parseErrors, rubyAnchor || !config.RubyText.IsNullOrWhiteSpace);

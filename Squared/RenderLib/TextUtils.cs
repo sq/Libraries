@@ -1213,6 +1213,8 @@ namespace Squared.Render.Text {
 
         void IStringLayoutListener.Initializing (ref StringLayoutEngine2 engine) {
             _Listener?.Initializing(ref engine);
+            if (!engine.MeasureOnly)
+                _Satellite?.RichMarkers.Clear();
         }
 
         void IStringLayoutListener.Error (ref StringLayoutEngine2 engine, string message) {
@@ -1253,20 +1255,35 @@ namespace Squared.Render.Text {
             for (int i = 0, c = _Satellite.RichMarkers.Count; i < c; i++) {
                 ref var rm = ref _Satellite.RichMarkers.Item(i);
                 engine.TryGetSpanBoundingBoxes(rm.SpanIndex, ref rm.Bounds);
+                ref var span = ref engine.GetSpan(rm.SpanIndex);
+                rm.FirstDrawCallIndex = (int)span.FirstDrawCall;
+                rm.LastDrawCallIndex = (int)span.DrawCallCount + (int)span.FirstDrawCall - 1;
             }
         }
 
-        void IRichTextStateTracker.MarkString (RichTextConfiguration config, AbstractString originalText, AbstractString text, AbstractString id, uint spanIndex) {
-            _StateTracker?.MarkString(config, originalText, text, id, spanIndex);
+        void IRichTextStateTracker.MarkString (RichTextConfiguration config, ref StringLayoutEngine2 engine, AbstractString originalText, AbstractString text, AbstractString id, uint spanIndex) {
+            _StateTracker?.MarkString(config, ref engine, originalText, text, id, spanIndex);
 
             if (DisableMarkers)
                 return;
-            AutoAllocateSatellite().RichMarkers.Add(new LayoutMarker {
+
+            if (engine.MeasureOnly)
+                return;
+
+            ref var span = ref engine.GetSpan(spanIndex);
+            var rm = new LayoutMarker {
                 OriginalText = originalText,
                 ActualText = text,
                 ID = id,
                 SpanIndex = spanIndex,
-            });
+                // Not available yet
+                /*
+                FirstDrawCallIndex = (int)span.FirstDrawCall,
+                LastDrawCallIndex = (int)span.DrawCallCount + (int)span.FirstDrawCall - 1,
+                */
+            };
+
+            AutoAllocateSatellite().RichMarkers.Add(rm);
         }
 
         void IRichTextStateTracker.ReferencedImage (RichTextConfiguration config, ref AsyncRichImage image) {

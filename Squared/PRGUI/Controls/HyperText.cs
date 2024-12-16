@@ -32,8 +32,9 @@ namespace Squared.PRGUI.Controls {
             SuppressDecorationScaling = true,
             AutoScaleMetrics = false
         };
+
         private ControlCollection _Children;
-        protected ControlCollection Children {
+        public ControlCollection Children {
             get {
                 if (_Children == null)
                     _Children = new ControlCollection(this, Context);
@@ -99,13 +100,30 @@ namespace Squared.PRGUI.Controls {
                         hs.ActualText = m.ActualText;
                         hs.OriginalText = m.OriginalText;
                         hs.MarkedID = m.ID;
+
+                        if (m.FirstDrawCallIndex.HasValue)
+                            hs.FirstDrawCall = m.FirstDrawCallIndex.Value;
+                        else
+                            ;
+
+                        if (m.LastDrawCallIndex.HasValue)
+                            hs.LastDrawCall = m.LastDrawCallIndex.Value;
+                        else
+                            ;
+
                         if (m.Bounds.Count <= 0) {
                             hs.Visible = false;
                             hs.Enabled = false;
                         } else {
                             hs.Visible = true;
                             hs.Enabled = true;
+
+                            // HACK: Preserve opacity
+                            // FIXME: Preserve other stuff too?
+                            var opacity = hs.Appearance.Opacity;
                             hs.Appearance = HotspotAppearance;
+                            hs.Appearance.Opacity = opacity;
+
                             var b = m.UnionBounds;
                             hs.Layout.FloatingPosition = b.TopLeft + _LastDrawOffset - padding.TopLeft;
                             hs.RectBase = b.TopLeft;
@@ -185,6 +203,7 @@ namespace Squared.PRGUI.Controls {
         public AbstractString ActualText;
         public Vector2 RectBase;
         public DenseList<Bounds> Rects;
+        public int FirstDrawCall, LastDrawCall;
 
         public HyperTextHotspot ()
             : base () {
