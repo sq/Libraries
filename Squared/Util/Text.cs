@@ -1087,7 +1087,7 @@ namespace Squared.Util.Text {
                 if ((SubstringOffset <= 0) && (SubstringLength <= 0))
                     StringBuilder.CopyTo(output);
                 else
-                    StringBuilder.Append(ConvertBuilderInternal());
+                    output.Append(ConvertBuilderInternal());
             } else if (ArraySegment.Array != null)
                 output.Append(ArraySegment.Array, ArraySegment.Offset, ArraySegment.Count);
             else
@@ -1207,6 +1207,11 @@ namespace Squared.Util.Text {
                 source.CopyTo(0, buffer.Data, 0, source.Length);
                 destination.Append(buffer.Data, 0, source.Length);
             }
+        }
+
+        public static StringBuilder Append (this StringBuilder target, AbstractString source) {
+            source.CopyTo(target);
+            return target;
         }
     }
 
