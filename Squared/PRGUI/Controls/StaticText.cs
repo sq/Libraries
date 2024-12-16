@@ -931,7 +931,7 @@ namespace Squared.PRGUI.Controls {
                     var dummy = new StaticText {
                         RichText = TooltipContent.Settings.RichText,
                         RichTextConfiguration = TooltipContent.Settings.RichTextConfiguration,
-                        Text = TooltipContent.GetText(this),
+                        Text = TooltipContent.Get(this, out _),
                     };
                     return dummy.GetReadingText();
                 } else
