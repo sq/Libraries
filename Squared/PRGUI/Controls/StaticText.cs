@@ -895,7 +895,7 @@ namespace Squared.PRGUI.Controls {
 
         protected string GetPlainText () {
             return RichText
-                ? Squared.Render.Text.RichText.ToPlainText(Text)
+                ? Content.FormatAsText()
                 : Text.ToString();
         }
 
@@ -920,6 +920,7 @@ namespace Squared.PRGUI.Controls {
         protected virtual AbstractString GetReadingText () {
             var plainText = GetPlainText();
             var useTooltipByDefault = string.IsNullOrWhiteSpace(plainText) || (plainText.Length <= 2);
+            // FIXME: Format this tooltip content as rich text too
             if (UseTooltipForReading ?? useTooltipByDefault)
                 return TooltipContent.GetPlainText(this);
 

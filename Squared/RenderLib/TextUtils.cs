@@ -1051,6 +1051,28 @@ namespace Squared.Render.Text {
 
         public bool IsAwaitingDependencies => GetFlag(InternalFlags.AwaitingDependencies);
 
+        public void FormatAsText (StringBuilder output) {
+            if (!RichText) {
+                Text.CopyTo(output);
+                return;
+            }
+
+            // HACK: Perform a measurement-only layout in a special mode that appends text to a stringbuilder
+            MakeLayoutEngine2(out var le2, default(MeasurementSettings));
+            le2.Initialize();
+            le2.TextOutput = output;
+            var rls = new RichTextLayoutState(_RichTextConfiguration, ref le2, null, this);
+            rls.UserData = RichTextUserData ?? rls.UserData;
+            rls.Tags.AddRange(ref _RichTextConfiguration.Tags);
+            _RichTextConfiguration.Append(ref le2, ref rls, _Text, _StyleName);
+        }
+
+        public string FormatAsText () {
+            var sb = new StringBuilder();
+            FormatAsText(sb);
+            return sb.ToString();
+        }
+
         public bool Get (out StringLayout result, MeasurementSettings? measureOnly = null) {
             if (GetFlag(InternalFlags.HasCachedStringLayout) && (_GlyphSource != null) &&
                 ((_CachedGlyphVersion < _GlyphSource.Version) || _GlyphSource.IsDisposed)

@@ -294,6 +294,7 @@ namespace Squared.Render.TextLayout2 {
         public uint MarkedRangeSpanIndex;
         public LayoutHitTest HitTestResult;
         public bool AnyCharactersSuppressed;
+        public StringBuilder TextOutput;
 
         bool IsInitialized;
         public bool IsTruncated =>
@@ -565,10 +566,18 @@ namespace Squared.Render.TextLayout2 {
             if (!IsInitialized)
                 throw new InvalidOperationException("Call Initialize first");
 
+            if (TextOutput != null)
+                text.CopyTo(TextOutput);
+
             var t = typeof(TGlyphSource);
             if (!t.IsValueType) {
-                if (glyphSource == null)
-                    throw new ArgumentNullException(nameof(glyphSource));
+                if (glyphSource == null) {
+                    // HACK: Allow text output only measurement without a glyph source
+                    if (TextOutput != null)
+                        return;
+                    else
+                        throw new ArgumentNullException(nameof(glyphSource));
+                }
             }
 
             if (text.IsNull)
