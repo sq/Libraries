@@ -1145,7 +1145,7 @@ namespace Squared.Threading {
         /// If the future already has a result or has been disposed, this method will return false.
         /// </summary>
         public bool TrySetResult (in T result, Exception error) {
-            if (!SetResultPrologue())
+            if (!SetResultPrologue(false))
                 return false;
 
             int newState = (error != null) ? State_CompletedWithError : State_CompletedWithValue;
