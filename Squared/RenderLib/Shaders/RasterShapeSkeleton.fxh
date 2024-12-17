@@ -1260,6 +1260,8 @@ float4 texturedShapeCommon (
     texColor.rgb += ((texColor.rgb - texColorGray) * TextureOptions.x);
     // FIXME: This will break premul too if the value is greater than 1 i think
     texColor.rgb *= (TextureOptions.y + 1);
+    // Blend towards white as brightness increases so that it looks okay for textures that are pure red/green/blue
+    texColor.rgb = lerp(texColor.rgb, 1, TextureOptions.y);
 
     if (!afterOutline)
         fill = texComposite(fill, fillAlpha, texColor, mode);

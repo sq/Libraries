@@ -993,7 +993,7 @@ namespace Squared.Threading {
             if ((state == State_Indeterminate) || (state == State_Empty))
                 return false;
 
-            if (!SetResultPrologue())
+            if (!SetResultPrologue(false))
                 return false;
 
             _Result = source._Result;
@@ -1034,7 +1034,7 @@ namespace Squared.Threading {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private bool SetResultPrologue (bool throwOnFailure = true) {
+        private bool SetResultPrologue (bool throwOnFailure) {
             int iterations = 1;
 
             while (true) {
@@ -1072,7 +1072,7 @@ namespace Squared.Threading {
             if (!task.IsCompleted)
                 throw new InvalidOperationException("Task not completed");
 
-            if (!SetResultPrologue())
+            if (!SetResultPrologue(true))
                 return;
 
             int newState = task.IsFaulted ? State_CompletedWithError : State_CompletedWithValue;
@@ -1093,7 +1093,7 @@ namespace Squared.Threading {
             if (!task.IsCompleted)
                 throw new InvalidOperationException("Task not completed");
 
-            if (!SetResultPrologue())
+            if (!SetResultPrologue(true))
                 return;
 
             int newState = task.IsFaulted ? State_CompletedWithError : State_CompletedWithValue;
@@ -1114,7 +1114,7 @@ namespace Squared.Threading {
         /// This information will be used to rethrow with stack preserved, as necessary.
         /// </summary>
         public void SetResult2 (in T result, ExceptionDispatchInfo errorInfo) {
-            if (!SetResultPrologue())
+            if (!SetResultPrologue(true))
                 return;
 
             int newState = (errorInfo != null) ? State_CompletedWithError : State_CompletedWithValue;
@@ -1129,7 +1129,7 @@ namespace Squared.Threading {
         /// The exception will be wrapped instead of being rethrown.
         /// </summary>
         public void SetResult (in T result, Exception error) {
-            if (!SetResultPrologue())
+            if (!SetResultPrologue(true))
                 return;
 
             int newState = (error != null) ? State_CompletedWithError : State_CompletedWithValue;
@@ -1137,6 +1137,23 @@ namespace Squared.Threading {
             _Error = error;
 
             SetResultEpilogue(newState);
+        }
+
+        /// <summary>
+        /// Sets the result of this future along with the responsible exception (if any).
+        /// The exception will be wrapped instead of being rethrown.
+        /// If the future already has a result or has been disposed, this method will return false.
+        /// </summary>
+        public bool TrySetResult2 (in T result, ExceptionDispatchInfo errorInfo) {
+            if (!SetResultPrologue(false))
+                return false;
+
+            int newState = (errorInfo != null) ? State_CompletedWithError : State_CompletedWithValue;
+            _Result = result;
+            _Error = errorInfo;
+
+            SetResultEpilogue(newState);
+            return true;
         }
 
         /// <summary>
