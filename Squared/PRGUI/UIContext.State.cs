@@ -51,10 +51,22 @@ namespace Squared.PRGUI {
 
         internal List<IModal> ModalStack = new List<IModal>();
 
-        public IModal ActiveModal =>
-            (ModalStack.Count > 0)
-                ? ModalStack[ModalStack.Count - 1]
-                : null;
+        public IModal ActiveModal {
+            get {
+                var now = NowL;
+                for (int i = ModalStack.Count - 1; i >= 0; i--) {
+                    var m = ModalStack[i] as Control;
+                    // HACK: Invisible/intangible modals may remain on the stack but shouldn't be 'active' since
+                    //  that would mean an invisible control is occluding input and the user never really wants that
+                    if (Control.IsRecursivelyTransparent(m, includeOpacityAsOfTime: now))
+                        continue;
+                    if (m.Intangible)
+                        continue;
+                    return (IModal)m;
+                }
+                return null;
+            }
+        }
 
         private Control _Focused, _MouseCaptured, _Hovering, _KeyboardSelection,
             _PreviouslyFocusedForTimestampUpdate, _PreferredTooltipSource;
