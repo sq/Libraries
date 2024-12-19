@@ -695,12 +695,18 @@ namespace Squared.PRGUI.Controls {
         protected override void OnRasterize (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings, IDecorator decorations) {
             // FIXME: This method allocates object[] sometimes
 
+            // HACK: Suppress background color when selected so the selection outline is visible
+            var bgColor = settings.BackgroundColor ?? default;
+            if (TryGetParent(out var parent) && (parent is Menu parentMenu)) {
+                if ((parentMenu.SelectedItem == this) || (parentMenu.HoveringItem == this))
+                    settings.BackgroundColor = bgColor = default;
+            }
+
             base.OnRasterize(ref context, ref passSet, settings, decorations);
 
             var decorationProvider = context.DecorationProvider;
             ComputeEffectiveSpacing(ref context, decorationProvider, decorations, out Margins computedPadding, out Margins computedMargins);
 
-            var bgColor = GetBackgroundColor(context.NowL) ?? default;
             var overrideColor = GetTextColor(context.NowL);
             Color? defaultColor = 
                 Appearance.TextColorIsDefault
@@ -711,6 +717,7 @@ namespace Squared.PRGUI.Controls {
             Material material;
             var textDecorations = GetTextDecorator(decorationProvider, context.InsideSelectedControl);
             GetTextSettings(ref context, textDecorations, decorations, settings.State, ref bgColor, out material, ref defaultColor, out Vector4 userData);
+
             material = Appearance.TextMaterial ?? CustomTextMaterial ?? material;
 
             Content.DefaultColor = defaultColor ?? Color.White;

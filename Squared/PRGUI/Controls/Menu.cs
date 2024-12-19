@@ -674,8 +674,6 @@ namespace Squared.PRGUI.Controls {
                 selectionBox.Left = settings.ContentBox.Left;
                 selectionBox.Width = settings.ContentBox.Width;
 
-                // HACK: Selection boxes are normally rasterized on the content layer, but we want to rasterize
-                //  the selection on the Below layer beneath items' decorations and content.
                 var selectionSettings = new DecorationSettings {
                     Box = selectionBox,
                     ContentBox = selectionBox,
@@ -686,11 +684,13 @@ namespace Squared.PRGUI.Controls {
                 else
                     selectionSettings.State = ControlStates.Hovering;
 
-                var selectionDecorator = context.DecorationProvider.MenuSelection;
+                // Allow individual items to override the selection decorator
+                var selectionDecorator = (SelectedItem.Appearance.DecorationProvider ?? context.DecorationProvider).MenuSelection;
                 RasterizeSelectionDecorator(
                     ref context, ref passSet, ref selectionSettings, selectionDecorator
                 );
 
+                // Ensure the selection renders below everything else by bumping the sort layer
                 passSet.AdjustAllLayers(1);
             }
 
