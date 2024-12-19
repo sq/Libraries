@@ -287,7 +287,7 @@ namespace Squared.PRGUI {
                         } else {
                             renderer.FillRectangle(
                                 // Unbalanced vertices so only one triangle is visible
-                                Game.Bounds.FromPositionAndSize(Vector2.One * -9999, new Vector2(9999999, 9999)), 
+                                Game.Bounds.FromPositionAndSize(Vector2.One * -99, new Vector2(99999, 9999)), 
                                 new Color(opacity, opacity, opacity, 0), blendState: RenderStates.SubtractiveBlend
                             );
                         }
