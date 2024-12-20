@@ -286,7 +286,6 @@ namespace Squared.PRGUI {
             bool overrideKeyboardSelection = false
         ) {
             var newFocusTarget = value;
-
             var topLevelAncestor = FindTopLevelAncestor(value);
 
             // Detect attempts to focus a control that is no longer in the hierarchy

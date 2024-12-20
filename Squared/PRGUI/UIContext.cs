@@ -373,7 +373,7 @@ namespace Squared.PRGUI {
             else
                 ModalStack.Add(modal);
             modal.OnShown();
-            TrySetFocus(ctl, false, false);
+            SetOrQueueFocus(ctl, false, false);
             FireEvent(UIEvents.Shown, ctl);
         }
 
