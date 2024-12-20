@@ -391,8 +391,18 @@ namespace Squared.PRGUI {
                 return;
             ModalStack.Remove(modal);
             FireEvent(UIEvents.Closed, ctl);
-            if (newFocusTarget != null)
+
+            // The focus donor might be an invalid target, but try it first
+            if (newFocusTarget != null) {
+                if (TrySetFocus(newFocusTarget, false, false))
+                    return;
+            }
+
+            // We failed to set focus to the focus donor so try the active modal
+            newFocusTarget = (ActiveModal as Control);
+            if (newFocusTarget != null) {
                 TrySetFocus(newFocusTarget, false, false);
+            }
         }
 
         public bool IsPriorityInputSource (IInputSource source) {
