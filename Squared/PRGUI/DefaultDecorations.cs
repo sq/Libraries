@@ -45,7 +45,7 @@ namespace Squared.PRGUI {
             TooltipText = Color.White,
             AcceleratorText = Color.White;
 
-        public Color? FloatingContainerOutline, 
+        public pSRGBColor? FloatingContainerOutline, 
             FloatingContainerFill,
             WindowFill = new Color(60, 60, 60);
 
@@ -64,8 +64,7 @@ namespace Squared.PRGUI {
     }
 
     public class DefaultDecorations : IDecorationProvider, IAnimationProvider {
-        public DefaultDecorationColorScheme ColorScheme =
-            new DefaultDecorationColorScheme();
+        public DefaultDecorationColorScheme ColorScheme { get; set; } = new DefaultDecorationColorScheme();
 
         public readonly DefaultMaterialSet Materials;
         public readonly float GlobalDefaultMargin,

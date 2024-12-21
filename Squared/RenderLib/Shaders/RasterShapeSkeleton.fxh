@@ -48,6 +48,7 @@ uniform const float4 TextureOptions;
     in float4 params : TEXCOORD0, \
     in float4 params2 : TEXCOORD1, \
     in float4 texRgn : TEXCOORD2, \
+    in float4 params3 : TEXCOORD6, \
     in float4 centerColor : COLOR0, \
     in float4 edgeColor : COLOR1, \
     in float4 outlineColor : COLOR2, \
@@ -55,7 +56,6 @@ uniform const float4 TextureOptions;
     out float4 result : COLOR0
 
 uniform const bool BlendInLinearSpace, OutputInLinearSpace, BlendInOkLab;
-uniform const float HalfPixelOffset;
 
 // offsetx, offsety, softness, fillSuppression
 uniform const float4 ShadowOptions;
@@ -69,11 +69,9 @@ uniform const float4 ShadowColorLinear;
 #define ShadowExpansion ShadowOptions2.x
 #define ShadowInside (ShadowOptions2.y > 0.5)
 
-float4 TransformPosition(float4 position, bool halfPixelOffset) {
+float4 TransformPosition(float4 position, bool unused) {
     // Transform to view space, then offset by half a pixel to align texels with screen pixels
     float4 modelViewPos = mul(position, Viewport.ModelView);
-    if (halfPixelOffset && HalfPixelOffset)
-        modelViewPos.xy -= 0.5;
     // Finally project after offsetting
     return mul(modelViewPos, Viewport.Projection);
 }
@@ -409,6 +407,7 @@ void RasterShapeVertexShader (
     in float4 cd_in : POSITION1,
     inout float4 params : TEXCOORD0,
     inout float4 params2 : TEXCOORD1,
+    inout float4 params3 : TEXCOORD6,
     inout float4 texRgn : TEXCOORD2,
     inout float4 centerColor : COLOR0,
     inout float4 edgeColor : COLOR1,
@@ -446,6 +445,7 @@ void RasterShapeVertexShader_Simple (
     in float4 cd_in : POSITION1,
     inout float4 params : TEXCOORD0,
     inout float4 params2 : TEXCOORD1,
+    inout float4 params3 : TEXCOORD6,
     inout float4 texRgn : TEXCOORD2,
     inout float4 centerColor : COLOR0,
     inout float4 edgeColor : COLOR1,
@@ -516,6 +516,7 @@ void evaluateEllipse (
     if (gradientType == GRADIENT_TYPE_Natural)
         gradientType = GRADIENT_TYPE_Radial;
         
+    /*
     if (
         (gradientType == GRADIENT_TYPE_Radial) ||
         (gradientType == GRADIENT_TYPE_Radial_Enclosing) ||
@@ -548,6 +549,7 @@ void evaluateEllipse (
         gradientWeight = float2(saturate(max(distance2.x, distance2.y)), fakeY);
         gradientType = GRADIENT_TYPE_Other;
     }
+    */
 }
 
 void evaluateLineSegment (
@@ -715,9 +717,10 @@ void evaluateTriangle (
 
 float2 evaluateGradient (
     int gradientType, float gradientAngle, float2 gradientWeight,
-    float2 worldPosition, float2 tl, float2 br, float radius
+    float2 worldPosition, float2 tl, float2 br, float radius,
+    float4 params3
 ) {
-    float2 gradientCenter = (tl + br) / 2;
+    float2 gradientCenter = lerp(tl, br, params3.xy);
     float2 boxSize = (br - tl);
     boxSize = max(abs(boxSize), 0.001) * sign(boxSize);
     float2 radialSize2 = (boxSize /* + (radius * 2) */) * 0.5;
@@ -970,7 +973,7 @@ float computeShadowAlpha (
 void rasterShapeCommon (
     in float4 worldPositionTypeAndInteriorFlag, in bool enableShadow, in bool simple,
     in float4 ab, in float4 cd,
-    in float4 params, in float4 params2, in float2 vpos,
+    in float4 params, in float4 params2, in float4 params3, in float2 vpos,
     out float2 tl, out float2 br,
     out float2 gradientWeight, out float fillAlpha, 
     out float outlineAlpha, out float shadowAlpha
@@ -1038,7 +1041,7 @@ void rasterShapeCommon (
     } else {
         gradientWeight = evaluateGradient(
             gradientType, gradientAngle, gradientWeight, 
-            worldPosition, tl, br, radius.x
+            worldPosition, tl, br, radius.x, params3
         );
 
         gradientWeight.x += gradientOffset;

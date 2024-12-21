@@ -18,7 +18,7 @@ namespace Squared.Render.RasterShape {
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct RasterShapeVertex : IVertexType {
         public Vector4 PointsAB, PointsCD;
-        public Vector4 Parameters, Parameters2;
+        public Vector4 Parameters, Parameters2, Parameters3;
         public Vector4 TextureRegion;
         public Quaternion Orientation;
         public Vector4 InnerColor, OuterColor, OutlineColor;
@@ -39,6 +39,8 @@ namespace Squared.Render.RasterShape {
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 0 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Parameters2").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 1 ),
+                new VertexElement( Marshal.OffsetOf(tThis, "Parameters3").ToInt32(),
+                    VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 6 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "TextureRegion").ToInt32(),
                     VertexElementFormat.Vector4, VertexElementUsage.TextureCoordinate, 2 ),
                 new VertexElement( Marshal.OffsetOf(tThis, "Orientation").ToInt32(),
@@ -374,15 +376,21 @@ namespace Squared.Render.RasterShape {
         /// <summary>
         /// The third coordinate of the shape, or control values for a 1-2 coordinate shape.
         /// For lines, C.X controls whether the gradient is 'along' the line.
-        /// For rectangles, C.X controls whether the gradient is radial.
+        /// For rectangles, this is radiusCW.X/Y
         /// </summary>
         public Vector2 C;
         /// <summary>
         /// The radius of the shape. 
         /// This is in addition to any size implied by the coordinates (for shapes with volume)
         /// Most shapes only use .X
+        /// For rectangles, this is radiusCW.Z/W
         /// </summary>
         public Vector2 Radius;
+
+        /// <summary>
+        /// The center of the gradient (defaults to 0.5).
+        /// </summary>
+        public Vector2? GradientCenter;
 
         /// <summary>
         /// The premultiplied sRGB color of the center of the shape (or the beginning for 'along' gradients)
@@ -785,6 +793,7 @@ namespace Squared.Render.RasterShape {
                 ref var firstDc = ref _DrawCalls.Item(0);
                 BatchManager.Instance.Start(this, ref firstDc, out var state);
                 var qi = Quaternion.Identity;
+                var half = Vector2.One * 0.5f;
 
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
                     ref var dc = ref _DrawCalls.Item(i);
@@ -792,6 +801,7 @@ namespace Squared.Render.RasterShape {
 
                     ref var fill = ref dc.Fill;
                     var gpower = (fill.GradientPowerMinusOne + 1f) * (fill.Repeat ? -1f : 1f);
+                    var gc = dc.GradientCenter ?? half;
                     vw.NextVertex = new RasterShapeVertex {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         // FIXME: Fill this last space with a separate value?
@@ -801,6 +811,7 @@ namespace Squared.Render.RasterShape {
                         OuterColor = dc.OuterColor4,
                         Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, fill.ModeF, dc.GammaMinusOne),
                         Parameters2 = new Vector4(gpower, fill.FillRange.X, fill.FillRange.Y, fill.Offset),
+                        Parameters3 = new Vector4(gc.X, gc.Y, 0, 0),
                         TextureRegion = dc.TextureBounds.ToVector4(),
                         Orientation = dc.Orientation == default ? qi : dc.Orientation,
                         Type = (short)dc.Type,

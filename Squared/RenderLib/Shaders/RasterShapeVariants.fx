@@ -70,7 +70,7 @@ void __VARIANT_FS_NAME (
 
     rasterShapeCommon(
         worldPositionTypeAndWorldSpace, VARIANT_SHADOWED != 0, VARIANT_SIMPLE != 0,
-        ab, cd, params, params2,
+        ab, cd, params, params2, params3,
         GET_VPOS, tl, br,
         gradientWeight, fillAlpha, outlineAlpha, shadowAlpha
     );
