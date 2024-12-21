@@ -190,6 +190,21 @@ namespace Squared.Render.RasterShape {
             set => GradientPowerMinusOne = value - 1;
         }
 
+        /// <summary>
+        /// Gradient center in 0-1, defaults to 0.5
+        /// </summary>
+        public Vector2? GradientCenter;
+        /// <summary>
+        /// Bevel radius in pixels, or 0. Negative radius bevels the inside instead of the outside.
+        /// </summary>
+        public float    BevelRadius;
+        /*
+        /// <summary>
+        /// Angle in degrees, or null
+        /// </summary>
+        public float?   BevelDirection;
+        */
+
         public RasterFillSettings (
             RasterFillMode mode, float size = 1f, float offset = 0f,
             float angle = 0f, float gradientPower = 1f, bool repeat = false
@@ -386,11 +401,6 @@ namespace Squared.Render.RasterShape {
         /// For rectangles, this is radiusCW.Z/W
         /// </summary>
         public Vector2 Radius;
-
-        /// <summary>
-        /// The center of the gradient (defaults to 0.5).
-        /// </summary>
-        public Vector2? GradientCenter;
 
         /// <summary>
         /// The premultiplied sRGB color of the center of the shape (or the beginning for 'along' gradients)
@@ -801,7 +811,7 @@ namespace Squared.Render.RasterShape {
 
                     ref var fill = ref dc.Fill;
                     var gpower = (fill.GradientPowerMinusOne + 1f) * (fill.Repeat ? -1f : 1f);
-                    var gc = dc.GradientCenter ?? half;
+                    var gc = fill.GradientCenter ?? half;
                     vw.NextVertex = new RasterShapeVertex {
                         PointsAB = new Vector4(dc.A.X, dc.A.Y, dc.B.X, dc.B.Y),
                         // FIXME: Fill this last space with a separate value?
@@ -811,7 +821,10 @@ namespace Squared.Render.RasterShape {
                         OuterColor = dc.OuterColor4,
                         Parameters = new Vector4(dc.OutlineSize * (dc.SoftOutline ? -1 : 1), dc.AnnularRadius, fill.ModeF, dc.GammaMinusOne),
                         Parameters2 = new Vector4(gpower, fill.FillRange.X, fill.FillRange.Y, fill.Offset),
-                        Parameters3 = new Vector4(gc.X, gc.Y, 0, 0),
+                        Parameters3 = new Vector4(
+                            gc.X, gc.Y, fill.BevelRadius, 
+                            0 // fill.BevelDirection.HasValue ? MathHelper.ToRadians(fill.BevelDirection.Value) : -9999f
+                        ),
                         TextureRegion = dc.TextureBounds.ToVector4(),
                         Orientation = dc.Orientation == default ? qi : dc.Orientation,
                         Type = (short)dc.Type,

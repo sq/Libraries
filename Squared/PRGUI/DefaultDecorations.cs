@@ -801,8 +801,10 @@ namespace Squared.PRGUI {
                     break;
                 case "Button":
                     fillSettings = new RasterFillSettings {
-                        Mode = RasterFillMode.RadialEnclosing,
-                        Size = 0.95f,
+                        Mode = RasterFillMode.Radial,
+                        Size = 1.1f,
+                        BevelRadius = -16f,
+                        GradientCenter = new Vector2(0.5f, 0.1f),
                     };
                     break;
                 default:

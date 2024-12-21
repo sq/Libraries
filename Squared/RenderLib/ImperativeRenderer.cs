@@ -1296,8 +1296,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            Vector2? rampUVOffset = null, int sortKey = 0, Vector2? gradientCenter = null,
-            Quaternion? orientation = null
+            Vector2? rampUVOffset = null, int sortKey = 0, Quaternion? orientation = null
         ) {
             var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
@@ -1308,7 +1307,6 @@ namespace Squared.Render.Convenience {
                 WorldSpace = worldSpace ?? WorldSpace,
                 A = center,
                 B = radius,
-                GradientCenter = gradientCenter,
                 Radius = radius,
                 OutlineSize = 0,
                 InnerColor = innerColor,
@@ -1336,8 +1334,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            Vector2? rampUVOffset = null, int sortKey = 0, Vector2? gradientCenter = null,
-            Quaternion? orientation = null
+            Vector2? rampUVOffset = null, int sortKey = 0, Quaternion? orientation = null
         ) {
             var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
@@ -1348,7 +1345,6 @@ namespace Squared.Render.Convenience {
                 WorldSpace = worldSpace ?? WorldSpace,
                 A = center,
                 B = radius,
-                GradientCenter = gradientCenter,
                 Radius = radius,
                 OutlineSize = outlineRadius,
                 InnerColor = innerColor,
@@ -1452,8 +1448,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            Vector2? rampUVOffset = null, int sortKey = 0, Vector2? gradientCenter = null,
-            Quaternion? orientation = null
+            Vector2? rampUVOffset = null, int sortKey = 0, Quaternion? orientation = null
         ) {
             var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
@@ -1465,7 +1460,6 @@ namespace Squared.Render.Convenience {
                 A = tl, B = br,
                 C = new Vector2(radius),
                 Radius = new Vector2(radius),
-                GradientCenter = gradientCenter,
                 OutlineSize = 0,
                 InnerColor = innerColor,
                 OuterColor = outerColor.GetValueOrDefault(innerColor),
@@ -1492,8 +1486,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            Vector2? rampUVOffset = null, int sortKey = 0, Vector2? gradientCenter = null,
-            Quaternion? orientation = null
+            Vector2? rampUVOffset = null, int sortKey = 0, Quaternion? orientation = null
         ) {
             var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
@@ -1505,7 +1498,6 @@ namespace Squared.Render.Convenience {
                 A = tl, B = br,
                 C = new Vector2(radius),
                 Radius = new Vector2(radius),
-                GradientCenter = gradientCenter,
                 OutlineSize = outlineRadius,
                 InnerColor = innerColor,
                 OuterColor = outerColor,
@@ -1532,8 +1524,7 @@ namespace Squared.Render.Convenience {
             BlendState blendState = null, Texture2D texture = null,
             Bounds? textureRegion = null, SamplerState samplerState = null,
             RasterTextureSettings? textureSettings = null, Texture2D rampTexture = null,
-            Vector2? rampUVOffset = null, int sortKey = 0, Vector2? gradientCenter = null,
-            Quaternion? orientation = null
+            Vector2? rampUVOffset = null, int sortKey = 0, Quaternion? orientation = null
         ) {
             var rsb = GetRasterShapeBatch(
                 layer, worldSpace, blendState, texture, samplerState, rampTexture, rampUVOffset
@@ -1545,7 +1536,6 @@ namespace Squared.Render.Convenience {
                 A = tl, B = br,
                 C = new Vector2(radiusCW.X, radiusCW.Y),
                 Radius = new Vector2(radiusCW.Z, radiusCW.W),
-                GradientCenter = gradientCenter,
                 OutlineSize = outlineRadius,
                 InnerColor = innerColor,
                 OuterColor = outerColor,

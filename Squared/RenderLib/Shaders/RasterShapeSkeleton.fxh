@@ -1060,6 +1060,25 @@ void rasterShapeCommon (
         } else {
             gradientWeight.x = clamp(gradientWeight.x - gradientRange.x, 0, gradientSize) / gradientSize;
         }
+        
+        if (params3.z != 0) {
+            float bevel = saturate(-distance / abs(params3.z));
+            if (params3.z < 0)
+                bevel = 1 - bevel;
+
+            /*            
+            if (params3.w > -999) {
+                float2 normal = normalize(float2(ddx(distance), ddy(distance)));
+                float2 incoming;
+                sincos(params3.w, incoming.y, incoming.x);
+                bevel *= saturate((dot(normal, incoming) + 0.15) * 2.0);
+            }
+            */
+            
+            // HACK: Beveling needs to force the gradient to the outer color, not the inner color,
+            //  in order to be useful
+            gradientWeight.x = 1 - ((1 - gradientWeight.x) * bevel);
+        }
 
         if ((gradientWeight.x > 0) && (gradientWeight.x < 1)) {
             float tE = pow(gradientWeight.x, gradientPower);
