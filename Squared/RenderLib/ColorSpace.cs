@@ -670,8 +670,6 @@ namespace Squared.Render {
         }
 
         private static bool TryParseHex (AbstractString text, out pSRGBColor result, IFormatProvider formatProvider = null) {
-            // FIXME: rgb(), rgba(), hsl(), hsla()
-
             result = default;
             if (!text.StartsWith('#'))
                 return false;
