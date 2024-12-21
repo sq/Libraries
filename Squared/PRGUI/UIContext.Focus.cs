@@ -179,6 +179,10 @@ namespace Squared.PRGUI {
             if (delta == 0)
                 throw new ArgumentOutOfRangeException("delta");
 
+            // FIXME: Introduce new system where we build a flattened 'focus target list' of the whole tree of focusable controls
+            //  at a specified depth. I.e. for top-level we build the list of all top level focus targets only, and for non top-level
+            //  we walk the whole tree recursively pushing controls into the list based on the traversal criteria.
+            // This would also allow getting rid of TraverseChildren
             if (topLevel) {
                 var currentTopLevel = FindTopLevelAncestor(Focused);
                 // HACK

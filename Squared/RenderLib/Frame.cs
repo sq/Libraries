@@ -103,13 +103,14 @@ namespace Squared.Render {
                 PrepareData = new FramePrepareData();
         }
 
-        public void Readback (Texture2D source, Array destination) {
+        public unsafe void Readback<T> (Texture2D source, T[] destination)
+            where T : unmanaged
+        {
             if (source == null)
                 throw new ArgumentNullException(nameof(source));
             if (destination == null)
                 throw new ArgumentNullException(nameof(destination));
-            var destinationLengthInBytes = Marshal.SizeOf(destination.GetType().GetElementType()) *
-                destination.Length;
+            var destinationLengthInBytes = sizeof(T) * destination.Length;
             var requiredSize = source.Width * source.Height * Texture.GetFormatSizeEXT(source.Format);
             if (requiredSize > destinationLengthInBytes)
                 throw new ArgumentException($"Readback buffer too small: {destinationLengthInBytes} < {requiredSize}");
@@ -184,12 +185,16 @@ namespace Squared.Render {
             foreach (var rb in ReadbackQueue) {
                 if (rb.Source.IsDisposed)
                     continue;
-                var gch = GCHandle.Alloc(rb.Destination, GCHandleType.Pinned);
-                try {
-                    var size = Marshal.SizeOf(rb.Destination.GetType().GetElementType()) * rb.Destination.Length;
-                    rb.Source.GetDataPointerEXT(0, null, gch.AddrOfPinnedObject(), size);
-                } finally {
-                    gch.Free();
+                if (rb.Destination is byte[] ba) {
+                    rb.Source.GetData(0, null, ba, 0, ba.Length);
+                } else {
+                    var gch = GCHandle.Alloc(rb.Destination, GCHandleType.Pinned);
+                    try {
+                        var size = Marshal.SizeOf(rb.Destination.GetType().GetElementType()) * rb.Destination.Length;
+                        rb.Source.GetDataPointerEXT(0, null, gch.AddrOfPinnedObject(), size);
+                    } finally {
+                        gch.Free();
+                    }
                 }
             }
             var ended = Time.Ticks;

@@ -769,7 +769,7 @@ namespace Squared.Render {
                 return false;
 
             var values = text.Split([',', ' '], true);
-            float scale = (mode == "rgb") ? 255 : 1.0f;
+            float scale = mode.StartsWith("rgb") ? 255 : 1.0f;
             if ((values.Count < 3) || (values.Count > 4))
                 return false;
             if (!TryParseCSSFloat(values[0].Trim(), out float r, scale))
@@ -783,13 +783,13 @@ namespace Squared.Render {
             if ((values.Count <= 3) || !TryParseCSSFloat(values[3].Trim(), out a))
                 a = 1.0f;
 
-            if (mode.TextEquals("rgb"))
+            if (mode.TextEquals("rgb") || mode.TextEquals("rgba"))
                 result = new pSRGBColor(r / 255.0f, g / 255.0f, b / 255.0f, a);
-            else if (mode.TextEquals("oklab"))
+            else if (mode.TextEquals("oklab") || mode.TextEquals("lab"))
                 result = FromOkLab(r, g, b, a);
-            else if (mode.TextEquals("oklch"))
+            else if (mode.TextEquals("oklch") || mode.TextEquals("lch"))
                 result = FromOkLCh(r, g, b, a);
-            else if (mode.TextEquals("hsl"))
+            else if (mode.TextEquals("okhsl") || mode.TextEquals("hsl"))
                 result = FromOkLCh(b, g, r / 360.0f, a);
             else
                 return false;

@@ -148,7 +148,14 @@ namespace Squared.PRGUI.Controls {
             try {
                 if (typeof(T).IsEnum)
                     result = (T)Enum.Parse(typeof(T), text);
-                else
+                else if (typeof(T) == typeof(Color)) {
+                    if (pSRGBColor.TryParse(text, out pSRGBColor psrgb)) {
+                        result = (T)(object)psrgb.ToColor();
+                    } else {
+                        result = default;
+                        return false;
+                    }
+                } else
                     result = (T)Convert.ChangeType(text, typeof(T));
                 return true;
             } catch {
@@ -170,17 +177,24 @@ namespace Squared.PRGUI.Controls {
             var staticFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
             var searchTypes = new[] { typeof(T), typeof(Game.Geometry), typeof(Game.GameExtensionMethods) };
 
-            var tryParse3 = FindMethod(searchTypes, "TryParse", staticFlags, new[] { typeof(string), typeof(IFormatProvider), typeof(T).MakeByRefType() });
-            var tryParse = FindMethod(searchTypes, "TryParse", staticFlags, new[] { typeof(string), typeof(T).MakeByRefType() });
-            if (tryParse3 != null)
-                DefaultTryParseValue = (TypedTryParseDelegate2)Delegate.CreateDelegate(typeof(TypedTryParseDelegate2), null, tryParse3);
-            else if (tryParse != null)
-                DefaultTryParseValue = (TypedTryParseDelegate)Delegate.CreateDelegate(typeof(TypedTryParseDelegate), null, tryParse);
-            else 
-                DefaultTryParseValue = ParameterEditor.GetParseDelegate(typeof(T), false);
-
-            if (DefaultTryParseValue == null)
+            if (typeof(T).IsEnum) {
+                // FIXME: Generate a better parser for this
                 DefaultTryParseValue = (TypedTryParseDelegate)AwfulTryParseValue;
+            } else if (typeof(T) == typeof(Color)) {
+                DefaultTryParseValue = (TypedTryParseDelegate)TryParseColor;
+            } else {
+                var tryParse3 = FindMethod(searchTypes, "TryParse", staticFlags, new[] { typeof(string), typeof(IFormatProvider), typeof(T).MakeByRefType() });
+                var tryParse = FindMethod(searchTypes, "TryParse", staticFlags, new[] { typeof(string), typeof(T).MakeByRefType() });
+                if (tryParse3 != null)
+                    DefaultTryParseValue = (TypedTryParseDelegate2)Delegate.CreateDelegate(typeof(TypedTryParseDelegate2), null, tryParse3);
+                else if (tryParse != null)
+                    DefaultTryParseValue = (TypedTryParseDelegate)Delegate.CreateDelegate(typeof(TypedTryParseDelegate), null, tryParse);
+                else 
+                    DefaultTryParseValue = ParameterEditor.GetParseDelegate(typeof(T), false);
+
+                if (DefaultTryParseValue == null)
+                    DefaultTryParseValue = (TypedTryParseDelegate)AwfulTryParseValue;
+            }
 
             if (DefaultCompare == null) {
                 var compareTo = FindMethod(searchTypes, "CompareTo", staticFlags, new[] { typeof(T), typeof(T) }) ??
@@ -215,6 +229,15 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
+        private static bool TryParseColor (string value, out T result) {
+            result = default;
+            if (!pSRGBColor.TryParse(value, out pSRGBColor color))
+                return false;
+
+            result = (T)(object)color.ToColor();
+            return true;
+        }
+
         public static Func<T, string> GetValueEncoder (IFormatProvider formatProvider) {
             return (v) => {
                 if (DefaultFormatter is Func<T, string> f)
@@ -237,9 +260,12 @@ namespace Squared.PRGUI.Controls {
             else if (DefaultTryParseValue is ParameterEditor.TryParseDelegate tpd) {
                 if (tpd(text, out _result))
                     return true;
-            }
+            } else
+                ;
 
             _result = result;
+            if (!ok)
+                ;
             return ok;
         }
 
