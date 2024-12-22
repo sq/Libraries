@@ -9,13 +9,33 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Buffers;
 using Squared.Render.Internal;
+using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.Render {
     public sealed class Frame : IDisposable, IBatchContainer {
-        internal struct ReadbackWorkItem {
+        internal struct ReadbackWorkItem : IWorkItem {
+            public static WorkItemConfiguration Configuration =>
+                new WorkItemConfiguration {
+                    MaxConcurrency = 1,
+                    DefaultStepCount = 4
+                };
+
             public Texture2D Source;
             public Array Destination;
+
+            public void Execute (ThreadGroup group) {
+                if (Source.IsDisposed)
+                    return;
+
+                var gch = GCHandle.Alloc(Destination, GCHandleType.Pinned);
+                try {
+                    var size = Marshal.SizeOf(Destination.GetType().GetElementType()) * Destination.Length;
+                    Source.GetDataPointerEXT(0, null, gch.AddrOfPinnedObject(), size);
+                } finally {
+                    gch.Free();
+                }
+            }
         }
 
         private enum States : int {
@@ -177,26 +197,28 @@ namespace Squared.Render {
                 throw new InvalidOperationException("Frame was not in preparing state when prepare operation completed");
         }
 
+        internal void PerformReadbackAsync (ThreadGroup group) {
+            if (ReadbackQueue.Count == 0)
+                return;
+
+            group.GetQueueForType<ReadbackWorkItem>().WaitUntilDrained(100);
+
+            var started = Time.Ticks;
+            foreach (var rb in ReadbackQueue)
+                group.Enqueue(rb);
+            var ended = Time.Ticks;
+            // Debug.WriteLine($"Readback took {Time.SecondsFromTicks(ended - started)}sec");
+
+            ReadbackQueue.Clear();
+        }
+
         internal void PerformReadback () {
             if (ReadbackQueue.Count == 0)
                 return;
 
             var started = Time.Ticks;
-            foreach (var rb in ReadbackQueue) {
-                if (rb.Source.IsDisposed)
-                    continue;
-                if (rb.Destination is byte[] ba) {
-                    rb.Source.GetData(0, null, ba, 0, ba.Length);
-                } else {
-                    var gch = GCHandle.Alloc(rb.Destination, GCHandleType.Pinned);
-                    try {
-                        var size = Marshal.SizeOf(rb.Destination.GetType().GetElementType()) * rb.Destination.Length;
-                        rb.Source.GetDataPointerEXT(0, null, gch.AddrOfPinnedObject(), size);
-                    } finally {
-                        gch.Free();
-                    }
-                }
-            }
+            foreach (var rb in ReadbackQueue)
+                rb.Execute(null);
             var ended = Time.Ticks;
             // Debug.WriteLine($"Readback took {Time.SecondsFromTicks(ended - started)}sec");
 

@@ -869,7 +869,10 @@ namespace Squared.Render {
                 Tracing.RenderTrace.BeforeFrame();
                  
                 StartWorkPhase(WorkPhases.BeforeIssue);
-                frame.PerformReadback();
+                if (GraphicsBackendIsThreadingSafe)
+                    frame.PerformReadbackAsync(ThreadGroup);
+                else
+                    frame.PerformReadback();
                 RunBeforeIssueHandlers();
                 NextFrameTiming.BeforeIssue = EndWorkPhase(WorkPhases.BeforeIssue);
 
