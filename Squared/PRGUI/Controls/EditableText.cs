@@ -1244,6 +1244,8 @@ namespace Squared.PRGUI.Controls {
             return LastLocalCursorPosition;
         }
 
+        protected virtual float DescriptionMargin => 0f;
+
         private void RasterizeDescription (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings, float textExtentX) {
             var decorator = context.DecorationProvider.Description;
             if (decorator == null)
@@ -1265,7 +1267,7 @@ namespace Squared.PRGUI.Controls {
                 DescriptionLayout.GlyphSourceProvider = Appearance.GlyphSourceProvider;
             else
                 DescriptionLayout.GlyphSource = font;
-            DescriptionLayout.LineBreakAtX = settings.ContentBox.Width;
+            DescriptionLayout.LineBreakAtX = settings.ContentBox.Width - DescriptionMargin;
             DescriptionLayout.HideOverflow = true;
             DescriptionLayout.WordWrap = DescriptionLayout.CharacterWrap = false;
             DescriptionLayout.SetText(Description, true);
@@ -1276,9 +1278,9 @@ namespace Squared.PRGUI.Controls {
 
             float x;
             if (HorizontalAlignment != HorizontalAlignment.Left) {
-                x = settings.ContentBox.Left;
+                x = settings.ContentBox.Left + DescriptionMargin;
             } else {
-                x = settings.ContentBox.Extent.X - decorator.Margins.Right - width;
+                x = settings.ContentBox.Extent.X - decorator.Margins.Right - width - DescriptionMargin;
             }
 
             if (totalSize >= settings.ContentBox.Width)

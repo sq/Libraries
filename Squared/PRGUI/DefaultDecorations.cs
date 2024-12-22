@@ -56,7 +56,9 @@ namespace Squared.PRGUI {
 
         public float GaugeFillAlpha1 = 0.5f, GaugeFillAlpha2 = 1.0f,
             GaugeLimitAlpha = 0.7f,
-            GaugeFillBrightness1 = 1.0f, GaugeFillBrightness2 = 1.0f;
+            GaugeFillBrightness1 = 1.0f, GaugeFillBrightness2 = 1.0f,
+            ButtonFillAlpha1 = 0.5f, ButtonFillAlpha2 = 0.75f,
+            ColoredButtonFillAlpha1 = 0.85f, ColoredButtonFillAlpha2 = 0.95f;
 
         public DefaultDecorationColorScheme () {
             GaugeValueFill = SelectionFill;
@@ -730,8 +732,8 @@ namespace Squared.PRGUI {
             } else if (state.IsFlagged(ControlStates.Hovering)) {
                 // FIXME: Animate this
                 alpha = hasColor 
-                    ? 0.95f 
-                    : Arithmetic.Lerp(0.55f, 0.8f, focusedAlpha);
+                    ? ColorScheme.ColoredButtonFillAlpha2 
+                    : Arithmetic.Saturate(Arithmetic.Lerp(ColorScheme.ButtonFillAlpha1 + 0.1f, ColorScheme.ButtonFillAlpha2 + 0.1f, focusedAlpha));
                 thickness = ActiveOutlineThickness + pulseThickness;
                 pulse = Arithmetic.PulseSine(nowF / 2.5f, 0f, 0.15f);
                 if (hasColor)
@@ -740,8 +742,8 @@ namespace Squared.PRGUI {
                     outlineColor = (outlineBaseColor ?? baseColor);
             } else {
                 alpha = hasColor
-                    ? Arithmetic.Lerp(0.85f, 0.95f, focusedAlpha)
-                    : Arithmetic.Lerp(0.4f, 0.75f, focusedAlpha);
+                    ? Arithmetic.Lerp(ColorScheme.ColoredButtonFillAlpha1, ColorScheme.ColoredButtonFillAlpha2, focusedAlpha)
+                    : Arithmetic.Lerp(ColorScheme.ButtonFillAlpha1, ColorScheme.ButtonFillAlpha2, focusedAlpha);
                 thickness = Arithmetic.Lerp(InactiveOutlineThickness, ActiveOutlineThickness + pulseThickness, focusedAlpha);
                 if (hasColor && !colorIsGray)
                     outlineColor = (outlineBaseColor ?? baseColor) + Arithmetic.Lerp(0.05f, 0.3f, focusedAlpha);
