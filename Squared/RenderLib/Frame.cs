@@ -21,6 +21,7 @@ namespace Squared.Render {
                     DefaultStepCount = 4
                 };
 
+            public object Lock;
             public Texture2D Source;
             public Array Destination;
 
@@ -31,7 +32,8 @@ namespace Squared.Render {
                 var gch = GCHandle.Alloc(Destination, GCHandleType.Pinned);
                 try {
                     var size = Marshal.SizeOf(Destination.GetType().GetElementType()) * Destination.Length;
-                    Source.GetDataPointerEXT(0, null, gch.AddrOfPinnedObject(), size);
+                    lock (Lock)
+                        Source.GetDataPointerEXT(0, null, gch.AddrOfPinnedObject(), size);
                 } finally {
                     gch.Free();
                 }
@@ -137,6 +139,7 @@ namespace Squared.Render {
             if (source.IsDisposed)
                 throw new ObjectDisposedException(nameof(source));
             ReadbackQueue.Add(new ReadbackWorkItem {
+                Lock = Coordinator.UseResourceLock,
                 Source = source,
                 Destination = destination
             });
