@@ -81,6 +81,10 @@
       <Project>{fe871f18-fd35-4124-af8f-0021c9d4ba29}</Project>
       <Name>Squared.Render</Name>
     </ProjectReference>
+    <ProjectReference Include="..\Threading\Squared.Threading.csproj">
+      <Project>{ECCB8787-0FC6-43B2-ABD1-6CBB237916EC}</Project>
+      <Name>Squared.Threading</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Util\Squared.Util.csproj">
       <Project>{d7f549cf-e0a6-491c-a78c-ecab590bb2a7}</Project>
       <Name>Squared.Util</Name>

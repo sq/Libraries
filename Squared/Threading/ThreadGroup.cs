@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Squared.Util;
 using System.Linq;
 using System.Runtime;
+using static System.Collections.Specialized.BitVector32;
 
 namespace Squared.Threading {
     public sealed class ThreadGroup : IDisposable {
@@ -476,12 +477,16 @@ namespace Squared.Threading {
         }
 
         public static void InvokeAndForget (this ThreadGroup group, Action action, bool forMainThread = false) {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
             var workItem = new ActionWorkItem(action, null);
             var queue = group.GetQueueForType<ActionWorkItem>(forMainThread);
             queue.Enqueue(ref workItem);
         }
 
         public static SignalFuture Invoke (this ThreadGroup group, Action action, bool forMainThread = false) {
+            if (action == null)
+                throw new ArgumentNullException(nameof(action));
             var workItem = new ActionWorkItem(action, new SignalFuture());
             var queue = group.GetQueueForType<ActionWorkItem>(forMainThread);
             queue.Enqueue(ref workItem);
@@ -489,6 +494,8 @@ namespace Squared.Threading {
         }
 
         public static Future<T> Invoke<T> (this ThreadGroup group, Func<T> func, bool forMainThread = false) {
+            if (func == null)
+                throw new ArgumentNullException(nameof(func));
             var future = new Future<T>();
             var workItem = new FuncWorkItem(func, future, FuncWorkItemDispatcher<T>.Instance);
             var queue = group.GetQueueForType<FuncWorkItem>(forMainThread);

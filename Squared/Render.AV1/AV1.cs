@@ -9,14 +9,18 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using static Dav1dfile;
+using Squared.Threading;
 
 namespace Squared.Render.AV1 {
     public unsafe class AV1Video : IDisposable {
-        public struct DecodedFrame {
-        }
-
         public readonly RenderCoordinator Coordinator;
+        private IntPtr YData;
+        private IntPtr UData;
+        private IntPtr VData;
+        private uint YLength;
+        private uint UVLength;
+        private uint YStride;
+        private uint UVStride;
 
         private MemoryMappedFile MappedFile { get; set; }
         private MemoryMappedViewAccessor MappedView { get; set; }
@@ -35,6 +39,8 @@ namespace Squared.Render.AV1 {
         public Texture2D YTexture { get; private set; }
         public Texture2D UTexture { get; private set; }
         public Texture2D VTexture { get; private set; }
+
+        Action AdvanceOrStopSync, AdvanceOrRestartSync;
 
         public AV1Video (RenderCoordinator coordinator, string filename)
             : this(coordinator, File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete), true) {
@@ -81,15 +87,15 @@ namespace Squared.Render.AV1 {
             int uvWidth, uvHeight;
 
             switch (layout) {
-                case PixelLayout.I420:
+                case Dav1dfile.PixelLayout.I420:
 				    uvWidth = Width / 2;
 				    uvHeight = Height / 2;
                     break;
-                case PixelLayout.I422:
+                case Dav1dfile.PixelLayout.I422:
 				    uvWidth = Width / 2;
                     uvHeight = Height;
                     break;
-                case PixelLayout.I444:
+                case Dav1dfile.PixelLayout.I444:
 				    uvWidth = width;
 				    uvHeight = height;
                     break;
@@ -97,12 +103,15 @@ namespace Squared.Render.AV1 {
                     throw new Exception("Unsupported pixel layout in AV1 file");
             }
 
+            AdvanceOrRestartSync = _AdvanceOrRestartSync;
+            AdvanceOrStopSync = _AdvanceOrStopSync;
+
             lock (coordinator.CreateResourceLock) {
                 YTexture = new Texture2D(coordinator.Device, Width, Height, false, SurfaceFormat.Alpha8) {
                     Name = "AV1Video.YTexture",
                 };
                 UTexture = new Texture2D(coordinator.Device, uvWidth, uvHeight, false, SurfaceFormat.Alpha8) {
-                    Name = "AV1Video.YTexture",
+                    Name = "AV1Video.UTexture",
                 };
                 VTexture = new Texture2D(coordinator.Device, uvWidth, uvHeight, false, SurfaceFormat.Alpha8) {
                     Name = "AV1Video.VTexture",
@@ -117,9 +126,9 @@ namespace Squared.Render.AV1 {
         public bool DecodeFrames (int frameCount = 1) {
             var ok = Dav1dfile.df_readvideo(
                 Context, frameCount,
-                out var yData, out var uData, out var vData,
-                out var yLength, out var uvLength,
-                out var yStride, out var uvStride
+                out YData, out UData, out VData,
+                out YLength, out UVLength,
+                out YStride, out UVStride
             );
 
             if (ok != 1)
@@ -129,6 +138,38 @@ namespace Squared.Render.AV1 {
         }
 
         public void UploadFrame () {
+            lock (Coordinator.UseResourceLock) {
+                UploadDataToTexture(YTexture, YData, YLength, YStride);
+                UploadDataToTexture(UTexture, UData, UVLength, UVStride);
+                UploadDataToTexture(VTexture, VData, UVLength, UVStride);
+            }
+        }
+
+        public void AdvanceAsync (ThreadGroup group, bool loop) {
+            var d = loop ? AdvanceOrRestartSync : AdvanceOrStopSync;
+            group.InvokeAndForget(d, !Coordinator.GraphicsBackendIsThreadingSafe);
+        }
+
+        private void _AdvanceOrRestartSync () {
+            lock (this) {
+                if (!DecodeFrames(1)) {
+                    Reset();
+                    if (!DecodeFrames(1))
+                        return;
+                }
+                UploadFrame();
+            }
+        }
+
+        private void _AdvanceOrStopSync () {
+            lock (this) {
+                if (DecodeFrames(1))
+                    UploadFrame();
+            }
+        }
+
+        private void UploadDataToTexture (Texture2D texture, IntPtr data, uint length, uint stride) {
+            texture.SetDataPointerEXT(0, null, data, (int)length);
         }
 
         public void Dispose () {
