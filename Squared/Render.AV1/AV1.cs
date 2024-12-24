@@ -36,6 +36,7 @@ namespace Squared.Render.AV1 {
         public int Width { get; private set; }
         public int Height { get; private set; }
         public Dav1dfile.PixelLayout Layout { get; private set; }
+        public bool TenBit { get; private set; }
 
         public Texture2D YTexture { get; private set; }
         public Texture2D UTexture { get; private set; }
@@ -43,11 +44,11 @@ namespace Squared.Render.AV1 {
 
         Action AdvanceOrStopSync, AdvanceOrRestartSync;
 
-        public AV1Video (RenderCoordinator coordinator, string filename)
-            : this(coordinator, File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete), true) {
+        public AV1Video (RenderCoordinator coordinator, string filename, bool tenBit = false)
+            : this(coordinator, File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete), true, tenBit) {
         }
 
-        public AV1Video (RenderCoordinator coordinator, Stream stream, bool ownsStream) {
+        public AV1Video (RenderCoordinator coordinator, Stream stream, bool ownsStream, bool tenBit = false) {
             Coordinator = coordinator;
 
             if (stream is FileStream fs) {
@@ -84,6 +85,7 @@ namespace Squared.Render.AV1 {
             Width = width;
             Height = height;
             Layout = layout;
+            TenBit = tenBit;
 
             int uvWidth, uvHeight;
 
@@ -173,6 +175,7 @@ namespace Squared.Render.AV1 {
             int w = texture.Width, h = texture.Height,
                 dataH = (int)(length / stride),
                 availH = Math.Min(dataH, h);
+
             if (w == stride) {
                 texture.SetDataPointerEXT(0, new Rectangle(0, 0, w, availH), data, (int)length);
                 return;
@@ -182,8 +185,21 @@ namespace Squared.Render.AV1 {
 
             fixed (byte* scratch = scratchBuffer) {
                 byte* source = (byte*)data;
-                for (int y = 0; y < availH; y++) {
-                    Buffer.MemoryCopy(source + (stride * y), scratch + (w * y), w, w);
+                if (TenBit) {
+                    // HACK: Rescale to 8 bits
+                    unchecked {
+                        for (int y = 0; y < availH; y++) {
+                            ushort* pSource = (ushort*)(source + (stride * y));
+                            byte* pDest = scratch + (w * y);
+                            for (int x = 0; x < w; x++) {
+                                pDest[x] = (byte)(pSource[x] >> 2);
+                            }
+                        }
+                    }
+                } else {
+                    for (int y = 0; y < availH; y++) {
+                        Buffer.MemoryCopy(source + (stride * y), scratch + (w * y), w, w);
+                    }
                 }
                 texture.SetDataPointerEXT(0, null, (IntPtr)scratch, scratchBuffer.Length);
             }
