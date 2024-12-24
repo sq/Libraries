@@ -149,7 +149,7 @@ namespace Squared.Render {
                 tu.Initialize(m);
         }
 
-        internal void PerformPendingRegistrations () {
+        internal void PerformPendingRegistrations (Frame frame) {
             List<ITypedUniform> pur;
             lock (PendingUniformRegistrations) {
                 if (PendingUniformRegistrations.Count == 0)

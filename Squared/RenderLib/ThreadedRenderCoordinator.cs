@@ -15,6 +15,7 @@ using Squared.Threading;
 using Squared.Util;
 // using SDL2;
 using SDL3;
+using System.Collections;
 
 namespace Squared.Render {
     public interface ITraceCapturingDisposable : IDisposable {
@@ -166,11 +167,11 @@ namespace Squared.Render {
 
         private readonly UnorderedList<PendingDraw> PendingDrawQueue = new UnorderedList<PendingDraw>();
         private readonly UnorderedList<CompletedPendingDraw> CompletedPendingDrawQueue = new UnorderedList<CompletedPendingDraw>();
-        private readonly Queue<Action> BeforePrepareQueue = new Queue<Action>();
-        private readonly Queue<Action> BeforeIssueQueue = new Queue<Action>();
-        private readonly Queue<Action> BeforePresentQueue = new Queue<Action>();
-        private readonly Queue<Action> AfterPresentQueue = new Queue<Action>();
-        private readonly Queue<Action> ThreadGroupAfterPresentQueue = new Queue<Action>();
+        private readonly Queue<Action<Frame>> BeforePrepareQueue = new ();
+        private readonly Queue<Action> BeforeIssueQueue = new (),
+            BeforePresentQueue = new (),
+            AfterPresentQueue = new (),
+            ThreadGroupAfterPresentQueue = new ();
 
         private readonly ManualResetEvent PresentBegunSignal = new ManualResetEvent(false),
             PresentEndedSignal = new ManualResetEvent(false);
@@ -364,7 +365,7 @@ namespace Squared.Render {
         /// <summary>
         /// Queues an operation to occur on the main thread immediately before prepare operations begin.
         /// </summary>
-        public void BeforePrepare (Action action) {
+        public void BeforePrepare (Action<Frame> action) {
             if (action == null)
                 throw new ArgumentNullException(nameof(action));
 
@@ -836,7 +837,7 @@ namespace Squared.Render {
                     newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
 
                 StartWorkPhase(WorkPhases.BeforePrepare);
-                RunBeforePrepareHandlers();
+                RunBeforePrepareHandlers(newFrame);
                 NextFrameTiming.BeforePrepare = EndWorkPhase(WorkPhases.BeforePrepare);
 
                 StartWorkPhase(WorkPhases.Prepare);
@@ -915,8 +916,19 @@ namespace Squared.Render {
             }
         }
 
-        private void RunBeforePrepareHandlers () {
-            DrainHandlerQueue(BeforePrepareQueue);
+        private void RunBeforePrepareHandlers (Frame frame) {
+            while (true) {
+                Action<Frame> handler;
+
+                lock (BeforePrepareQueue) {
+                    if (BeforePrepareQueue.Count <= 0)
+                        return;
+
+                    handler = BeforePrepareQueue.Dequeue();
+                }
+
+                handler(frame);
+            }
         }
 
         private void RunBeforeIssueHandlers () {
@@ -1133,7 +1145,7 @@ namespace Squared.Render {
                         else
                             throw new ArgumentException("Draw behavior was not of a compatible type");
 
-                        RunBeforePrepareHandlers();
+                        RunBeforePrepareHandlers(frame);
                         PrepareNextFrame(frame, false);
 
                         Manager.DeviceManager.SetRenderTarget(renderTarget);

@@ -119,7 +119,8 @@ namespace Squared.Render {
 
         private int X, Y, RowHeight;
         private object Lock = new object();
-        private Action _BeforeIssue, _BeforePrepare;
+        private Action _BeforeIssue;
+        private Action<Frame> _BeforePrepare;
         private bool _NeedClear, _IsQueued, _NeedRequeue;
         internal NativeAllocation PixelBuffer;
         private NativeAllocation MipBuffer;
@@ -246,7 +247,7 @@ namespace Squared.Render {
             }
         }
 
-        private void QueueGenerateMips () {
+        private void QueueGenerateMips (Frame frame) {
             lock (Lock) {
                 _IsQueued = false;
 

@@ -145,9 +145,9 @@ namespace Squared.Render.AV1 {
             }
         }
 
-        public void AdvanceAsync (ThreadGroup group, bool loop) {
+        public void AdvanceAsync (bool loop) {
             var d = loop ? AdvanceOrRestartSync : AdvanceOrStopSync;
-            group.InvokeAndForget(d, !Coordinator.GraphicsBackendIsThreadingSafe);
+            Coordinator.BeforeIssue(d);
         }
 
         private void _AdvanceOrRestartSync () {
