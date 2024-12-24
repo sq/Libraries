@@ -174,7 +174,6 @@ namespace Squared.Render {
 
         private bool? _NeedsYFlip;
 
-        public bool IsFNA { get; private set; }
         public string GraphicsBackendName { get; private set; }
 
         public bool NeedsYFlip {
@@ -221,22 +220,14 @@ namespace Squared.Render {
 
         private void UpdateGraphicsBackend (GraphicsDevice device) {
             var f = device.GetType().GetField("GLDevice", BindingFlags.Instance | BindingFlags.NonPublic);
-            IsFNA = (f != null);
-
-            if (IsFNA) {
-                try {
-                    // HACK: This is necessary to disable threaded issue/present in OpenGL, since it deadlocks
-#if FNA
-                    var hDevice = (IntPtr)f.GetValue(device);
-                    Evil.FNA3D_SysRendererEXT sr;
-                    Evil.DeviceUtils.FNA3D_GetSysRendererEXT(hDevice, out sr);
-                    GraphicsBackendName = sr.rendererType.ToString();
-#endif
-                } catch {
-                    GraphicsBackendName = "OpenGL";
-                }
-            } else {
-                throw new NotSupportedException("Non-FNA graphics backends are no longer supported");
+            try {
+                // HACK: This is necessary to disable threaded issue/present in OpenGL, since it deadlocks
+                var hDevice = (IntPtr)f.GetValue(device);
+                Evil.FNA3D_SysRendererEXT sr;
+                Evil.DeviceUtils.FNA3D_GetSysRendererEXT(hDevice, out sr);
+                GraphicsBackendName = sr.rendererType.ToString();
+            } catch {
+                GraphicsBackendName = "OpenGL";
             }
         }
 

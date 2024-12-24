@@ -182,18 +182,22 @@ namespace Squared.Render {
         public event EventHandler DeviceReset, DeviceChanged;
 
         public bool IsDisposed { get; private set; }
-        public bool IsFNA => Manager.DeviceManager.IsFNA;
 
         private long TimeOfLastResetOrDeviceChange = 0;
 
         private int IsDisposingResources = 0;
 
         public string GraphicsBackendName => Manager.DeviceManager.GraphicsBackendName;
+
+        /// <summary>
+        /// Indicates whether it is legal to use this graphics backend from multiple threads.
+        /// NOTE: Accesses to graphics resources still need to be guarded by CreateResourceLock or UseResourceLock!
+        /// Failure to properly lock may cause crashes.
+        /// </summary>
         public bool GraphicsBackendIsThreadingSafe => GraphicsBackendName switch {
             "D3D9" => true,
             "D3D11" => true,
             "Vulkan" => true,
-            // FIXME
             "SDL_GPU" => true,
             _ => false,
         };

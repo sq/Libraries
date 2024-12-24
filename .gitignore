@@ -108,6 +108,8 @@ params.txt
 /Squared/BasisNative/bin
 /Squared/Render.Basis/obj
 /Squared/Render.Basis/bin
+/Squared/Render.AV1/obj
+/Squared/Render.AV1/bin
 /Squared/MiscTests/bin
 /Squared/MiscTests/obj
 /Squared/FontTest/FontTestContent

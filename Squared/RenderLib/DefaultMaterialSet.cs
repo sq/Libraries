@@ -416,6 +416,7 @@ namespace Squared.Render {
         public Material ScreenSpaceGeometry, WorldSpaceGeometry;
         public Material ScreenSpaceTexturedGeometry, WorldSpaceTexturedGeometry;
         public Material LightmappedBitmap;
+        public Material YUVDecode;
         public Material RasterShapeUbershader;
         public Material JumpFloodInit, JumpFloodJump, JumpFloodResolve;
         internal readonly Dictionary<RasterShaderKey, RasterShape.RasterShader> RasterShapeMaterials =
@@ -705,6 +706,11 @@ namespace Squared.Render {
             LoadRasterShapeMaterials();
 
             LoadRasterStrokeMaterials();
+
+            YUVDecode = NewMaterial(
+                BuiltInShaders.Load("YUVDec"),
+                "YUVDecodeTechnique"
+            );
 
             var lightmapShader = BuiltInShaders.Load("Lightmap");
 

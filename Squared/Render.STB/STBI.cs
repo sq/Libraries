@@ -250,15 +250,8 @@ namespace Squared.Render.STB {
         private unsafe void ConvertData (bool premultiply) {
             if (ChannelCount < 3)
                 return;
-#if FNA
             if (premultiply)
                 PremultiplyData();
-#else
-            if (premultiply)
-                PremultiplyAndChannelSwapData();
-            else
-                ChannelSwapData();
-#endif
         }
 
         private unsafe void PremultiplyFPData () {
