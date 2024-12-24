@@ -21,6 +21,7 @@ namespace Squared.Render.AV1 {
         private uint UVLength;
         private uint YStride;
         private uint UVStride;
+        private byte[] YScratchBuffer, UVScratchBuffer;
 
         private MemoryMappedFile MappedFile { get; set; }
         private MemoryMappedViewAccessor MappedView { get; set; }
@@ -139,9 +140,9 @@ namespace Squared.Render.AV1 {
 
         public void UploadFrame () {
             lock (Coordinator.UseResourceLock) {
-                UploadDataToTexture(YTexture, YData, YLength, YStride);
-                UploadDataToTexture(UTexture, UData, UVLength, UVStride);
-                UploadDataToTexture(VTexture, VData, UVLength, UVStride);
+                UploadDataToTexture(YTexture, YData, YLength, YStride, ref YScratchBuffer);
+                UploadDataToTexture(UTexture, UData, UVLength, UVStride, ref UVScratchBuffer);
+                UploadDataToTexture(VTexture, VData, UVLength, UVStride, ref UVScratchBuffer);
             }
         }
 
@@ -168,8 +169,24 @@ namespace Squared.Render.AV1 {
             }
         }
 
-        private void UploadDataToTexture (Texture2D texture, IntPtr data, uint length, uint stride) {
-            texture.SetDataPointerEXT(0, null, data, (int)length);
+        private void UploadDataToTexture (Texture2D texture, IntPtr data, uint length, uint stride, ref byte[] scratchBuffer) {
+            int w = texture.Width, h = texture.Height,
+                dataH = (int)(length / stride),
+                availH = Math.Min(dataH, h);
+            if (w == stride) {
+                texture.SetDataPointerEXT(0, new Rectangle(0, 0, w, availH), data, (int)length);
+                return;
+            }
+
+            Array.Resize(ref scratchBuffer, w * availH);
+
+            fixed (byte* scratch = scratchBuffer) {
+                byte* source = (byte*)data;
+                for (int y = 0; y < availH; y++) {
+                    Buffer.MemoryCopy(source + (stride * y), scratch + (w * y), w, w);
+                }
+                texture.SetDataPointerEXT(0, null, (IntPtr)scratch, scratchBuffer.Length);
+            }
         }
 
         public void Dispose () {

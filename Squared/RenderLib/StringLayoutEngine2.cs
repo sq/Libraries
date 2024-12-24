@@ -1334,8 +1334,9 @@ recalc:
             ref var fragment = ref FinishFragment(true);
 
             var drawCallIndex = DrawCallIndex;
+            var availWidth = Math.Max(0, Math.Max(MaximumWidth, DesiredWidth) - (image.Margin.X * 2));
             float maximumWidth = image.MaxWidthPercent.HasValue
-                ? Math.Max(MaximumWidth, DesiredWidth) * image.MaxWidthPercent.Value / 100f
+                ? availWidth * image.MaxWidthPercent.Value / 100f
                 : float.MaxValue,
                 maximumScale = Math.Min(1f, maximumWidth / image.Texture.Instance.Width),
                 effectiveScale = Math.Min(image.Scale, maximumScale);
@@ -1650,6 +1651,17 @@ recalc:
                 //  alter the line's height. If we were to just sum heights it would be too small
                 constrainedSize.Y = Math.Max(constrainedSize.Y, line.Location.Y + line.Height);
             }
+
+            // HACK: In some cases a box may force our size to increase
+            for (uint i = 0; i < BoxIndex; i++) {
+                ref var box = ref Buffers.Box(i);
+                var extent = box.Bounds.BottomRight + box.Margin;
+                constrainedSize.X = Math.Max(constrainedSize.X, extent.X);
+                constrainedSize.Y = Math.Max(constrainedSize.Y, extent.Y);
+                UnconstrainedMaxWidth = Math.Max(UnconstrainedMaxWidth, extent.X);
+                UnconstrainedMaxY = Math.Max(UnconstrainedMaxY, extent.Y);
+            }
+
             constrainedSize.X = Math.Max(constrainedSize.X, DesiredWidth);
         }
 

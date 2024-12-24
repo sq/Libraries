@@ -891,6 +891,7 @@ namespace Squared.Render.Text {
                             var h = (ai.Height ?? 0);
                             if (ai.MaxWidthPercent.HasValue && (w > 0)) {
                                 var mw = ai.MaxWidthPercent.Value * Math.Max(layoutEngine.MaximumWidth, layoutEngine.DesiredWidth) / 100f;
+                                mw = Math.Max(mw - (ai.Margin.X * 2), 0);
                                 float ratio = Math.Min(w, mw) / w;
                                 w *= ratio;
                                 h *= ratio;
