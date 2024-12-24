@@ -105,9 +105,6 @@
     <None Include="Shaders\*.fx" />
     <None Include="Shaders\*.fxh" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="Shaders\YUVDec.fx" />
-  </ItemGroup>
   <PropertyGroup>
     <SquaredPath>..\..\</SquaredPath>
     <ShaderDirectory>Shaders</ShaderDirectory>
