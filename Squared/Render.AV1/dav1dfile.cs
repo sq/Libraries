@@ -83,6 +83,15 @@ public static class Dav1dfile
 	);
 
 	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
+	public extern static void df_videoinfo2(
+		IntPtr context,
+		out int width,
+		out int height,
+		out PixelLayout pixelLayout,
+		out byte hbd
+	);
+
+	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]
 	public extern static int df_eos(IntPtr context);
 
 	[DllImport(nativeLibName, CallingConvention = CallingConvention.Cdecl)]

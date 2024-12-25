@@ -72,6 +72,7 @@ namespace Squared.Render.Evil {
 
             switch (format) {
                 case SurfaceFormat.Alpha8:
+                case SurfaceFormat.ByteEXT:
                     numComponents = 1;
                     return 1;
                 case SurfaceFormat.Color:
@@ -81,6 +82,7 @@ namespace Squared.Render.Evil {
                     numComponents = 4;
                     return 8;
                 case SurfaceFormat.HalfSingle:
+                case SurfaceFormat.UShortEXT:
                     numComponents = 1;
                     return 2;
                 case SurfaceFormat.Single:
@@ -147,6 +149,9 @@ namespace Squared.Render.Evil {
                 // FIXME: Is the value channel R in fna? I think it is
                 case SurfaceFormat.Alpha8:
                     return new Vector4(VALUE_CHANNEL_A, ALPHA_CHANNEL_A, 0, ALPHA_MODE_NORMAL);
+                case SurfaceFormat.ByteEXT:
+                case SurfaceFormat.UShortEXT:
+                    return new Vector4(VALUE_CHANNEL_R, ALPHA_CONSTANT_ONE, 0, ALPHA_MODE_NORMAL);
                 case SurfaceFormat.Single:
                 case SurfaceFormat.HalfSingle:
                     return new Vector4(VALUE_CHANNEL_R, ALPHA_CONSTANT_ONE, 0, ALPHA_MODE_NORMAL);

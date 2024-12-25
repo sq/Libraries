@@ -29,6 +29,7 @@ void YUVDecodePixelShader(
     in float4 addColor : COLOR1, 
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
+    in float4 rescaleFactor : COLOR2,
     ACCEPTS_VPOS,
     out float4 result : COLOR0
 ) {
@@ -36,9 +37,11 @@ void YUVDecodePixelShader(
     addColor.a = 0;
 
     float3 yuv;
-    yuv.x = tex2D(TextureSampler, texCoord).a;
-    yuv.y = tex2D(TextureSampler2, texCoord).a;
-    yuv.z = tex2D(TextureSampler3, texCoord).a;
+    yuv.x = tex2D(TextureSampler, texCoord).r;
+    yuv.y = tex2D(TextureSampler2, texCoord).r;
+    yuv.z = tex2D(TextureSampler3, texCoord).r;
+    if (any(rescaleFactor.x))
+        yuv *= rescaleFactor.xyz;
     yuv += offset;
 
     float4 texColor = float4(

@@ -36,19 +36,25 @@ namespace Squared.Render.AV1 {
         public int Width { get; private set; }
         public int Height { get; private set; }
         public Dav1dfile.PixelLayout Layout { get; private set; }
-        public bool TenBit { get; private set; }
-
+        public int BitsPerPixel { get; private set; }
+        
         public Texture2D YTexture { get; private set; }
         public Texture2D UTexture { get; private set; }
         public Texture2D VTexture { get; private set; }
 
         Action AdvanceOrStopSync, AdvanceOrRestartSync;
 
-        public AV1Video (RenderCoordinator coordinator, string filename, bool tenBit = false)
-            : this(coordinator, File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete), true, tenBit) {
+        public Vector4 RescaleFactor => BitsPerPixel switch {
+            12 => new Vector4((float)(1.0 / (4096 / 65536.0))),
+            10 => new Vector4((float)(1.0 / (1024 / 65536.0))),
+            _ => Vector4.One,
+        };
+
+        public AV1Video (RenderCoordinator coordinator, string filename)
+            : this(coordinator, File.Open(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete), true) {
         }
 
-        public AV1Video (RenderCoordinator coordinator, Stream stream, bool ownsStream, bool tenBit = false) {
+        public AV1Video (RenderCoordinator coordinator, Stream stream, bool ownsStream) {
             Coordinator = coordinator;
 
             if (stream is FileStream fs) {
@@ -81,11 +87,22 @@ namespace Squared.Render.AV1 {
 
             Context = context;
 
-            Dav1dfile.df_videoinfo(context, out var width, out var height, out var layout);
+            int width, height;
+            Dav1dfile.PixelLayout layout;
+            try {
+                Dav1dfile.df_videoinfo2(context, out width, out height, out layout, out byte hbd);
+                BitsPerPixel = hbd switch {
+                    2 => 12,
+                    1 => 10,
+                    _ => 8,
+                };
+            } catch {
+                Dav1dfile.df_videoinfo(context, out width, out height, out layout);
+                BitsPerPixel = 8;
+            }
             Width = width;
             Height = height;
             Layout = layout;
-            TenBit = tenBit;
 
             int uvWidth, uvHeight;
 
@@ -109,14 +126,15 @@ namespace Squared.Render.AV1 {
             AdvanceOrRestartSync = _AdvanceOrRestartSync;
             AdvanceOrStopSync = _AdvanceOrStopSync;
 
+            var fmt = BitsPerPixel > 8 ? SurfaceFormat.UShortEXT : SurfaceFormat.ByteEXT;
             lock (coordinator.CreateResourceLock) {
-                YTexture = new Texture2D(coordinator.Device, Width, Height, false, SurfaceFormat.Alpha8) {
+                YTexture = new Texture2D(coordinator.Device, Width, Height, false, fmt) {
                     Name = "AV1Video.YTexture",
                 };
-                UTexture = new Texture2D(coordinator.Device, uvWidth, uvHeight, false, SurfaceFormat.Alpha8) {
+                UTexture = new Texture2D(coordinator.Device, uvWidth, uvHeight, false, fmt) {
                     Name = "AV1Video.UTexture",
                 };
-                VTexture = new Texture2D(coordinator.Device, uvWidth, uvHeight, false, SurfaceFormat.Alpha8) {
+                VTexture = new Texture2D(coordinator.Device, uvWidth, uvHeight, false, fmt) {
                     Name = "AV1Video.VTexture",
                 };
             }
@@ -174,17 +192,20 @@ namespace Squared.Render.AV1 {
         private void UploadDataToTexture (Texture2D texture, IntPtr data, uint length, uint stride, ref byte[] scratchBuffer) {
             int w = texture.Width, h = texture.Height,
                 dataH = (int)(length / stride),
-                availH = Math.Min(dataH, h);
+                availH = Math.Min(dataH, h),
+                eltSize = BitsPerPixel > 8 ? 2 : 1,
+                rowSize = eltSize * w;
 
             if (w == stride) {
                 texture.SetDataPointerEXT(0, new Rectangle(0, 0, w, availH), data, (int)length);
                 return;
             }
 
-            Array.Resize(ref scratchBuffer, w * availH);
+            Array.Resize(ref scratchBuffer, w * availH * eltSize);
 
             fixed (byte* scratch = scratchBuffer) {
                 byte* source = (byte*)data;
+                /*
                 if (TenBit) {
                     // HACK: Rescale to 8 bits
                     unchecked {
@@ -197,10 +218,11 @@ namespace Squared.Render.AV1 {
                         }
                     }
                 } else {
+                */
                     for (int y = 0; y < availH; y++) {
-                        Buffer.MemoryCopy(source + (stride * y), scratch + (w * y), w, w);
+                        Buffer.MemoryCopy(source + (stride * y), scratch + (rowSize * y), rowSize, rowSize);
                     }
-                }
+                // }
                 texture.SetDataPointerEXT(0, null, (IntPtr)scratch, scratchBuffer.Length);
             }
         }
