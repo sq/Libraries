@@ -29,7 +29,7 @@ void YUVDecodePixelShader(
     in float4 addColor : COLOR1, 
     in float2 texCoord : TEXCOORD0,
     in float4 texRgn : TEXCOORD1,
-    in float4 rescaleFactor : COLOR2,
+    in float4 rescaleFactors : COLOR2,
     ACCEPTS_VPOS,
     out float4 result : COLOR0
 ) {
@@ -40,8 +40,10 @@ void YUVDecodePixelShader(
     yuv.x = tex2D(TextureSampler, texCoord).r;
     yuv.y = tex2D(TextureSampler2, texCoord).r;
     yuv.z = tex2D(TextureSampler3, texCoord).r;
-    if (any(rescaleFactor.x))
-        yuv *= rescaleFactor.xyz;
+    if (rescaleFactors.x > 0)
+        yuv.xyz *= rescaleFactors.x;
+    if (rescaleFactors.y > 0)
+        yuv.x *= rescaleFactors.y;
     yuv += offset;
 
     float4 texColor = float4(
@@ -52,7 +54,9 @@ void YUVDecodePixelShader(
     );    
     
     result = multiplyColor * texColor;
-    result.rgb = ApplyDither(result.rgb, GET_VPOS);
+    if (rescaleFactors.z > 0)
+        result.rgb *= rescaleFactors.z;
+    // result.rgb = ApplyDither(result.rgb, GET_VPOS);
     result += (addColor * result.a);
 }
 

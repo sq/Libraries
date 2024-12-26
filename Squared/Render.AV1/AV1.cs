@@ -44,9 +44,10 @@ namespace Squared.Render.AV1 {
 
         Action AdvanceOrStopSync, AdvanceOrRestartSync;
 
+        // Bit depth compensation, Y scale, Post brightness amp, Unused
         public Vector4 RescaleFactor => BitsPerPixel switch {
-            12 => new Vector4((float)(1.0 / (4096 / 65536.0))),
-            10 => new Vector4((float)(1.0 / (1024 / 65536.0))),
+            12 => new Vector4((float)(1.0 / (4096 / 65536.0)), 1, 1, 0),
+            10 => new Vector4((float)(1.0 / (1024 / 65536.0)), 1, 1, 0),
             _ => Vector4.One,
         };
 
