@@ -398,15 +398,13 @@ namespace Squared.PRGUI {
             var result = OnKeyEvent(name, key, ch);
             if (!result) {
                 evt.IsAccelerator = true;
-                var focusedSource = (Focused as IAcceleratorSource) ??
-                    (Focused as IControlContainer)?.AcceleratorSource;
-                if ((focusedSource != null) && !result)
-                    result = DispatchAccelerators(focusedSource, name, evt);
-
-                var topLevelSource = (TopLevelFocused as IAcceleratorSource) ??
-                    (TopLevelFocused as IControlContainer)?.AcceleratorSource;
-                if ((topLevelSource != null) && (topLevelSource != focusedSource) && !result)
-                    result = DispatchAccelerators(topLevelSource, name, evt);
+                var sources = new DenseList<IAcceleratorSource>();
+                GatherAcceleratorSources(ref sources);
+                foreach (var source in sources) {
+                    result = DispatchAccelerators(source, name, evt);
+                    if (result)
+                        return result;
+                }
             }
 
             return result;

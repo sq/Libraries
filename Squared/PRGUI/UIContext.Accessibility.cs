@@ -372,6 +372,19 @@ namespace Squared.PRGUI {
                 return c;
         }
 
+        private void GatherAcceleratorSources (ref DenseList<IAcceleratorSource> result) {
+            static void AddIfNotNull (ref DenseList<IAcceleratorSource> list, object candidate) {
+                var ias = candidate as IAcceleratorSource;
+                if ((ias != null) && !list.Contains(ias))
+                    list.Add(ias);
+            }
+
+            AddIfNotNull(ref result, (TopLevelFocused as IControlContainer)?.AcceleratorSource);
+            AddIfNotNull(ref result, TopLevelFocused);
+            AddIfNotNull(ref result, (Focused as IControlContainer)?.AcceleratorSource);
+            AddIfNotNull(ref result, Focused);
+        }
+
         private void RasterizeAcceleratorOverlay (ref UIOperationContext context, ref RasterizePassSet passSet) {
             var activeModal = ActiveModal;
             Control shiftTab = ResolveProxies(PickRotateFocusTarget(false, -1)),
@@ -389,14 +402,8 @@ namespace Squared.PRGUI {
             // FIXME: This looks confusing
             // RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, Focused, null);
 
-            var topLevelSource = (TopLevelFocused as IAcceleratorSource) ??
-                (TopLevelFocused as IControlContainer)?.AcceleratorSource;
-            if (topLevelSource != null) {
-                // labelGroup = renderer.MakeSubgroup();
-
-                foreach (var accel in topLevelSource.Accelerators)
-                    RasterizeAcceleratorOverlay(context, ref passSet, accel, true);
-            }
+            var sources = new DenseList<IAcceleratorSource>();
+            GatherAcceleratorSources(ref sources);
 
             RasterizeAcceleratorOverlay(context, ref passSet, tab, FocusForward);
             if (shiftTab != tab)
@@ -409,12 +416,8 @@ namespace Squared.PRGUI {
                     RasterizeAcceleratorOverlay(context, ref passSet, ctrlShiftTab, WindowFocusBackward);
             }
 
-            var focusedSource = (Focused as IAcceleratorSource) ??
-                (Focused as IControlContainer)?.AcceleratorSource;
-            if ((focusedSource != null) && (focusedSource != topLevelSource)) {
-                // labelGroup = renderer.MakeSubgroup();
-
-                foreach (var accel in focusedSource.Accelerators)
+            foreach (var uniqueSource in sources) {
+                foreach (var accel in uniqueSource.Accelerators)
                     RasterizeAcceleratorOverlay(context, ref passSet, accel, true);
             }
         }
