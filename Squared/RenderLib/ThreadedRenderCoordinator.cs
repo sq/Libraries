@@ -26,12 +26,17 @@ namespace Squared.Render {
         public static void ApplyChangesAfterPresent (this GraphicsDeviceManager gdm, RenderCoordinator rc) {
             // HACK: Wait until rendering has finished, then reset the device on the main thread
             var sc = SynchronizationContext.Current;
-            rc.AfterPresent(() => {
-                if (rc.EnableThreading && sc != null)
-                    sc.Post((_) => gdm.ApplyChanges(), null);
-                else
+            if (sc != null)
+                rc.AfterPresent(() => {
+                    sc.Post((_) => {
+                        lock (rc.UseResourceLock)
+                            gdm.ApplyChanges();
+                    }, null);
+                });
+            else
+                rc.AfterPresent(() => {
                     gdm.ApplyChanges();
-            });
+                });
         }
     }
 
@@ -88,6 +93,10 @@ namespace Squared.Render {
         /// If set to false, threads will not be used for rendering.
         /// </summary>
         public bool EnableThreading = true;
+        /// <summary>
+        /// If set to true, threads will not be used for rendering.
+        /// </summary>
+        public bool SuppressThreadingTemporarily = false;
         /// <summary>
         /// You must acquire this lock before applying changes to the device, creating objects, or loading content.
         /// </summary>
@@ -730,7 +739,7 @@ namespace Squared.Render {
 
             Interlocked.Increment(ref _InsideDrawOperation);
             try {
-                _ActualEnableThreading = EnableThreading;
+                _ActualEnableThreading = EnableThreading && !SuppressThreadingTemporarily;
 
                 // HACK: Fix problem where if the game is minimized, explorer.exe cannot dispatch a restore event successfully
                 //  because we tend to be blocked waiting on a signal when windows expects us to be pumping messages instead.

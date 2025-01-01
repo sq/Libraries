@@ -27,6 +27,10 @@ bool GetRenderTargetIsLinearSpace() {
     return __RenderTargetInfo__.z > 0;
 }
 
+bool GetRenderTargetBytesPerChannel() {
+    return __RenderTargetInfo__.w;
+}
+
 #define GET_VPOS_FRAC (GET_VPOS / GetRenderTargetSize())
 #define GET_VPOS_SCALED (GET_VPOS_FRAC * GetViewportProjectionInputDomain())
 #endif

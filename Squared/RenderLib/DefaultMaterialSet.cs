@@ -1388,7 +1388,13 @@ namespace Squared.Render {
                 MaterialDictionary.Add(key, result);
             }
             if (clone) {
-                result = result?.Clone();
+                if (Coordinator.Manager.DeviceManager.CurrentMaterial != null) {
+                    if (Coordinator.Manager.DeviceManager.CurrentMaterial == result)
+                        throw new InvalidOperationException("Cloning material while it's in use");
+                }
+
+                lock (Coordinator.CreateResourceLock)
+                    result = result?.Clone();
                 Add(result);
             }
             return result;

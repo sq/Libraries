@@ -219,12 +219,10 @@ namespace Squared.Render {
         }
 
         private void UpdateGraphicsBackend (GraphicsDevice device) {
-            var f = device.GetType().GetField("GLDevice", BindingFlags.Instance | BindingFlags.NonPublic);
             try {
                 // HACK: This is necessary to disable threaded issue/present in OpenGL, since it deadlocks
-                var hDevice = (IntPtr)f.GetValue(device);
-                Evil.FNA3D_SysRendererEXT sr;
-                Evil.DeviceUtils.FNA3D_GetSysRendererEXT(hDevice, out sr);
+                var hDevice = Evil.DeviceUtils.GetFNA3DDevice(device);
+                Evil.DeviceUtils.FNA3D_GetSysRendererEXT(hDevice, out var sr);
                 GraphicsBackendName = sr.rendererType.ToString();
             } catch {
                 GraphicsBackendName = "OpenGL";
@@ -264,8 +262,9 @@ namespace Squared.Render {
 
             var format = target1?.Format ?? Device.PresentationParameters.BackBufferFormat;
             var sRGBFlag = Evil.TextureUtils.FormatIsLinearSpace(this, format);
+            var bpp = Evil.TextureUtils.GetBytesPerPixelAndComponents(format, out var components);
 
-            rti.SetValue(new Vector4(targetWidth, targetHeight, sRGBFlag ? 1f : 0f, 0));
+            rti.SetValue(new Vector4(targetWidth, targetHeight, sRGBFlag ? 1f : 0f, bpp / components));
 
             // material.Flush();
         }

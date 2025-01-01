@@ -21,10 +21,110 @@ namespace Squared.Render.Evil {
         SDL_GPU
     };
 
+    [StructLayout(LayoutKind.Sequential)]
     public unsafe struct FNA3D_SysRendererEXT {
-        public UInt32 Version;
+        [StructLayout(LayoutKind.Sequential)]
+        public unsafe struct U_SDL {
+            /// <summary>
+            /// SDL_GPUDevice *
+            /// </summary>
+            public IntPtr device;
+
+            public IntPtr reserved1, reserved2, reserved3, reserved4, reserved5, reserved6;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        public unsafe struct U {
+            [FieldOffset(0)]
+            public U_SDL sdl;
+            [FieldOffset(0)]
+            public fixed byte padding[1024];
+        }
+
+        public UInt32 version;
         public FNA3D_SysRendererTypeEXT rendererType;
-        public fixed byte padding[1024];
+        public U renderer;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public unsafe struct FNA3D_SysTextureEXT {
+        [StructLayout(LayoutKind.Sequential)]
+        public unsafe struct U_SDL {
+            /// <summary>
+            /// SDL_GPUTexture *
+            /// </summary>
+            public IntPtr texture;
+            /// <summary>
+            /// SDL_GPUTextureCreateInfo *
+            /// </summary>
+            public IntPtr createInfo;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        public unsafe struct U {
+            [FieldOffset(0)]
+            public U_SDL sdl;
+            [FieldOffset(0)]
+            public fixed byte padding[1024];
+        }
+
+        public UInt32 version;
+        public FNA3D_SysRendererTypeEXT rendererType;
+        public U texture;
+    }
+
+    public class SysTexture2D : Texture2D {
+        protected static unsafe IntPtr CreateHandle (GraphicsDevice device, IntPtr texture, SDL.SDL_GPUTextureCreateInfo createInfo) {
+            var hDevice = DeviceUtils.GetFNA3DDevice(device);
+            var st = new FNA3D_SysTextureEXT {
+                version = 0,
+                rendererType = FNA3D_SysRendererTypeEXT.SDL_GPU,
+                texture = {
+                    sdl = {
+                        texture = texture,
+                        createInfo = (IntPtr)(&createInfo),
+                    },
+                },
+            };
+            return DeviceUtils.FNA3D_CreateSysTextureEXT(hDevice, ref st);
+        }
+
+        public static SurfaceFormat GetMatchingSizeFormat (SDL.SDL_GPUTextureFormat format) {
+            var sizeInPixels = SDL.SDL_GPUTextureFormatTexelBlockSize(format);
+            // FIXME: Compressed formats
+            return sizeInPixels switch {
+                16 => SurfaceFormat.Vector4,
+                8 => SurfaceFormat.Rgba64,
+                4 => SurfaceFormat.Color,
+                2 => SurfaceFormat.HalfSingle,
+                1 => SurfaceFormat.Alpha8,
+                _ => throw new ArgumentOutOfRangeException(nameof(format)),
+            };
+        }
+
+        public unsafe SysTexture2D (GraphicsDevice device, IntPtr texture, SDL.SDL_GPUTextureCreateInfo createInfo) 
+            : base (
+                  device, 
+                  (int)createInfo.width, (int)createInfo.height, (int)createInfo.num_levels, 
+                  GetMatchingSizeFormat(createInfo.format), CreateHandle(device, texture, createInfo)
+            )
+        {
+        }
+
+        public unsafe SysTexture2D (GraphicsDevice device, SDL.SDL_GPUTextureCreateInfo createInfo)
+            : this (
+                  device, CreateTextureFromInfo(device, ref createInfo), createInfo
+            )
+        {
+        }
+
+        private static IntPtr CreateTextureFromInfo (GraphicsDevice device, ref SDL.SDL_GPUTextureCreateInfo createInfo) {
+            var sd = DeviceUtils.GetSDLDevice(device).device;
+            var result = SDL.SDL_CreateGPUTexture(sd, ref createInfo);
+            if (result == IntPtr.Zero)
+                throw new Exception("Failed to create SDL_GPU texture: " + SDL.SDL_GetError());
+            return result;
+        }
     }
 
     public static class EffectUtils {
@@ -115,7 +215,6 @@ namespace Squared.Render.Evil {
                     numComponents = 4;
                     return 1;
                 case SurfaceFormat.Dxt5:
-                // case SurfaceFormat.BC7EXT:
                     // HACK: 16 pixel groups -> 128 bits (16 bytes) of output
                     numComponents = 4;
                     return 1;
@@ -259,6 +358,7 @@ namespace Squared.Render.Evil {
             switch (format) {
                 case SurfaceFormat.Color:
                     return false;
+
                 case SurfaceFormat.Dxt1:
                 case SurfaceFormat.Dxt5:
                 case SurfaceFormat.Bc7EXT:
@@ -271,8 +371,6 @@ namespace Squared.Render.Evil {
                     return false;
 
                 case SurfaceFormat.HdrBlendable:
-                case SurfaceFormat.HalfVector4:
-                case SurfaceFormat.Vector4:
                     switch (manager?.GraphicsBackendName ?? "Unknown") {
                         // FIXME: DXGI will automatically enable HDR for a F16 swapchain, even if you haven't explicitly
                         //  requested an HDR colorspace.
@@ -286,6 +384,14 @@ namespace Squared.Render.Evil {
                         default:
                             return false;
                     }
+
+                case SurfaceFormat.HalfSingle:
+                case SurfaceFormat.Single:
+                case SurfaceFormat.HalfVector2:
+                case SurfaceFormat.Vector2:
+                case SurfaceFormat.HalfVector4:
+                case SurfaceFormat.Vector4:
+                    return true;
 
                 default:
                     if (format == ColorSrgbEXT)
@@ -306,5 +412,25 @@ namespace Squared.Render.Evil {
 			IntPtr device,
 			out FNA3D_SysRendererEXT sysrenderer
 		);
+
+        [DllImport("FNA3D", CallingConvention = CallingConvention.Cdecl)]
+		public static extern IntPtr FNA3D_CreateSysTextureEXT(
+			IntPtr device,
+			ref FNA3D_SysTextureEXT systexture
+		);
+
+        internal static IntPtr GetFNA3DDevice (GraphicsDevice device) {
+            // FIXME: Optimize this
+            var f = device.GetType().GetField("GLDevice", BindingFlags.Instance | BindingFlags.NonPublic);
+            return (IntPtr)f.GetValue(device);
+        }
+
+        public static FNA3D_SysRendererEXT.U_SDL GetSDLDevice (GraphicsDevice device) {
+            var fdev = GetFNA3DDevice(device);
+            FNA3D_GetSysRendererEXT(fdev, out var sr);
+            if (sr.rendererType != FNA3D_SysRendererTypeEXT.SDL_GPU)
+                throw new Exception("Incorrect renderer type");
+            return sr.renderer.sdl;
+        }
     }
 }

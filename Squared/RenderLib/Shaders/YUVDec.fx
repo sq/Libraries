@@ -56,7 +56,10 @@ void YUVDecodePixelShader(
     result = multiplyColor * texColor;
     if (rescaleFactors.z > 0)
         result.rgb *= rescaleFactors.z;
-    // result.rgb = ApplyDither(result.rgb, GET_VPOS);
+    
+    if (GetRenderTargetBytesPerChannel() <= 1)
+        result.rgb = ApplyDither(result.rgb, GET_VPOS);
+    
     result += (addColor * result.a);
 }
 
