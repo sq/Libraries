@@ -176,7 +176,7 @@ namespace Squared.Render {
             var height = (int)resolution;
 
             Texture2D tex;
-            lock (coordinator.CreateResourceLock) {
+            lock (coordinator.UseResourceLock) {
                 if (renderable)
                     tex = new RenderTarget2D(coordinator.Device, width, height, false, surfaceFormat, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
                 else

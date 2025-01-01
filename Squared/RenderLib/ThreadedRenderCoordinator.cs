@@ -98,13 +98,13 @@ namespace Squared.Render {
         /// </summary>
         public bool SuppressThreadingTemporarily = false;
         /// <summary>
-        /// You must acquire this lock before applying changes to the device, creating objects, or loading content.
-        /// </summary>
-        public readonly object CreateResourceLock;
-        /// <summary>
-        /// You must acquire this lock before rendering or resetting the device.
+        /// You must acquire this lock before rendering, changing the device, resetting the device, creating objects, loading content, or destroying objects.
         /// </summary>
         public readonly object UseResourceLock;
+
+        [Obsolete("Use UseResourceLock")]
+        public object CreateResourceLock => UseResourceLock;
+
         /// <summary>
         /// This lock is held during frame preparation.
         /// </summary>
@@ -285,7 +285,6 @@ namespace Squared.Render {
             Manager = manager;
             ThreadGroup = manager.ThreadGroup;
             UseResourceLock = manager.UseResourceLock;
-            CreateResourceLock = manager.CreateResourceLock;
 
             GetWindow = getWindow;
             _SyncBeginDraw = synchronousBeginDraw;
@@ -312,7 +311,6 @@ namespace Squared.Render {
             ThreadGroup = threadGroup;
             Manager = new RenderManager(deviceService.GraphicsDevice, mainThread, ThreadGroup);
             UseResourceLock = Manager.UseResourceLock;
-            CreateResourceLock = Manager.CreateResourceLock;
  
             GetWindow = getWindow;
             _SyncBeginDraw = synchronousBeginDraw ?? DefaultBeginDraw;
@@ -490,7 +488,6 @@ namespace Squared.Render {
 
                 Monitor.Enter(DrawLock);
                 Monitor.Enter(UseResourceLock);
-                Monitor.Enter(CreateResourceLock);
             }
 
             UniformBinding.HandleDeviceReset();
@@ -506,7 +503,6 @@ namespace Squared.Render {
             }
 
             if (IsResetting) {
-                Monitor.Exit(CreateResourceLock);
                 Monitor.Exit(UseResourceLock);
                 Monitor.Exit(DrawLock);
 
@@ -1014,7 +1010,10 @@ namespace Squared.Render {
 
                 if (frameToDraw != null) {
                     Manager.PrepareManager.AssertEmpty();
-                    Manager.FlushBufferGenerators(frameToDraw.Index);
+
+                    lock (UseResourceLock)
+                        Manager.FlushBufferGenerators(frameToDraw.Index);
+
                     RenderFrame(frameToDraw, true);
                 }
                 
@@ -1069,8 +1068,7 @@ namespace Squared.Render {
             } catch (DeviceLostException) {
                 _DeviceLost = true;
             } finally {
-                lock (UseResourceLock)
-                lock (CreateResourceLock) {
+                lock (UseResourceLock) {
                     PendingDisposes.DisposeListContents(list);
                     Manager.PendingDisposes.DisposeListContents(rmList);
                 }
@@ -1302,7 +1300,7 @@ namespace Squared.Render {
                 return;
 
             if (resource is Texture2D tex)
-                lock (CreateResourceLock)
+                lock (UseResourceLock)
                     AutoAllocatedTextureResources.Remove(tex);
 
             var tcd = resource as ITraceCapturingDisposable;

@@ -242,7 +242,7 @@ namespace Squared.Render {
             }
 
             Texture2D df;
-            lock (Coordinator.CreateResourceLock)
+            lock (Coordinator.UseResourceLock)
                 df = new Texture2D(Coordinator.Device, img.Width, img.Height, false, SurfaceFormat.Single) {
                     Name = closure.Name,
                 };

@@ -483,6 +483,9 @@ namespace Squared.Render {
             return MaterialHotReloadResult.Reloaded;
         }
 
+        /// <summary>
+        /// You must acquire UseResourceLock before calling this!
+        /// </summary>
         public bool Preload (RenderCoordinator coordinator, DeviceManager deviceManager, IndexBuffer tempIb) {
             var hint = GetPreloadHint();
             if (hint == null)
@@ -493,8 +496,7 @@ namespace Squared.Render {
 
             for (int i = 0; i < bindings.Length; i++) {
                 VertexBuffer tempVb;
-                lock (coordinator.CreateResourceLock)
-                    tempVb = new VertexBuffer(deviceManager.Device, hint.VertexFormats[i], hint.HasIndices ? 4 : 6, BufferUsage.WriteOnly);
+                tempVb = new VertexBuffer(deviceManager.Device, hint.VertexFormats[i], hint.HasIndices ? 4 : 6, BufferUsage.WriteOnly);
                 bindings[i] = new VertexBufferBinding(tempVb, 0, (i == 0) ? 0 : 1);
                 coordinator.DisposeResource(tempVb);
             }
@@ -506,7 +508,7 @@ namespace Squared.Render {
 
                     Texture2D tempTexture = null;
                     if (((int)vtf) < 32) {
-                        lock (coordinator.CreateResourceLock) {
+                        lock (coordinator.UseResourceLock) {
                             tempTexture = new Texture2D(deviceManager.Device, 1, 1, false, vtf);
                             coordinator.RegisterAutoAllocatedTextureResource(tempTexture);
                         }
@@ -521,10 +523,13 @@ namespace Squared.Render {
                 }
             } else {
                 for (int i = 0; i < 4; i++) {
-                    deviceManager.Device.VertexTextures[i] = null;
+                    deviceManager.Device.VertexTextures[i] = deviceManager.DummyTexture;
                     deviceManager.Device.VertexSamplerStates[i] = RenderManager.ResetSamplerState;
                 }
             }
+
+            for (int i = 0; i < 16; i++)
+                deviceManager.Device.Textures[i] = deviceManager.DummyTexture;
 
             // Best guess
             deviceManager.Device.BlendState = StateSet.BlendState ?? BlendState.AlphaBlend;
@@ -533,10 +538,8 @@ namespace Squared.Render {
             // Best guess
             deviceManager.Device.DepthStencilState = StateSet.DepthStencilState ?? DepthStencilState.None;
 
-            lock (coordinator.UseResourceLock) {
-                deviceManager.Device.Indices = hint.HasIndices ? tempIb : null;
-                deviceManager.Device.SetVertexBuffers(bindings);
-            }
+            deviceManager.Device.Indices = hint.HasIndices ? tempIb : null;
+            deviceManager.Device.SetVertexBuffers(bindings);
 
             // FIXME: This currently generates a bunch of recompile warnings but might actually fix stalls?
 

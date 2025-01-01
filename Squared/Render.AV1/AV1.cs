@@ -127,16 +127,34 @@ namespace Squared.Render.AV1 {
             AdvanceOrRestartSync = _AdvanceOrRestartSync;
             AdvanceOrStopSync = _AdvanceOrStopSync;
 
-            var fmt = BitsPerPixel > 8 ? SurfaceFormat.UShortEXT : SurfaceFormat.ByteEXT;
-            lock (coordinator.CreateResourceLock) {
-                YTexture = new Texture2D(coordinator.Device, Width, Height, false, fmt) {
-                    Name = "AV1Video.YTexture",
+            lock (coordinator.UseResourceLock) {
+                YTexture = CreateInternalTexture(coordinator, Width, Height, "AV1Video.YTexture");
+                UTexture = CreateInternalTexture(coordinator, uvWidth, uvHeight, "AV1Video.UTexture");
+                VTexture = CreateInternalTexture(coordinator, uvWidth, uvHeight, "AV1Video.VTexture");
+            }
+        }
+
+        private Texture2D CreateInternalTexture (RenderCoordinator coordinator, int width, int height, string name) {
+            if (false) {
+                var createInfo = new SDL3.SDL.SDL_GPUTextureCreateInfo {
+                    format = BitsPerPixel > 8 
+                        ? SDL3.SDL.SDL_GPUTextureFormat.SDL_GPU_TEXTUREFORMAT_R16_UNORM 
+                        : SDL3.SDL.SDL_GPUTextureFormat.SDL_GPU_TEXTUREFORMAT_R8_UNORM,
+                    layer_count_or_depth = 1,
+                    num_levels = 1,
+                    width = (uint)width,
+                    height = (uint)height,
+                    sample_count = SDL3.SDL.SDL_GPUSampleCount.SDL_GPU_SAMPLECOUNT_1,
+                    type = SDL3.SDL.SDL_GPUTextureType.SDL_GPU_TEXTURETYPE_2D,
+                    usage = SDL3.SDL.SDL_GPUTextureUsageFlags.SDL_GPU_TEXTUREUSAGE_SAMPLER,
                 };
-                UTexture = new Texture2D(coordinator.Device, uvWidth, uvHeight, false, fmt) {
-                    Name = "AV1Video.UTexture",
+                return new Squared.Render.Evil.SysTexture2D(coordinator.Device, createInfo) {
+                    Name = name,
                 };
-                VTexture = new Texture2D(coordinator.Device, uvWidth, uvHeight, false, fmt) {
-                    Name = "AV1Video.VTexture",
+            } else {
+                var fmt = BitsPerPixel > 8 ? SurfaceFormat.UShortEXT : SurfaceFormat.ByteEXT;
+                return new Texture2D(coordinator.Device, width, height, false, fmt) {
+                    Name = name,
                 };
             }
         }

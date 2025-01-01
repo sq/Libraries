@@ -482,11 +482,7 @@ namespace Squared.Render {
         internal readonly DisposalQueue PendingDisposes = new DisposalQueue();
 
         /// <summary>
-        /// You must acquire this lock before applying changes to the device, creating objects, or loading content.
-        /// </summary>
-        public readonly object CreateResourceLock = new object();
-        /// <summary>
-        /// You must acquire this lock before rendering or resetting the device.
+        /// You must acquire this lock before rendering, changing the device, resetting the device, creating objects, loading content, or destroying objects.
         /// </summary>
         public readonly object UseResourceLock = new object();
 
@@ -877,7 +873,7 @@ namespace Squared.Render {
                     return result;
             }
 
-            lock (CreateResourceLock)
+            lock (UseResourceLock)
                 result = new Texture2D(DeviceManager.Device, size, size, false, SurfaceFormat.Rgba64) {
                     Name = $"NoiseTexture[{size}]"
                 };

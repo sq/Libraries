@@ -333,7 +333,7 @@ namespace Squared.Render.STB {
 
         private Texture2D CreateTextureLocked (RenderCoordinator coordinator, bool sRGB, string name, Texture2D existingInstance, int width, int height) {
             Texture2D result;
-            lock (coordinator.CreateResourceLock) {
+            lock (coordinator.UseResourceLock) {
                 if (
                     (existingInstance != null) && (existingInstance.Width == width) && (existingInstance.Height == height) &&
                     (existingInstance.Format == GetFormat(sRGB, ChannelCount)) && ((existingInstance.LevelCount > 1) == (MipChain != null))

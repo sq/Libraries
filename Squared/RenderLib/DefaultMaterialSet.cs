@@ -1393,7 +1393,7 @@ namespace Squared.Render {
                         throw new InvalidOperationException("Cloning material while it's in use");
                 }
 
-                lock (Coordinator.CreateResourceLock)
+                lock (Coordinator.UseResourceLock)
                     result = result?.Clone();
                 Add(result);
             }

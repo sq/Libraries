@@ -511,7 +511,7 @@ namespace Squared.Render.Buffers {
 
         public readonly NativeAllocator Allocator = new NativeAllocator { Name = "Squared.Render.BufferGenerator" };
         public readonly RenderManager RenderManager;
-        public readonly object CreateResourceLock;
+        public readonly object UseResourceLock;
 
         public int BytesAllocated => Allocator.BytesInUse;
 
@@ -524,7 +524,7 @@ namespace Squared.Render.Buffers {
             _SoftwareBufferPool = new SoftwareBufferPool(this);
             RenderManager = renderManager;
             DeviceId = renderManager.DeviceManager.DeviceId;
-            CreateResourceLock = renderManager.CreateResourceLock;
+            UseResourceLock = renderManager.UseResourceLock;
         }
 
         public void Dispose () {

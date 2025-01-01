@@ -134,7 +134,8 @@ namespace Squared.Render.Resources {
         }
 
         protected override Future<Effect> CreateInstance (string name, Stream stream, object data, object preloadedData, bool async) {
-            lock (Coordinator.CreateResourceLock)
+            // FIXME: Remove this lock, it may not be necessary now
+            lock (Coordinator.UseResourceLock)
                 return new Future<Effect>(EffectUtils.EffectFromFxcOutput(Coordinator.Device, stream, name));
         }
 

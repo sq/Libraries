@@ -80,7 +80,7 @@ namespace Squared.Render {
         protected RenderTarget2D CreateInstance (string overrideName) {
             WasRecreated = true;
 
-            lock (Coordinator.CreateResourceLock) {
+            lock (Coordinator.UseResourceLock) {
                 var result = new RenderTarget2D(
                     Coordinator.Device, Width, Height, MipMap,
                     PreferredFormat, PreferredDepthFormat,

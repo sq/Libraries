@@ -200,7 +200,7 @@ namespace Squared.Render {
             if (Texture != null)
                 return;
 
-            lock (Coordinator.CreateResourceLock) {
+            lock (Coordinator.UseResourceLock) {
                 Texture = new Texture2D(Coordinator.Device, Width, Height, GenerateMip != null, Format) {
                     Name = $"Atlas<{typeof(T).Name}> {Tag ?? GetHashCode().ToString("X8")}",
                     Tag = Tag,
