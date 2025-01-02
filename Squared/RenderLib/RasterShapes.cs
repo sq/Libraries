@@ -1029,6 +1029,7 @@ namespace Squared.Render.RasterShape {
 
             device.SetVertexBuffer(null);
             _SoftwareBuffer = default;
+            _PolygonBuffer = null;
         }
 
         public void Add (RasterShapeDrawCall dc) => Add(ref dc);

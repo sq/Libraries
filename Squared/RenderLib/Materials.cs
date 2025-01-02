@@ -500,6 +500,11 @@ namespace Squared.Render {
                 bindings[i] = new VertexBufferBinding(tempVb, 0, (i == 0) ? 0 : 1);
                 coordinator.DisposeResource(tempVb);
             }
+
+            // FIXME: This currently generates a bunch of recompile warnings but might actually fix stalls?
+
+            Begin(deviceManager);
+
             if ((hint.VertexTextureFormats?.Length ?? 0) >= 1) {
                 for (int i = 0; i < 4; i++) {
                     var vtf = i < hint.VertexTextureFormats.Length 
@@ -540,10 +545,6 @@ namespace Squared.Render {
 
             deviceManager.Device.Indices = hint.HasIndices ? tempIb : null;
             deviceManager.Device.SetVertexBuffers(bindings);
-
-            // FIXME: This currently generates a bunch of recompile warnings but might actually fix stalls?
-
-            Begin(deviceManager);
 
             // FIXME: If we skip drawing we still spend like ~100ms precompiling shaders, but it doesn't seem to help
 

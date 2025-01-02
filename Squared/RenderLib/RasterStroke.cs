@@ -744,12 +744,6 @@ namespace Squared.Render.RasterStroke {
                 var elapsed = (Time.Seconds - started);
                 if (elapsed > 5 / 1000.0)
                     Materials.Coordinator.LogPrint($"Drawing strokes of type {0} took {1}sec", sb.Type, elapsed);
-
-                device.Textures[0] = null;
-                device.Textures[1] = null;
-                device.Textures[2] = null;
-                device.Textures[3] = null;
-                device.VertexTextures[2] = null;
             }
 
             NativeBatch.RecordCommands(_SubBatches.Count);
