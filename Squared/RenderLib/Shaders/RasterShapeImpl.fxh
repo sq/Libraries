@@ -214,8 +214,8 @@ technique SHAPE_TYPE_TECHNIQUE_NAME_SIMPLE_SHADOWED
 
 uniform const float2 RampUVOffset;
 
-Texture2D RampTexture        : register(t3);
-sampler   RampTextureSampler : register(s3) {
+Texture2D RampTexture;
+sampler   RampTextureSampler {
     Texture   = (RampTexture);
     AddressU  = CLAMP;
     AddressV  = WRAP;

@@ -1,9 +1,9 @@
-Texture2D VertexDataTexture : register(t2);
+Texture2D VertexDataTexture;
 
 #define MAX_VERTEX_BUFFER_WIDTH 1024
 
 uniform const float2 PolygonVertexBufferInvSize;
-sampler VertexDataSampler : register(s2) {
+sampler VertexDataSampler {
     Texture = (VertexDataTexture);
     AddressU = CLAMP;
     AddressV = CLAMP;

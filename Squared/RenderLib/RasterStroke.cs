@@ -85,7 +85,10 @@ namespace Squared.Render.RasterStroke {
             ColorDynamics,
             ShadowColor,
             ShadowSettings,
-            RampTexture;
+            RampTexture,
+            NozzleTexture,
+            NoiseTexture,
+            VertexDataTexture;
 
         public StrokeShader (Material material) {
             Material = material;
@@ -110,6 +113,9 @@ namespace Squared.Render.RasterStroke {
             ShadowColor = p["ShadowColor"];
             ShadowSettings = p["ShadowSettings"];
             RampTexture = p["RampTexture"];
+            NozzleTexture = p["NozzleTexture"];
+            NoiseTexture = p["NoiseTexture"];
+            VertexDataTexture = p["VertexDataTexture"];
         }
     }
 
@@ -446,6 +452,9 @@ namespace Squared.Render.RasterStroke {
             }
 
             protected override void CreateBatch (RasterStrokeBatch self, ref RasterStrokeDrawCall drawCall, int offset, int count) {
+                if (count <= 0)
+                    return;
+
                 self._SubBatches.Add(new SubBatch {
                     InstanceOffset = offset,
                     InstanceCount = count,
@@ -695,6 +704,17 @@ namespace Squared.Render.RasterStroke {
                         );
                 }
 
+                if (sb.Type == RasterStrokeType.Polygon) {
+                    lock (_PolygonBuffer.Lock)
+                        material.VertexDataTexture?.SetValue(_PolygonBuffer.Texture);
+                } else {
+                    material.VertexDataTexture?.SetValue(manager.DummyTexture);
+                }
+
+                material.NozzleTexture?.SetValue(atlas ?? manager.DummyTexture);
+                material.NoiseTexture?.SetValue(NoiseTexture);
+                material.RampTexture?.SetValue(ramp ?? manager.DummyTexture);
+
                 manager.ApplyMaterial(material.Material, ref MaterialParameters);
 
                 if (BlendState != null)
@@ -704,27 +724,9 @@ namespace Squared.Render.RasterStroke {
                 if (RasterizerState != null)
                     device.RasterizerState = RasterizerState;
 
-                // FIXME: why the hell
-                // HACK: Ensure something is bound
-                device.Textures[0] = atlas ?? NoiseTexture;
-                device.Textures[1] = NoiseTexture;
-                device.Textures[3] = ramp ?? NoiseTexture;
                 device.SamplerStates[0] = Brush.NozzleSamplerState ?? SamplerState.LinearWrap;
                 device.SamplerStates[1] = SamplerState.PointWrap;
                 device.SamplerStates[3] = SamplerState.LinearClamp;
-
-                // Make sure no other vertex textures are bound, it matters
-                for (int j = 0; j < 4; j++)
-                    device.VertexTextures[j] = null;
-
-                if (sb.Type == RasterStrokeType.Polygon) {
-                    lock (_PolygonBuffer.Lock) {
-                        device.Textures[2] = _PolygonBuffer.Texture;
-                        device.VertexTextures[2] = _PolygonBuffer.Texture;
-                    }
-                } else {
-                    device.Textures[2] = null;
-                }
 
                 scratchBindings[1] = new VertexBufferBinding(
                     vb, sb.InstanceOffset, 1

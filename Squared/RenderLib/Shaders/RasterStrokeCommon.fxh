@@ -38,17 +38,17 @@
 
 // TODO: Leave this out if not textured
 
-Texture2D NozzleTexture : register(t0);
+Texture2D NozzleTexture;
 sampler NozzleSampler : register(s0) {
     Texture = (NozzleTexture);
 };
 
-Texture2D NoiseTexture : register(t1);
+Texture2D NoiseTexture;
 sampler NoiseSampler : register(s1) {
     Texture = (NoiseTexture);
 };
 
-Texture2D RampTexture : register(t3);
+Texture2D RampTexture;
 sampler RampSampler : register(s3) {
     Texture = (RampTexture);
 };

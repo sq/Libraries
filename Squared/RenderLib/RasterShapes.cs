@@ -590,6 +590,7 @@ namespace Squared.Render.RasterShape {
             RampIsLinearSpace,
             RasterTexture,
             RampTexture,
+            VertexDataTexture,
             RampUVOffset,
             ShadowOptions,
             ShadowOptions2,
@@ -614,6 +615,7 @@ namespace Squared.Render.RasterShape {
             RampIsLinearSpace = p["RampIsLinearSpace"];
             RasterTexture = p["RasterTexture"];
             RampTexture = p["RampTexture"];
+            VertexDataTexture = p["VertexDataTexture"];
             RampUVOffset = p["RampUVOffset"];
             ShadowOptions = p["ShadowOptions"];
             ShadowOptions2 = p["ShadowOptions2"];
@@ -668,6 +670,10 @@ namespace Squared.Render.RasterShape {
             }
 
             protected override void CreateBatch (RasterShapeBatch self, ref RasterShapeDrawCall drawCall, int offset, int count) {
+                // We get spurious 0-call batch creation at the start of every run
+                if (count <= 0)
+                    return;
+
                 self._SubBatches.Add(new SubBatch {
                     InstanceOffset = offset,
                     InstanceCount = count,
@@ -974,6 +980,16 @@ namespace Squared.Render.RasterShape {
                 rasterShader.TexturePlacement?.SetValue(sb.TextureSettings.Placement);
                 rasterShader.TextureOptions?.SetValue(to);
 
+                rasterShader.RasterTexture?.SetValue(Texture ?? manager.DummyTexture);
+                rasterShader.RampTexture?.SetValue(RampTexture ?? manager.DummyTexture);
+
+                if (sb.Type == RasterShapeType.Polygon) {
+                    lock (_PolygonBuffer.Lock)
+                        rasterShader.VertexDataTexture?.SetValue(_PolygonBuffer.Texture);
+                } else {
+                    rasterShader.VertexDataTexture?.SetValue(manager.DummyTexture);
+                }
+
                 manager.ApplyMaterial(rasterShader.Material, ref MaterialParameters);
 
                 if (BlendState != null)
@@ -983,20 +999,7 @@ namespace Squared.Render.RasterShape {
                 if (RasterizerState != null)
                     device.RasterizerState = RasterizerState;
 
-                // FIXME: why the hell
-                device.Textures[0] = Texture;
                 device.SamplerStates[0] = textureSamplerState;
-                device.Textures[3] = RampTexture;
-
-                if (sb.Type == RasterShapeType.Polygon) {
-                    lock (_PolygonBuffer.Lock) {
-                        device.Textures[2] = _PolygonBuffer.Texture;
-                        device.VertexTextures[2] = _PolygonBuffer.Texture;
-                    }
-                } else {
-                    device.VertexTextures[2] = null;
-                    device.Textures[2] = null;
-                }
 
                 scratchBindings[1] = new VertexBufferBinding(
                     vb, _SoftwareBuffer.VertexOffset + sb.InstanceOffset, 1
@@ -1015,11 +1018,9 @@ namespace Squared.Render.RasterShape {
                 if (elapsed > 5 / 1000.0)
                     Materials.Coordinator.LogPrint($"Drawing shapes of type {0} took {1}sec", sb.Type, elapsed);
 
-                device.Textures[0] = null;
-                device.Textures[2] = null;
-                device.VertexTextures[2] = null;
                 rasterShader.RasterTexture?.SetValue(manager.DummyTexture);
                 rasterShader.RampTexture?.SetValue(manager.DummyTexture);
+                rasterShader.VertexDataTexture?.SetValue(manager.DummyTexture);
             }
 
             NativeBatch.RecordCommands(_SubBatches.Count);

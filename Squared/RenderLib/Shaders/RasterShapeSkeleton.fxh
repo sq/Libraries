@@ -20,7 +20,7 @@
 #include "BezierCommon.fxh"
 #include "RasterComposites.fxh"
 
-Texture2D RasterTexture : register(t0);
+Texture2D RasterTexture;
 
 sampler TextureSampler : register(s0) {
     Texture = (RasterTexture);
