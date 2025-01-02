@@ -999,7 +999,11 @@ namespace Squared.Render.RasterShape {
                 if (RasterizerState != null)
                     device.RasterizerState = RasterizerState;
 
-                device.SamplerStates[0] = textureSamplerState;
+                // If we modify the 0th sampler state when there's no texture parameter,
+                //  what we're doing is trampling the hard-coded sampler state for the vertex data,
+                //  and this breaks everything. So don't do it!
+                if (rasterShader.RasterTexture != null)
+                    device.SamplerStates[0] = textureSamplerState;
 
                 scratchBindings[1] = new VertexBufferBinding(
                     vb, _SoftwareBuffer.VertexOffset + sb.InstanceOffset, 1

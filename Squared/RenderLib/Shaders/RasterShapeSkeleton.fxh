@@ -20,7 +20,8 @@
 #include "BezierCommon.fxh"
 #include "RasterComposites.fxh"
 
-Texture2D RasterTexture;
+#if VARIANT_TEXTURED
+Texture2D RasterTexture : register(t0);
 
 sampler TextureSampler : register(s0) {
     Texture = (RasterTexture);
@@ -35,6 +36,7 @@ uniform const float4 TexturePlacement;
 uniform const float4 TextureTraits <string traitsOf="RasterTexture";>;
 // Saturation, Brightness, Clamp X, Clamp Y
 uniform const float4 TextureOptions;
+#endif
 
 // A bunch of the distance formulas in here are thanks to inigo quilez
 // http://iquilezles.org/www/articles/distfunctions2d/distfunctions2d.htm
@@ -1216,6 +1218,7 @@ float computeMip (in float2 texCoordPx) {
     return 0.5 * log2(mag);
 }
 
+#if VARIANT_TEXTURED
 float4 texturedShapeCommon (
     in float2 worldPosition, in float4 texRgn,
     in float4 ab, in float4 cd,
@@ -1295,3 +1298,4 @@ float4 texturedShapeCommon (
 
     return compositeSecondStep(result, false, vpos);
 }
+#endif
