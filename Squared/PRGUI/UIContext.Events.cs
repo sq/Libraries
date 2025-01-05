@@ -395,7 +395,7 @@ namespace Squared.PRGUI {
             if (needsToClearFocus)
                 Focused = null;
 
-            var result = OnKeyEvent(name, key, ch);
+            var result = OnKeyEvent?.Invoke(name, key, ch) ?? false;
             if (!result) {
                 evt.IsAccelerator = true;
                 var sources = new DenseList<IAcceleratorSource>();
