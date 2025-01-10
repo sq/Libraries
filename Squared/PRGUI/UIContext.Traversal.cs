@@ -24,7 +24,7 @@ namespace Squared.PRGUI {
         }
 
         public struct TraverseSettings {
-            public bool AllowDescend, AllowDescendIfDisabled, AllowDescendIfInvisible, AllowAscend, StartWithDefault;
+            public bool AllowDescend, AllowAscend, StartWithDefault;
             // HACK: Will default to true for Window and false for everything else
             public bool? AllowWrap;
             public int Direction;
@@ -49,10 +49,10 @@ namespace Squared.PRGUI {
                 return false;
             if (!info.ContainsChildren)
                 return false;
-            if (!settings.AllowDescendIfDisabled && !info.Control.Enabled)
+            if (!info.Control.Enabled)
                 return false;
             // FIXME: Optimize this check
-            if (!settings.AllowDescendIfInvisible && Control.IsRecursivelyTransparent(info.Control, true))
+            if (Control.IsRecursivelyTransparent(info.Control, true))
                 return false;
 
             return true;
@@ -229,8 +229,6 @@ namespace Squared.PRGUI {
         private TraverseSettings MakeSettingsForPick (Control container, int direction) {
             return new TraverseSettings {
                 AllowDescend = true,
-                AllowDescendIfDisabled = false,
-                AllowDescendIfInvisible = false,
                 AllowAscend = false,
                 AllowWrap = false,
                 StartWithDefault = true,
@@ -302,8 +300,6 @@ namespace Squared.PRGUI {
                 StartWithDefault = false,
                 DidFollowProxy = cell,
                 AllowDescend = true,
-                AllowDescendIfDisabled = false,
-                AllowDescendIfInvisible = false,
                 AllowAscend = true,
                 AllowWrap = allowLoop,
                 Direction = direction,

@@ -847,6 +847,14 @@ namespace Squared.PRGUI {
             var fillAlpha1 = Math.Min((base1 + pulse) * alpha, 1f);
             var fillAlpha2 = Math.Min((base2 + pulse) * alpha, 1f);
 
+            // Win11 style edge highlight near cursor
+            /*
+            var cursorPos = context.UIContext.CurrentInputState.CursorPosition;
+            var cursorPosLocal = cursorPos - settings.Box.Position;
+            var cursorPosScaled = cursorPosLocal / settings.Box.Size;
+            fillSettings.GradientCenter = cursorPosScaled;
+            */
+
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
             renderer.RasterizeRectangle(
                 a, b,

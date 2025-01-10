@@ -521,7 +521,7 @@ namespace Squared.Threading {
                     ? Time.Ticks + (Time.MillisecondInTicks * timeoutMs)
                     : long.MaxValue - 1;
 
-            bool doWait = false;
+            bool doWait = false, hasWaited = false;
             try {
                 do {
                     // Read these first and read the queued count last so that if we lose a race
@@ -532,6 +532,8 @@ namespace Squared.Threading {
                     if (doWait) {
                         if (now > endWhen)
                             break;
+
+                        hasWaited = true;
                         var maxWait = (timeoutMs <= 0)
                             ? actualMaxWaitBecauseSomethingAboutTheseThreadingPrimitivesIsBroken
                             : (int)(Math.Max(0, endWhen - now) / Time.MillisecondInTicks);
@@ -547,8 +549,10 @@ namespace Squared.Threading {
 #if DEBUG
                         if (ItemsWaitingForProcessing > 0)
                             Thread.Yield();
-                        if (ItemsWaitingForProcessing > 0)
+                        if ((ItemsWaitingForProcessing > 0) && !hasWaited)
                             throw new WorkQueueException(this, "AssertDrained returned without waiting even though work was left");
+                        if ((ItemsWaitingForProcessing > 0) && (now < endWhen))
+                            continue;
 #endif
                         return (ItemsWaitingForProcessing <= 0);
                     }
