@@ -387,9 +387,12 @@ namespace Squared.PRGUI {
                 (activeModal?.RetainFocus == true) && 
                 (newTopLevelAncestor != activeModal) && 
                 ((Control)ActiveModal).Enabled &&
-                !Control.IsRecursivelyTransparent(((Control)ActiveModal))
-            )
+                !Control.IsRecursivelyTransparent(((Control)ActiveModal)) &&
+                (TopLevelFocused == activeModal)
+            ) {
+                Log($"Modal {activeModal} is retaining focus and blocked focus change to {newFocusTarget}");
                 return false;
+            }
 
             if (previous != newFocusTarget) {
                 FocusChain.Clear();

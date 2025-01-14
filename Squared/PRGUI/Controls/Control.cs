@@ -250,12 +250,12 @@ namespace Squared.PRGUI {
             get => (WeakParent != null) && WeakParent.TryGetTarget(out Control temp);
         }
 
-        internal bool IsValidFocusTarget => 
+        public bool IsValidFocusTarget => 
             (
                 AcceptsFocus || (FocusBeneficiary != null)
             ) && (Enabled || AcceptsFocusWhenDisabled) && !Control.IsRecursivelyTransparent(this);
 
-        internal bool IsValidMouseInputTarget =>
+        public bool IsValidMouseInputTarget =>
             AcceptsMouseInput && Visible && Enabled;
 
         // HACK

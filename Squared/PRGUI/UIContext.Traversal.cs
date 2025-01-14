@@ -72,7 +72,9 @@ namespace Squared.PRGUI {
             }
 
             if (control is IControlContainer container) {
-                var _validTarget = validTarget && control.Enabled && !Control.IsRecursivelyTransparent(control, true);
+                var _validTarget = validTarget && control.Enabled && 
+                    // FIXME: IsValidFocusTarget already computes this
+                    !Control.IsRecursivelyTransparent(control, true);
                 var cc = container.Children;
                 var depth = currentDepth + 1;
                 for (int i = 0, c = cc.Count; i < c; i++)
@@ -138,8 +140,10 @@ namespace Squared.PRGUI {
                     index += direction;
                     if (allowLoop != false)
                         index = Arithmetic.Wrap(index, 0, FocusMap_PFSFR.Count - 1);
-                    else
-                        index = Arithmetic.Clamp(index, 0, FocusMap_PFSFR.Count - 1);
+                    else if (index < 0)
+                        return null;
+                    else if (index >= FocusMap_PFSFR.Count)
+                        return null;
                 } while (!FocusMap_PFSFR[index].validTarget && (index != initialIndex));
 
                 var result = FocusMap_PFSFR[index].control;
