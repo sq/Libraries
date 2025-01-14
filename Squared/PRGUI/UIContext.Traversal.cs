@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -9,215 +10,73 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Squared.PRGUI.Controls;
 using Squared.PRGUI.Input;
+using Squared.Render.Text;
 using Squared.Util;
 
 namespace Squared.PRGUI {
     public sealed partial class UIContext : IDisposable {
-        public struct TraversalInfo {
-            public Control Control, RedirectTarget;
-            public IControlContainer Container;
+        public record struct FocusMapEntry (int globalIndex, int depth, IControlContainer parent, int indexInParent, Control control, bool validTarget) {
+            public sealed class Comparer : IComparer<FocusMapEntry>, IEqualityComparer<FocusMapEntry> {
+                public static readonly Comparer Instance = new ();
 
-            public ControlCollection Children => Container?.Children;
+                public int Compare (FocusMapEntry x, FocusMapEntry y) =>
+                    x.GetSortingTuple().CompareTo(y.GetSortingTuple());
 
-            public bool IsProxy => (Control is FocusProxy);
-            public bool ContainsChildren => (Container != null) && (Container.Children.Count > 0);
+                public bool Equals (FocusMapEntry x, FocusMapEntry y) =>
+                    x.Equals(y);
+
+                public int GetHashCode (FocusMapEntry obj) =>
+                    obj.GetHashCode();
+            }
+
+            public (int tabIndex, int globalIndex) GetSortingTuple () =>
+                (control.TabOrder, globalIndex);
         }
 
-        public struct TraverseSettings {
-            public bool AllowDescend, AllowAscend, StartWithDefault;
-            // HACK: Will default to true for Window and false for everything else
-            public bool? AllowWrap;
-            public int Direction;
-            public Func<Control, bool> Predicate;
-            public bool FollowProxies;
+        public sealed class FocusMap : List<FocusMapEntry> {
+            public int IndexOf (Control control) {
+                for (int i = 0, c = Count; i < c; i++)
+                    if (this[i].control == control)
+                        return i;
 
-            internal int FrameIndex;
-
-            public bool[] DidFollowProxy;
+                return -1;
+            }
         }
 
-        private TraversalInfo Traverse_MakeInfo (Control control) {
-            return new TraversalInfo {
-                Control = control,
-                RedirectTarget = control.FocusBeneficiary,
-                Container = (control as IControlContainer)
-            };
-        }
-
-        private bool Traverse_CanDescend (ref TraversalInfo info, ref TraverseSettings settings) {
-            if (!settings.AllowDescend)
-                return false;
-            if (!info.ContainsChildren)
-                return false;
-            if (!info.Control.Enabled)
-                return false;
-            // FIXME: Optimize this check
-            if (Control.IsRecursivelyTransparent(info.Control, true))
-                return false;
-
-            return true;
-        }
-
-        private Control FindFocusableChildOfDefaultFocusTarget (Control defaultFocusTarget, TraverseSettings settings) {
-            if (defaultFocusTarget.IsValidFocusTarget)
-                return defaultFocusTarget;
-            else if ((defaultFocusTarget is IControlContainer icc) && icc.ChildrenAcceptFocus) {
-                TraverseChildren(icc.Children, ref settings, out TraverseChildrenEnumerable enumerable);
-                return enumerable.FirstOrDefault().Control;
-            } else
-                return null;
-        }
-
-        private TraverseChildrenEnumerable TraverseChildren (ControlCollection collection, ref TraverseSettings settings) {
-            TraverseChildren(collection, ref settings, out TraverseChildrenEnumerable result);
+        public FocusMap BuildFocusMap (Control scope = null, Func<Control, bool> predicate = null) {
+            var result = new FocusMap();
+            BuildFocusMap(result, scope, predicate);
             return result;
         }
 
-        private void TraverseChildren (ControlCollection collection, ref TraverseSettings settings, out TraverseChildrenEnumerable result) {
-	        result = new TraverseChildrenEnumerable();
-		    result.state = -2;
-	        result.context = this;
-	        result.collection = collection;
-	        result.settings = settings;
+        public void BuildFocusMap (FocusMap result, Control scope = null, Func<Control, bool> predicate = null) {
+            if (scope == null) {
+                for (int i = 0, c = Controls.Count; i < c; i++)
+                    PopulateUnorderedFocusMap(result, null, i, Controls[i], 0, true, predicate);
+            } else {
+                PopulateUnorderedFocusMap(result, null, 0, scope, 0, true, predicate);
+            }
+            result.Sort(FocusMapEntry.Comparer.Instance);
         }
 
-        private IEnumerable<TraversalInfo> _TraverseChildren (ControlCollection collection, TraverseSettings settings) {
-            if (collection.Count <= 0)
-                yield break;
+        private void PopulateUnorderedFocusMap (
+            FocusMap result, IControlContainer parent, int indexInParent, 
+            Control control, int currentDepth, bool validTarget, Func<Control, bool> predicate
+        ) {
+            {
+                var _validTarget = validTarget;
+                if (predicate != null)
+                    _validTarget = _validTarget && predicate(control);
 
-            int i = (settings.Direction > 0) ? 0 : collection.Count - 1;
-            var tabOrdered = collection.InTabOrder(FrameIndex, false);
-            var icc = collection.Host as IControlContainer;
-            if (settings.StartWithDefault && (icc?.DefaultFocusTarget != null)) {
-                var dft = icc.DefaultFocusTarget;
-                if (Control.IsEqualOrAncestor(dft, collection.Host)) {
-                    var actualTarget = FindFocusableChildOfDefaultFocusTarget(dft, settings);
-                    if (actualTarget != null) {
-                        var info = Traverse_MakeInfo(actualTarget);
-                        if ((settings.Predicate == null) || settings.Predicate(info.Control))
-                            yield return info;
-                    }
-                }
-
-                var defaultIndex = tabOrdered.IndexOf(dft);
-                if (defaultIndex >= 0)
-                    i = defaultIndex;
+                result.Add(new FocusMapEntry(result.Count, currentDepth, parent, indexInParent, control, _validTarget));
             }
 
-            while (true) {
-                if ((i < 0) || (i >= tabOrdered.Count))
-                    break;
-
-                var child = tabOrdered[i];
-                var info = Traverse_MakeInfo(child);
-
-                if ((settings.Predicate == null) || settings.Predicate(child))
-                    yield return info;
-
-                if (info.IsProxy && settings.FollowProxies)
-                    yield break;
-
-                if (Traverse_CanDescend(ref info, ref settings)) {
-                    foreach (var subchild in TraverseChildren(info.Container.Children, ref settings))
-                        yield return subchild;
-                }
-
-                i += settings.Direction;
-            }
-        }
-
-        private void SearchForSiblings (ControlCollection collection, Control startingPosition, ref TraverseSettings settings, out SearchForSiblingsEnumerable result) {
-	        result = new SearchForSiblingsEnumerable();
-            result.state = -2;
-	        result.context = this;
-	        result.collection = collection;
-	        result.startingPosition = startingPosition;
-	        result.settings = settings;
-        }
-
-        private IEnumerable<TraversalInfo> _SearchForSiblings (ControlCollection collection, Control startingPosition, TraverseSettings settings) {
-            if (startingPosition == null)
-                throw new ArgumentNullException(nameof(startingPosition));
-
-            var visitedProxyTargets = new DenseList<Control>();
-            var descendSettings = settings;
-            descendSettings.AllowAscend = false;
-            // FIXME
-            // descendSettings.FollowProxies = false;
-            var currentCollection = collection ?? ((startingPosition as IControlContainer)?.Children);
-            if (currentCollection == null) {
-                if (!startingPosition.TryGetParent(out Control startingParent) || !(startingParent is IControlContainer icc))
-                    yield break;
-
-                currentCollection = icc.Children;
-            }
-
-            var currentStartingPosition = startingPosition;
-            var didFollowProxy = false;
-            while (true) {
-                var tabOrdered = currentCollection.InTabOrder(FrameIndex, false);
-                int motion = didFollowProxy ? 0 : settings.Direction, 
-                    index = tabOrdered.IndexOf(currentStartingPosition), 
-                    i = index + motion;
-                Control proxyTarget = null;
-
-                while (true) {
-                    // FIXME: Wrap
-                    if ((i < 0) || (i >= tabOrdered.Count))
-                        break;
-
-                    var child = tabOrdered[i];
-                    var info = Traverse_MakeInfo(child);
-
-                    if (
-                        info.IsProxy && settings.FollowProxies && info.Control.Enabled &&
-                        (visitedProxyTargets.IndexOf(info.RedirectTarget) < 0)
-                    ) {
-                        proxyTarget = info.RedirectTarget;
-                        visitedProxyTargets.Add(proxyTarget);
-                        break;
-                    } else if ((settings.Predicate == null) || settings.Predicate(child)) {
-                        yield return info;
-                    }
-
-                    if (Traverse_CanDescend(ref info, ref settings)) {
-                        foreach (var subchild in TraverseChildren(info.Container.Children, ref descendSettings)) {
-                            if (subchild.IsProxy && settings.FollowProxies && (visitedProxyTargets.IndexOf(subchild.RedirectTarget) < 0)) {
-                                proxyTarget = info.RedirectTarget;
-                                visitedProxyTargets.Add(proxyTarget);
-                                break;
-                            }
-
-                            yield return subchild;
-                        }
-
-                        if (proxyTarget != null)
-                            break;
-                    }
-
-                    i += settings.Direction;
-                    if (i == index)
-                        break;
-                }
-
-                if (proxyTarget != null) {
-                    currentStartingPosition = proxyTarget;
-                    didFollowProxy = true;
-                    settings.DidFollowProxy[0] = true;
-                } else {
-                    currentStartingPosition = currentCollection.Host;
-                    didFollowProxy = false;
-                    if (!settings.AllowAscend)
-                        break;
-                }
-
-                if (!currentStartingPosition.TryGetParent(out Control parent))
-                    break;
-
-                if (!(parent is IControlContainer parentContainer))
-                    break;
-
-                currentCollection = parentContainer.Children;
+            if (control is IControlContainer container) {
+                var _validTarget = validTarget && control.Enabled && !Control.IsRecursivelyTransparent(control, true);
+                var cc = container.Children;
+                var depth = currentDepth + 1;
+                for (int i = 0, c = cc.Count; i < c; i++)
+                    PopulateUnorderedFocusMap(result, container, i, cc[i], depth, _validTarget, predicate);
             }
         }
 
@@ -226,96 +85,71 @@ namespace Squared.PRGUI {
 
         Func<Control, bool> FocusablePredicate, RotatablePredicate;
 
-        private TraverseSettings MakeSettingsForPick (Control container, int direction) {
-            return new TraverseSettings {
-                AllowDescend = true,
-                AllowAscend = false,
-                AllowWrap = false,
-                StartWithDefault = true,
-                Direction = direction,
-                // FIXME: Maybe do this?
-                FollowProxies = false,
-                FrameIndex = FrameIndex,
-                Predicate = FocusablePredicate ?? (FocusablePredicate = _FocusablePredicate)
-            };
-        }
+        FocusMap FocusMap_PFC = new (),
+            FocusMap_FC = new (),
+            FocusMap_PFSFR = new ();
 
-        public Control FindChild (Control container, Func<Control, bool> predicate, int direction = 1) {
-            var settings = MakeSettingsForPick(container, direction);
-            settings.Predicate = predicate;
-            var collection = ((container as IControlContainer)?.Children) ?? Controls;
-            return TraverseChildren(collection, ref settings).FirstOrDefault().Control;
-        }
-
-        public DenseList<Control> FindFocusableChildren (Control container, int direction = 1, int limit = int.MaxValue) {
-            var settings = MakeSettingsForPick(container, direction);
-            // FIXME: Handle cases where the control isn't a container
-            var collection = ((container as IControlContainer)?.Children) ?? Controls;
-            // DebugLog($"Finding focusable child in {container} in direction {direction}");
-            var result = new DenseList<Control>();
-            foreach (var ti in TraverseChildren(collection, ref settings)) {
-                if (limit-- <= 0)
-                    break;
-                result.Add(ti.Control);
+        public Control FindChild (Control container, Func<Control, bool> predicate) {
+            lock (FocusMap_FC) {
+                FocusMap_FC.Clear();
+                BuildFocusMap(FocusMap_FC, container, predicate);
+                foreach (var tup in FocusMap_FC)
+                    if (tup.validTarget)
+                        return tup.control;
+                return null;
             }
-            return result;
         }
 
-        public DenseList<T> FindFocusableChildrenOfType<T> (Control container, int direction = 1, int limit = int.MaxValue)
-            where T : Control
-        {
-            var settings = MakeSettingsForPick(container, direction);
-            // FIXME: Handle cases where the control isn't a container
-            var collection = ((container as IControlContainer)?.Children) ?? Controls;
-            // DebugLog($"Finding focusable child in {container} in direction {direction}");
-            var result = new DenseList<T>();
-            foreach (var ti in TraverseChildren(collection, ref settings)) {
-                if (limit <= 0)
-                    break;
-
-                if (ti.Control is T tc) {
-                    result.Add(tc);
-                    limit--;
-                }
+        public Control PickFocusableChild (Control container) {
+            lock (FocusMap_PFC) {
+                FocusMap_PFC.Clear();
+                BuildFocusMap(FocusMap_PFC, container, FocusablePredicate ?? (FocusablePredicate = _FocusablePredicate));
+                foreach (var tup in FocusMap_PFC)
+                    if (tup.validTarget)
+                        return tup.control;
+                return null;
             }
-            return result;
         }
-
-        public Control PickFocusableChild (Control container, int direction = 1) {
-            var settings = MakeSettingsForPick(container, direction);
-            // FIXME: Handle cases where the control isn't a container
-            var collection = ((container as IControlContainer)?.Children) ?? Controls;
-            // DebugLog($"Finding focusable child in {container} in direction {direction}");
-            return TraverseChildren(collection, ref settings).FirstOrDefault().Control;
-        }
-
-        private bool[] _ScratchPickForRotationCell;
 
         public Control PickFocusableSiblingForRotation (Control child, int direction, bool? allowLoop, out bool didFollowProxy) {
-            var cell = Interlocked.Exchange(ref _ScratchPickForRotationCell, null);
-            cell = cell ?? new bool[1];
-            cell[0] = false;
+            didFollowProxy = false;
 
-            var settings = new TraverseSettings {
-                StartWithDefault = false,
-                DidFollowProxy = cell,
-                AllowDescend = true,
-                AllowAscend = true,
-                AllowWrap = allowLoop,
-                Direction = direction,
-                FollowProxies = true,
-                // FIXME: Prevent top level rotate here?
-                FrameIndex = FrameIndex,
-                Predicate = RotatablePredicate ?? (RotatablePredicate = _RotatablePredicate)
-            };
+            lock (FocusMap_PFSFR) {
+                FocusMap_PFSFR.Clear();
+                var scope = FindTopLevelAncestor(child);
+                if (scope == null) {
+                    for (int i = 0, c = Controls.Count; i < c; i++) {
+                        var control = Controls[i];
+                        FocusMap_PFSFR.Add(new FocusMapEntry(i, 0, null, i, control, _RotatablePredicate(control)));
+                    }
+                } else {
+                    BuildFocusMap(FocusMap_PFSFR, scope, RotatablePredicate ?? (RotatablePredicate = _RotatablePredicate));
+                }
+                if (FocusMap_PFSFR.Count == 0)
+                    return null;
 
-            // DebugLog($"Finding sibling for {child} in direction {direction}");
-            SearchForSiblings(null, child, ref settings, out SearchForSiblingsEnumerable enumerable);
-            var result = enumerable.FirstOrDefault().Control;
-            didFollowProxy = cell[0];
+                int index = FocusMap_PFSFR.IndexOf(child),
+                    initialIndex = index;
 
-            Interlocked.CompareExchange(ref _ScratchPickForRotationCell, cell, null);
-            return result;
+                if (index < 0)
+                    return null;
+
+                do {
+                    index += direction;
+                    if (allowLoop != false)
+                        index = Arithmetic.Wrap(index, 0, FocusMap_PFSFR.Count - 1);
+                    else
+                        index = Arithmetic.Clamp(index, 0, FocusMap_PFSFR.Count - 1);
+                } while (!FocusMap_PFSFR[index].validTarget && (index != initialIndex));
+
+                var result = FocusMap_PFSFR[index].control;
+                // FIXME: Detect cycles
+                while (result is FocusProxy fp) {
+                    didFollowProxy = true;
+                    result = fp.FocusBeneficiary;
+                }
+                return result;
+            }
         }
     }
 }
