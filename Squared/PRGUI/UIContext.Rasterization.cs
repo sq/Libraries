@@ -39,6 +39,8 @@ namespace Squared.PRGUI {
 
         public ImperativeRenderer OverlayRenderer;
 
+        public BlendState ModalFadeBlendState = RenderStates.SubtractiveBlend;
+
         internal sealed class ScratchRenderTarget : IDisposable {
             public readonly UIContext Context;
             public readonly AutoRenderTarget Instance;
@@ -264,6 +266,8 @@ namespace Squared.PRGUI {
                     var control = seq[i];
                     if (i == fadeBackgroundAtIndex) {
                         var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity;
+                        var isSubtractive = (ModalFadeBlendState.ColorBlendFunction == BlendFunction.Subtract) ||
+                            (ModalFadeBlendState.ColorBlendFunction == BlendFunction.ReverseSubtract);
                         // HACK: Push the post-fade controls and their its overlay plane above the previous one
                         renderer.Layer = 1000;
                         if (fadeCutout != null) {
@@ -281,14 +285,19 @@ namespace Squared.PRGUI {
                                 Vector2.One * -9999,
                                 new Vector2(9999999, 9999),
                                 0f,
-                                new Color(opacity, opacity, opacity, 1.0f),
-                                blendState: RenderStates.SubtractiveBlend
+                                isSubtractive
+                                    ? new Color(opacity, opacity, opacity, 1.0f)
+                                    : Color.Black * opacity,
+                                blendState: ModalFadeBlendState
                             );
                         } else {
                             renderer.FillRectangle(
                                 // Unbalanced vertices so only one triangle is visible
                                 Game.Bounds.FromPositionAndSize(Vector2.One * -99, new Vector2(99999, 9999)), 
-                                new Color(opacity, opacity, opacity, 0), blendState: RenderStates.SubtractiveBlend
+                                isSubtractive
+                                    ? new Color(opacity, opacity, opacity, 0f)
+                                    : Color.Black * opacity, 
+                                blendState: ModalFadeBlendState
                             );
                         }
                         renderer.Layer += 1;

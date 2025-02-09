@@ -133,9 +133,17 @@ namespace Squared.PRGUI.Controls {
                 return null;
             }            
             decorations.GetTextSettings(ref context, state, GetBackgroundColor(context.NowL) ?? default, out material, ref color, out Vector4 userData);
+
+            DecorationSettings decoSettings = default;
+            MakeDecorationSettingsFast(state, ref decoSettings);
+
+            var glyphSource = decorations.GetGlyphSource(ref decoSettings) ?? GetDecorator(context.DecorationProvider).GetGlyphSource(ref decoSettings);
+            if (glyphSource == null)
+                throw new NullReferenceException("Neither TitleDecorator or Decorator for Window provided a glyph source");
+
             TitleLayout.SetText(Title, true);
             var wasValid = TitleLayout.IsValid;
-            TitleLayout.GlyphSource = GetGlyphSource(ref context, decorations);
+            TitleLayout.GlyphSource = glyphSource;
             TitleLayout.DefaultColor = color ?? Color.White;
             var titleSpace = contentBox.Width;
             if (Collapsible)
@@ -216,7 +224,7 @@ namespace Squared.PRGUI.Controls {
         ) {
             base.ComputeAppearanceSpacing(ref context, decorations, out scaledMargins, out scaledPadding, out unscaledPadding);
 
-            var titleDecorations = context.DecorationProvider?.WindowTitle;
+            var titleDecorations = GetTitleDecorator(context.DecorationProvider);
             if (titleDecorations == null)
                 return;
             if (Title.Length == 0)
@@ -224,7 +232,7 @@ namespace Squared.PRGUI.Controls {
 
             Color? color = null;
             titleDecorations.GetTextSettings(ref context, default(ControlStates), default(pSRGBColor), out Material temp, ref color, out _);
-            var gs = GetGlyphSource(ref context, titleDecorations);
+            var gs = GetGlyphSource(ref context, titleDecorations) ?? GetGlyphSource(ref context, decorations);
             var height = titleDecorations.Margins.Bottom +
                 // FIXME: Scale this?
                 titleDecorations.Padding.Y +

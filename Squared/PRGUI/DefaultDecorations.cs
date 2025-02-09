@@ -1296,7 +1296,7 @@ namespace Squared.PRGUI {
             );
         }
 
-        protected virtual void AdjustRectForCheckbox (ref DecorationSettings mutableSettings) {
+        public virtual void AdjustRectForCheckbox (ref DecorationSettings mutableSettings) {
             var box = mutableSettings.Box;
             // FIXME: Scaling this will make the text crowded
             var size = ScaledCheckboxSize;
