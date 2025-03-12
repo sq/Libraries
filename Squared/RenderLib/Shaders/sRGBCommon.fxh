@@ -35,6 +35,20 @@ float4 pSRGBToPLinear_Accurate (float4 psrgba) {
     return float4(linearRgb * a, a);
 }
 
+float3 ToLinearByTraits(float3 input, float4 traits) {
+    if (traits.x >= 4)
+        return input;
+    else
+        return SRGBToLinear(input);
+}
+
+float4 ToPLinearByTraits(float4 input, float4 traits) {
+    if (traits.x >= 4)
+        return input;
+    else
+        return pSRGBToPLinear_Accurate(input);
+}
+
 float4 pLinearToPSRGB_Accurate (float4 pLinear) {
     if (pLinear.a <= (1 / 512))
         return 0;

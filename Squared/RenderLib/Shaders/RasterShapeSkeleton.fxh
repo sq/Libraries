@@ -1277,7 +1277,7 @@ float4 texturedShapeCommon (
     texColor = ExtractRgba(texColor, TextureTraits);
 
     // FIXME: OkLab
-    if (BlendInLinearSpace)
+    if (BlendInLinearSpace && (TextureTraits.x < VALUE_CHANNEL_SRGB))
         texColor = pSRGBToPLinear(texColor);
 
     float texColorGray = dot(texColor.rgb, float3(0.299, 0.587, 0.144));

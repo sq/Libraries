@@ -227,6 +227,7 @@ namespace Squared.Render.Evil {
         const int VALUE_CHANNEL_R = 1;
         const int VALUE_CHANNEL_A = 2;
         const int VALUE_CHANNEL_RG = 3;
+        const int VALUE_CHANNEL_SRGB = 4;
 
         const int ALPHA_CHANNEL_A = 0;
         const int ALPHA_CONSTANT_ONE = 1;
@@ -238,11 +239,18 @@ namespace Squared.Render.Evil {
 
         /// <returns>(x: valueSource, y: alphaSource, z: needsPremultiply, w: alphaMode)</returns>
         public static Vector4 GetTraits (SurfaceFormat format) {
+            var rgb = format switch {
+                SurfaceFormat.Bc7SrgbEXT => VALUE_CHANNEL_SRGB,
+                SurfaceFormat.ColorSrgbEXT => VALUE_CHANNEL_SRGB,
+                SurfaceFormat.Dxt5SrgbEXT => VALUE_CHANNEL_SRGB,
+                _ => VALUE_CHANNEL_RGB,
+            };
+
             if (
                 (format == Bc7EXT) ||
                 (format == Bc7SrgbEXT)
             )
-                return new Vector4(VALUE_CHANNEL_RGB, ALPHA_CHANNEL_A, 0, ALPHA_MODE_BC7);
+                return new Vector4(rgb, ALPHA_CHANNEL_A, 0, ALPHA_MODE_BC7);
 
             switch (format) {
                 // FIXME: Is the value channel R in fna? I think it is
@@ -262,11 +270,11 @@ namespace Squared.Render.Evil {
                 case SurfaceFormat.Bgr565:
                     return new Vector4(VALUE_CHANNEL_RGB, ALPHA_CONSTANT_ONE, 0, ALPHA_MODE_NORMAL);
                 case SurfaceFormat.Dxt1:
-                    return new Vector4(VALUE_CHANNEL_RGB, ALPHA_CONSTANT_ONE, 0, ALPHA_MODE_BC);
+                    return new Vector4(rgb, ALPHA_CONSTANT_ONE, 0, ALPHA_MODE_BC);
                 case SurfaceFormat.Dxt3:
                 case SurfaceFormat.Dxt5:
                 case SurfaceFormat.Dxt5SrgbEXT:
-                    return new Vector4(VALUE_CHANNEL_RGB, ALPHA_CHANNEL_A, 0, ALPHA_MODE_BC);
+                    return new Vector4(rgb, ALPHA_CHANNEL_A, 0, ALPHA_MODE_BC);
 
                 // case SurfaceFormat.HalfVector4:
                 // case SurfaceFormat.HdrBlendable:
@@ -280,7 +288,7 @@ namespace Squared.Render.Evil {
                 // case SurfaceFormat.ColorBgraExt:
                 // case SurfaceFormat.ColorSrgb:
                 default:
-                    return new Vector4(VALUE_CHANNEL_RGB, ALPHA_CHANNEL_A, 0, ALPHA_MODE_NORMAL);
+                    return new Vector4(rgb, ALPHA_CHANNEL_A, 0, ALPHA_MODE_NORMAL);
             }
         }
 

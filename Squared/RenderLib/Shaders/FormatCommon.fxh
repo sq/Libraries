@@ -2,6 +2,7 @@
 #define VALUE_CHANNEL_R 1
 #define VALUE_CHANNEL_A 2
 #define VALUE_CHANNEL_RG 3
+#define VALUE_CHANNEL_SRGB 4
 
 #define ALPHA_CHANNEL_A 0
 #define ALPHA_CONSTANT_ONE 1
@@ -67,8 +68,9 @@ void ExtractLuminanceAlpha (float4 input, float4 formatTraits, out float luminan
         case VALUE_CHANNEL_RG:
             luminance = (input.r + input.g) / 2;
             break;
+        case VALUE_CHANNEL_SRGB:
+        case VALUE_CHANNEL_RGB:
         default:
-        // case VALUE_CHANNEL_RGB:
             luminance = dot(input.rgb, toGray);
             break;
     }
