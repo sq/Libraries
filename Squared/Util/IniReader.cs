@@ -108,12 +108,15 @@ namespace Squared.Util.Ini {
                     SectionName = SectionName,
                 };
 
-                if (!line.EndsWith(']')) {
+                // FIXME: Implement LastIndexOf in AbstractString
+                var endIndex = line.ToString().LastIndexOf(']');
+
+                if (endIndex < 0) {
                     _Current.Type = IniLineType.Error;
                     _Current.Value = "Missing ]";
                 } else {
                     _Current.Type = IniLineType.Section;
-                    SectionName = _Current.SectionName = line.Substring(1, line.Length - 2).ToString();
+                    SectionName = _Current.SectionName = line.Substring(1, endIndex - 1);
                 }
 
                 return true;

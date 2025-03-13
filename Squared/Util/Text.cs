@@ -931,8 +931,9 @@ namespace Squared.Util.Text {
         }
 
         public int IndexOf (char ch) {
-            if (String != null)
+            if (String != null) {
                 return String.IndexOf(ch, SubstringOffset, Length) - SubstringOffset;
+            }
 
             for (int i = 0, l = Length; i < l; i++) {
                 if (this[i] == ch)
@@ -970,7 +971,11 @@ namespace Squared.Util.Text {
             for (int i = 0, l = Length; i < l; i++) {
                 if (this[i] == ch) {
                     // FIXME
-                    return ToString().IndexOf(s);
+                    var result = ToString().IndexOf(s);
+                    if (result >= Length)
+                        return -1;
+                    else
+                        return result;
                 }
             }
 
@@ -1024,7 +1029,7 @@ namespace Squared.Util.Text {
             var remainder = this;
             while (remainder.Length > 0) {
                 var offset = remainder.IndexOf(separator);
-                var item = remainder.Substring(0, offset);
+                var item = remainder.Substring(0, offset < 0 ? remainder.Length : offset);
                 if (!removeEmptyEntries || item.Length > 1)
                     result.Add(item);
                 if (offset < 0)
@@ -1044,7 +1049,7 @@ namespace Squared.Util.Text {
             var remainder = this;
             while (remainder.Length > 0) {
                 var offset = remainder.IndexOfAny(separators);
-                var item = remainder.Substring(0, offset);
+                var item = remainder.Substring(0, offset < 0 ? remainder.Length : offset);
                 if (!removeEmptyEntries || item.Length > 1)
                     result.Add(item);
                 if (offset < 0)
