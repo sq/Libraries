@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.1209
+# Visual Studio Version 17
+VisualStudioVersion = 17.12.35527.113 d17.12
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Squared.Task", "TaskLib\Squared.Task.csproj", "{173ABDCA-7278-46FF-A300-D3BF8CCEF181}"
 EndProject
@@ -249,7 +249,9 @@ Global
 		{67FE3293-3EBC-4E46-8210-C518F1C5745D}.Release|x86.ActiveCfg = Release|x86
 		{67FE3293-3EBC-4E46-8210-C518F1C5745D}.Release|x86.Build.0 = Release|x86
 		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Debug|FNA.ActiveCfg = Debug|x86
+		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Debug|FNA.Build.0 = Debug|x86
 		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Debug|FNA-x64.ActiveCfg = Debug|x86
+		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Debug|FNA-x64.Build.0 = Debug|x86
 		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Debug|x86.ActiveCfg = Debug|x86
 		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Debug|x86.Build.0 = Debug|x86
 		{B07F6C17-6DC5-4492-B54E-749B23888E87}.Release|FNA.ActiveCfg = Release|x86
@@ -394,6 +396,7 @@ Global
 		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Debug|FNA-x64.ActiveCfg = Debug|x64
 		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Debug|FNA-x64.Build.0 = Debug|x64
 		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Debug|x86.ActiveCfg = Debug|x86
+		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Debug|x86.Build.0 = Debug|x86
 		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Release|FNA.ActiveCfg = Release|Any CPU
 		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Release|FNA.Build.0 = Release|Any CPU
 		{35253CE1-C864-4CD3-8249-4D1319748E8F}.Release|FNA-x64.ActiveCfg = Release|x64

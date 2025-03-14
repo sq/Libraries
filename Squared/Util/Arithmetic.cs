@@ -638,26 +638,6 @@ namespace Squared.Util {
             return valueExp;
         }
 
-        private static class LerpSource<T> where T : struct {
-            static InterpolatorSource<T> Source;
-            static T[] Values;
-
-            static LerpSource () {
-                Source = (i) => {
-                    if (i >= 1)
-                        return ref Values[1];
-                    else
-                        return ref Values[0];
-                };
-                Values = new T[2];
-            }
-
-            public static InterpolatorSource<T> Get (in T a, in T b) {
-                Values[0] = a;
-                Values[1] = b;
-                return Source;
-            }
-        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static float Lerp (int a, int b, float x) {
@@ -689,19 +669,15 @@ namespace Squared.Util {
         public static T Lerp<T> (T a, T b, float x) 
             where T : struct {
 
-            return Interpolators<T>.Linear(
-                LerpSource<T>.Get(in a, in b),
-                0, Saturate(x)
-            );
+            var linear = Interpolators<T>._Linear;
+            return linear(a, b, x);
         }
 
         public static T Lerp<T> (in T a, in T b, float x) 
             where T : struct {
 
-            return Interpolators<T>.Linear(
-                LerpSource<T>.Get(in a, in b),
-                0, Saturate(x)
-            );
+            var linear = Interpolators<T>._Linear;
+            return linear(a, b, x);
         }
 
         public static T Quadratic<T> (in T a, in T b, in T c, float x) 

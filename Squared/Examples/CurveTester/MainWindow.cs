@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using Squared.Util;
+using Squared.Util.Containers;
 
 namespace CurveTester {
     public partial class MainWindow : Form {
@@ -106,13 +107,14 @@ namespace CurveTester {
                     break;
                 case 3:
                     spline = hermite = HermiteSpline<Vector2>.CatmullRom(
-                        Spline.Points
+                        Spline.Points, false
                     );
                     break;
                 case 4:
                     spline = hermite = HermiteSpline<Vector2>.Cardinal(
                         Spline.Points,
-                        Tension.Value / 100f
+                        Tension.Value / 100f,
+                        false
                     );
                     break;
             }
