@@ -255,8 +255,10 @@ namespace Squared.Render {
             } finally {
                 dm.Finish();
                 RenderManager.PrepareManager.CleanupTextureCache();
-                while (RenderManager.ReleaseQueue.TryDequeue(out var batch))
-                    batch.ReleaseResources();
+                lock (RenderManager.ReleaseQueue) {
+                    while (RenderManager.ReleaseQueue.Count > 0)
+                        RenderManager.ReleaseQueue.Dequeue().ReleaseResources();
+                }
             }
 
             if (Tracing.RenderTrace.EnableTracing)

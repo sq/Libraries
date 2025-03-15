@@ -916,6 +916,8 @@ namespace Squared.Render.Convenience {
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null, Vector4 userData = default(Vector4)
         ) {
+            if (texture == null)
+                return null;
             var drawCall = new BitmapDrawCall(texture, position);
             if (sourceRectangle.HasValue)
                 drawCall.TextureRegion = texture.BoundsFromRectangle(sourceRectangle.Value);
@@ -949,6 +951,8 @@ namespace Squared.Render.Convenience {
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null, Vector4 userData = default(Vector4)
         ) {
+            if (texture == null)
+                return null;
             var drawCall = new BitmapDrawCall(texture, new Vector2(x, y));
             if (sourceRectangle.HasValue)
                 drawCall.TextureRegion = texture.BoundsFromRectangle(sourceRectangle.Value);
@@ -1023,6 +1027,8 @@ namespace Squared.Render.Convenience {
             DepthStencilState depthStencilState = null, RasterizerState rasterizerState = null,
             Material material = null, Vector4 userData = default(Vector4)
         ) {
+            if (texture == null)
+                return null;
             var drawCall = new BitmapDrawCall(texture, new Vector2(destRectangle.X, destRectangle.Y));
             if (sourceRectangle.HasValue) {
                 var sr = sourceRectangle.Value;

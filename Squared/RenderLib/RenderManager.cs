@@ -503,7 +503,7 @@ namespace Squared.Render {
         private readonly Dictionary<int, Texture2D> NoiseTextures = new ();
 
         // When issuing batches we add them to this, then at the end of issue we release their resources
-        internal readonly LowAllocConcurrentQueue<Batch> ReleaseQueue = new LowAllocConcurrentQueue<Batch>();
+        internal readonly Queue<Batch> ReleaseQueue = new Queue<Batch>();
 
         public RenderManager (GraphicsDevice device, Thread mainThread, ThreadGroup threadGroup) {
             if (mainThread == null)

@@ -264,7 +264,8 @@ namespace Squared.Render {
             Material = material;
             MaterialParameters.Clear();
 
-            container.RenderManager.ReleaseQueue.Enqueue(this);
+            lock (container.RenderManager.ReleaseQueue)
+                container.RenderManager.ReleaseQueue.Enqueue(this);
 
             State.Reset();
             Thread.MemoryBarrier();

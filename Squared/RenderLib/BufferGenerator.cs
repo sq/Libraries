@@ -213,7 +213,7 @@ namespace Squared.Render.Buffers {
             }
 
             private GeometryBuffer AllocateNew (int vertexCount, int indexCount, int bucketIndex) {
-                var result = new GeometryBuffer(BufferGenerator, vertexCount, indexCount, bucketIndex);
+                var result = new GeometryBuffer(BufferGenerator, vertexCount, indexCount, bucketIndex, false);
                 var bucket = Buckets[bucketIndex];
                 lock (bucket)
                     bucket.AllocatedInstances.Add(result);
@@ -337,22 +337,22 @@ namespace Squared.Render.Buffers {
             internal DynamicVertexBuffer VertexBuffer;
             internal DynamicIndexBuffer IndexBuffer;
 
-
-            public readonly int BucketIndex;
-
             public int FrameLastUsed {
                 get;
                 private set;
             }
 
+            public readonly bool IsPersistent;
+
             internal GeometryBuffer (
                 BufferGenerator<TVertex> bufferGenerator,
                 int vertexCount, int indexCount,
-                int bucketIndex
+                int bucketIndex, bool isPersistent
             ) {
                 Id = Interlocked.Increment(ref NextId);
+                IsPersistent = isPersistent;
                 BufferGenerator = bufferGenerator;
-                BucketIndex = bucketIndex;
+                // BucketIndex = bucketIndex;
                 VertexCount = vertexCount;
                 IndexCount = indexCount;
                 // Ensure that buffers aren't lopsided too often. Extra indices don't cost too much, and the 'way more indices than vertices' case is rare
@@ -371,6 +371,10 @@ namespace Squared.Render.Buffers {
                 if (IndexCapacity > 0) {
                     IndexAllocation.ReleaseReference();
                     BufferGenerator.RenderManager.DisposeResource(IndexBuffer);
+                }
+                if (IsPersistent) {
+                    lock (BufferGenerator._StateLock)
+                        BufferGenerator._PersistentBuffers.Remove(this);
                 }
             }
 
@@ -393,7 +397,9 @@ namespace Squared.Render.Buffers {
 
             public void Uninitialize () {
                 if (IsActive)
-                    throw new Exception("Software buffer uninitialized while active");
+                    throw new InvalidOperationException("Software buffer uninitialized while active");
+                if (IsPersistent && !IsDisposed)
+                    throw new InvalidOperationException("Persistent buffer uninitialized before disposal");
                 IsFlushed = IsInitialized = false;
                 VertexCount = IndexCount = 0;
             }
@@ -508,6 +514,7 @@ namespace Squared.Render.Buffers {
 
         readonly SoftwareBufferPool _SoftwareBufferPool;
         readonly Dictionary<string, GeometryBuffer> _BufferCache = new Dictionary<string, GeometryBuffer>();
+        readonly HashSet<GeometryBuffer> _PersistentBuffers = new HashSet<GeometryBuffer>(ReferenceComparer<GeometryBuffer>.Instance);
 
         public readonly NativeAllocator Allocator = new NativeAllocator { Name = "Squared.Render.BufferGenerator" };
         public readonly RenderManager RenderManager;
@@ -542,6 +549,9 @@ namespace Squared.Render.Buffers {
                 } finally {
                     _SoftwareBufferPool.UnlockAllBuckets();
                 }
+
+                foreach (var pb in _PersistentBuffers)
+                    pb.Flush();
             }
         }
 
@@ -552,7 +562,6 @@ namespace Squared.Render.Buffers {
                 _SoftwareBufferPool.LockAllBuckets();
 
                 try {
-                    _BufferCache.Clear();
                     _SoftwareBufferPool.ReleaseAllLocked();
                     _SoftwareBufferPool.SortAndPurgeLocked(frameIndex);
                 } finally {
@@ -594,7 +603,7 @@ namespace Squared.Render.Buffers {
                 }
                 if (result == null) {
                     isNew = true;
-                    result = Allocate(vertexCount, indexCount);
+                    result = AllocatePersistent(vertexCount, indexCount);
                 } else
                     isNew = false;
                 _BufferCache[key] = result;
@@ -617,6 +626,19 @@ namespace Squared.Render.Buffers {
 
             var swb = _SoftwareBufferPool.Allocate(requestedVertexCount, requestedIndexCount);
             swb.Initialize(vertexCount, indexCount, FrameIndex);
+            return swb;
+        }
+
+        public GeometryBuffer AllocatePersistent (int vertexCount, int indexCount) {
+            const int rounding = 16;
+
+            var requestedVertexCount = (vertexCount + rounding - 1) / rounding * rounding;
+            var requestedIndexCount = indexCount > 0 ? (indexCount + rounding - 1) / rounding * rounding : indexCount;
+
+            var swb = new GeometryBuffer(this, vertexCount, indexCount, -1, true);
+            swb.Initialize(vertexCount, indexCount, FrameIndex);
+            lock (_StateLock)
+                _PersistentBuffers.Add(swb);
             return swb;
         }
     }
