@@ -512,7 +512,7 @@ namespace Squared.Render.Buffers {
             private set;
         }
 
-        readonly SoftwareBufferPool _SoftwareBufferPool;
+        SoftwareBufferPool _SoftwareBufferPool, _PreviousSoftwareBufferPool;
         readonly Dictionary<string, GeometryBuffer> _BufferCache = new Dictionary<string, GeometryBuffer>();
         readonly HashSet<GeometryBuffer> _PersistentBuffers = new HashSet<GeometryBuffer>(ReferenceComparer<GeometryBuffer>.Instance);
 
@@ -529,6 +529,7 @@ namespace Squared.Render.Buffers {
                 throw new ArgumentNullException("renderManager");
 
             _SoftwareBufferPool = new SoftwareBufferPool(this);
+            _PreviousSoftwareBufferPool = new SoftwareBufferPool(this);
             RenderManager = renderManager;
             DeviceId = renderManager.DeviceManager.DeviceId;
             UseResourceLock = renderManager.UseResourceLock;
@@ -537,6 +538,12 @@ namespace Squared.Render.Buffers {
         public void Dispose () {
             // FIXME
             lock (_StateLock) {
+                _SoftwareBufferPool.LockAllBuckets();
+                _SoftwareBufferPool.ReleaseAllLocked();
+                _SoftwareBufferPool.UnlockAllBuckets();
+                _PreviousSoftwareBufferPool.LockAllBuckets();
+                _PreviousSoftwareBufferPool.ReleaseAllLocked();
+                _PreviousSoftwareBufferPool.UnlockAllBuckets();
             }
         }
 
@@ -567,6 +574,11 @@ namespace Squared.Render.Buffers {
                 } finally {
                     _SoftwareBufferPool.UnlockAllBuckets();
                 }
+
+                // Don't reuse the same pool for the next frame; this reduces GPU stalls
+                var previous = _PreviousSoftwareBufferPool;
+                _PreviousSoftwareBufferPool = _SoftwareBufferPool;
+                _SoftwareBufferPool = previous;
 
                 FrameIndex = frameIndex;
 
