@@ -246,12 +246,21 @@ namespace Squared.Render.Convenience {
             set => Config.Layer = value;
         }
 
+        /// <summary>
+        /// Overrides the default blend state for all drawing operations performed on this renderer.
+        /// </summary>
         public BlendState BlendState {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => Config.BlendStateOrSelector as BlendState;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => Config.BlendStateOrSelector = value;
         }
+
+        /// <summary>
+        /// If a Draw call is issued without an explicit blend state set, and the specified material does not
+        ///  have a blend state set, the blend state selector will be called to select the appropriate blend
+        ///  state for the texture(s) being drawn.
+        /// </summary>
         public Func<AbstractTextureReference, BlendState> BlendStateSelector {
             get => Config.BlendStateOrSelector as Func<AbstractTextureReference, BlendState>;
             set => Config.BlendStateOrSelector = value;
@@ -810,9 +819,11 @@ namespace Squared.Render.Convenience {
                 Config.Layer++;
         }
 
-        private BlendState PickBlendStateForTextures (ref TextureSet textures) {
+        private BlendState PickBlendStateForTextures (Material material, ref TextureSet textures) {
             if (Config.BlendStateOrSelector is BlendState bs)
                 return bs;
+            else if (material?.BlendState != null)
+                return material?.BlendState;
             else if (Config.BlendStateOrSelector is Func<AbstractTextureReference, BlendState> selector)
                 return selector(textures.Texture1) ?? selector(textures.Texture2);
             else
@@ -833,7 +844,7 @@ namespace Squared.Render.Convenience {
 
             var batch = GetBitmapBatch(
                 layer, worldSpace,
-                blendState ?? PickBlendStateForTextures(ref drawCall.Textures), samplerState, depthStencilState ?? DepthStencilState,
+                blendState ?? PickBlendStateForTextures(material ?? DefaultBitmapMaterial, ref drawCall.Textures), samplerState, depthStencilState ?? DepthStencilState,
                 rasterizerState ?? RasterizerState, material ?? DefaultBitmapMaterial,
                 samplerState2: samplerState2 ?? SamplerState2
             );
