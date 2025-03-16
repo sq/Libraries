@@ -196,7 +196,7 @@ namespace Squared.Render.Resources {
                     // Console.WriteLine($"CreateInstance('{Name}') on thread {Thread.CurrentThread.Name}");
                     LoadInfo.SetStatus(ResourceLoadStatus.Creating, Provider.Now);
                     instance = Provider.CreateInstance(LoadInfo.Name, Stream, LoadInfo.Data, PreloadedData, LoadInfo.Async);
-                    if (instance.Completed)
+                    if ((instance == null) || instance.Completed)
                         OnCompleted(instance);
                     else {
                         LoadInfo.AsyncOperationQueued = true;
@@ -218,7 +218,12 @@ namespace Squared.Render.Resources {
 
                 void OnCompleted (IFuture _) {
                     LoadInfo.AsyncOperationQueued = false;
-                    instance.GetResult(out T value, out Exception err);
+                    T value = default;
+                    Exception err = null;
+                    instance?.GetResult(out value, out err);
+                    if (instance == null)
+                        err = new NullReferenceException();
+
                     if (err == null)
                         LoadInfo.SetStatus(ResourceLoadStatus.Created, Provider.Now);
                     try {
