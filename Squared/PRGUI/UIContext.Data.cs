@@ -67,7 +67,7 @@ namespace Squared.PRGUI {
         public int CompositorPaddingPx = 16;
 
         public float BackgroundFadeOpacity = 0.2f;
-        public float BackgroundFadeDuration = 0.5f;
+        public float BackgroundFadeDuration = 0.25f;
 
         // Allocate scratch rendering buffers (for composited controls) at a higher or lower resolution
         //  than the canvas, to improve the quality of transformed imagery

@@ -879,7 +879,8 @@ namespace Squared.Render {
                 Tracing.RenderTrace.BeforeFrame();
                  
                 StartWorkPhase(WorkPhases.BeforeIssue);
-                if (GraphicsBackendIsThreadingSafe)
+                // Async readback is only safe on D3D11
+                if (GraphicsBackendName == "D3D11")
                     frame.PerformReadbackAsync(ThreadGroup);
                 else
                     frame.PerformReadback();

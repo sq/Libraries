@@ -464,6 +464,24 @@ namespace Squared.Util {
         }
 
         /// <summary>
+        /// Wraps a value into the range (min, max)
+        /// </summary>
+        public static long Wrap (long value, long min, long max) {
+            long d = max - min + 1;
+
+            if (max <= min)
+                return min;
+
+            if (value < min) {
+                return min + ((d - (Math.Abs(min - value) % d)) % d);
+            } else if (value > max) {
+                return min + (Math.Abs(value - max - 1) % d);
+            } else {
+                return value;
+            }
+        }
+
+        /// <summary>
         /// Wraps a value into the range (min, max].
         /// Will never return max.
         /// </summary>

@@ -204,11 +204,12 @@ namespace Squared.Render {
             if (ReadbackQueue.Count == 0)
                 return;
 
-            group.GetQueueForType<ReadbackWorkItem>().WaitUntilDrained(100);
+            var q = group.GetQueueForType<ReadbackWorkItem>();
+            q.WaitUntilDrained(100);
 
             var started = Time.Ticks;
             foreach (var rb in ReadbackQueue)
-                group.Enqueue(rb);
+                q.Enqueue(rb);
             var ended = Time.Ticks;
             // Debug.WriteLine($"Readback took {Time.SecondsFromTicks(ended - started)}sec");
 
