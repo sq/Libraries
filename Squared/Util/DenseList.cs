@@ -215,13 +215,9 @@ namespace Squared.Util {
         }
 
         public void Clone (out DenseList<T> output) {
-            if (HasList) {
-                output = default(DenseList<T>);
-                UnorderedList<T> newItems = output._Items = new UnorderedList<T>(_Items.Count);
-                _Items.CopyTo(newItems);
-            } else {
-                output = this;
-            }
+            output = default;
+            output.EnsureCapacity(Count);
+            CopyTo(ref output);
         }
 
         public void Clone (ref DenseList<T> output, bool outputIsEmpty) {
