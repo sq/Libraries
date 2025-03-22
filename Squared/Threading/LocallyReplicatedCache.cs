@@ -93,6 +93,7 @@ namespace Squared.Threading {
             private Dictionary<Id, Entry> ValuesById;
             private Dictionary<Entry, Id> IdsByValue;
             private List<Entry> DeadEntries = new ();
+            private long Version;
 
             internal Table (EntryComparer comparer) {
                 ValuesById = new (1024, IdComparer.Instance);
@@ -100,6 +101,10 @@ namespace Squared.Threading {
             }
 
             public void ReplicateFrom (Table source) {
+                if (Version == source.Version)
+                    return;
+
+                Version = source.Version;
                 var sourceDict = source.ValuesById;
                 ValuesById.Clear();
                 IdsByValue.Clear();
@@ -121,6 +126,7 @@ namespace Squared.Threading {
                 value = value.ConvertToWeak();
                 ValuesById[id] = value;
                 IdsByValue[value] = id;
+                Version++;
             }
 
             public Entry GetValue (Id id) =>
@@ -134,6 +140,8 @@ namespace Squared.Threading {
 
             internal int RemoveDeadEntries () {
                 var result = 0;
+
+                Version++;
 
                 DeadEntries.Clear();
                 foreach (var entry in ValuesById.Values) {
@@ -154,6 +162,8 @@ namespace Squared.Threading {
                     result++;
                 }
                 DeadEntries.Clear();
+
+                Version++;
 
                 return result;
             }

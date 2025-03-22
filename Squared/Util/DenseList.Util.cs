@@ -625,6 +625,8 @@ namespace Squared.Util {
         internal void OrderByImpl<TKey, TComparer> (Func<T, TKey> keySelector, TComparer comparer, bool descending) 
             where TComparer : IComparer<TKey> 
         {
+            if (Count <= 1)
+                return;
             Sort(new OrderByAdapter<TKey, TComparer>(keySelector, comparer, descending ? -1 : 1));
         }
 
