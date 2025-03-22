@@ -103,9 +103,9 @@ namespace Squared.Threading {
         
         // A lock-free dictionary for looking up queues by work item type
         private readonly Dictionary<Type, IWorkQueue> Queues = 
-            new Dictionary<Type, IWorkQueue>(new ReferenceComparer<Type>());
+            new Dictionary<Type, IWorkQueue>(ReferenceComparer<Type>.Instance);
         private readonly Dictionary<Type, IWorkQueue> MainThreadQueues = 
-            new Dictionary<Type, IWorkQueue>(new ReferenceComparer<Type>());
+            new Dictionary<Type, IWorkQueue>(ReferenceComparer<Type>.Instance);
         private readonly UnorderedList<IWorkQueue> MainThreadQueueList = 
             new UnorderedList<IWorkQueue>();
 

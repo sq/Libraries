@@ -474,10 +474,10 @@ namespace Squared.Render {
 
         private readonly ReaderWriterLockSlim BufferGeneratorLock = new ReaderWriterLockSlim();
         private readonly Dictionary<Type, IBufferGenerator> _AllBufferGenerators =
-            new Dictionary<Type, IBufferGenerator>(new ReferenceComparer<Type>());
+            new Dictionary<Type, IBufferGenerator>(ReferenceComparer<Type>.Instance);
 
         private readonly Dictionary<Type, IArrayPoolAllocator> _ArrayAllocators = 
-            new Dictionary<Type, IArrayPoolAllocator>(new ReferenceComparer<Type>());
+            new Dictionary<Type, IArrayPoolAllocator>(ReferenceComparer<Type>.Instance);
         private readonly IBatchPool[] _BatchAllocators;
         internal readonly DisposalQueue PendingDisposes = new DisposalQueue();
 
@@ -995,8 +995,9 @@ namespace Squared.Render {
         }
         
         public void PrepareMany (ref DenseList<Batch> batches, ref Batch.PrepareContext context) {
-            if (batches.Count < 2) {
-                if (batches.Count == 1)
+            var count = batches.Count;
+            if (count < 2) {
+                if (count == 1)
                     Prepare(batches[0], ref context);
 
                 return;
@@ -1004,7 +1005,8 @@ namespace Squared.Render {
 
             var task = default(Task);
             task.Context = context;
-            foreach (var b in batches) {
+            for (int i = 0; i < count; i++) {
+                ref var b = ref batches.Item(i);
                 ValidateBatch(b, true);
 
                 if (b is IBatchContainer container)
@@ -1020,6 +1022,7 @@ namespace Squared.Render {
         }
 
         internal void ValidateBatch (Batch batch, bool enqueuing) {
+#if DEBUG
             batch.GetState(out bool isInitialized, out bool isCombined, out bool isPrepareQueued, out bool isPrepared, out bool isIssued);
             Thread.MemoryBarrier();
 
@@ -1043,6 +1046,10 @@ namespace Squared.Render {
 
                 batch.SetPrepareQueued(true);
             }
+#else
+            if (enqueuing)
+                batch.SetPrepareQueued(true);
+#endif
         }
 
         public void Prepare (Batch batch, ref Batch.PrepareContext context) {

@@ -28,7 +28,7 @@ namespace Squared.Render {
 
         public static class Types {
             internal static int NextTypeId;
-            internal static Dictionary<Type, int> IdForType = new Dictionary<Type, int>(new ReferenceComparer<Type>());
+            internal static Dictionary<Type, int> IdForType = new Dictionary<Type, int>(ReferenceComparer<Type>.Instance);
             private static readonly List<Type> _All = new List<Type>();
             public static Type[] All;
 

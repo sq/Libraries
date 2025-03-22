@@ -275,7 +275,7 @@ namespace Squared.Task {
         private OnFutureResolvedWithData OnResolvedDispatcher, OnResolvedDispatcher_SkipQueue;
         private MethodInfo mOnResolvedDispatcher, mOnResolvedDispatcher_SkipQueue;
         private Dictionary<Type, Delegate> OnResolvedDispatchersForType_SkipQueue = 
-                new Dictionary<Type, Delegate>(new ReferenceComparer<Type>());
+                new Dictionary<Type, Delegate>(ReferenceComparer<Type>.Instance);
 
         public BackgroundTaskErrorHandler ErrorHandler = null;
         public Thread MainThread { get; private set; }

@@ -583,7 +583,7 @@ namespace Squared.Render {
         internal Effect Effect;
         internal readonly Dictionary<string, EffectParameter> Cache = 
             // Higher capacity for faster lookup
-            new Dictionary<string, EffectParameter>(512, StringComparer.Ordinal);
+            new Dictionary<string, EffectParameter>(1024, StringComparer.Ordinal);
 
         public EffectParameter ScaleAndPosition { get; private set; }
         public EffectParameter InputAndOutputZRanges { get; private set; }

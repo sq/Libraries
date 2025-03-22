@@ -691,7 +691,11 @@ namespace Squared.Render.Convenience {
 #if !NOSPAN
             // NOTE: Make sure the library builds even if you comment out the SkipInit! If it doesn't,
             //  you missed a field!
+#if DEBUG
+#else
             Unsafe.SkipInit(out result);
+#endif
+
             if (preserveCache)
                 result.Cache = Cache;
             else
