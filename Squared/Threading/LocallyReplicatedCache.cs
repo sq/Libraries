@@ -141,8 +141,6 @@ namespace Squared.Threading {
             internal int RemoveDeadEntries () {
                 var result = 0;
 
-                Version++;
-
                 DeadEntries.Clear();
                 foreach (var entry in ValuesById.Values) {
                     // HACK: Preserve #0 == null
@@ -155,6 +153,11 @@ namespace Squared.Threading {
                     DeadEntries.Add(entry);
                 }
 
+                if (DeadEntries.Count == 0)
+                    return result;
+
+                Version++;
+
                 foreach (var deadEntry in DeadEntries) {
                     var id = IdsByValue[deadEntry];
                     ValuesById.Remove(id);
@@ -162,8 +165,6 @@ namespace Squared.Threading {
                     result++;
                 }
                 DeadEntries.Clear();
-
-                Version++;
 
                 return result;
             }
