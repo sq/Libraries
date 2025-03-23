@@ -896,7 +896,7 @@ namespace Squared.Render.Text {
                                 w *= ratio;
                                 h *= ratio;
                             }
-                            layoutEngine.CreateEmptyBox(w, h, ai.Margin, ai.HorizontalAlignment, ai.DoNotAdjustLineSpacing);
+                            layoutEngine.CreateEmptyBox(w, h, ai.Margin, ai.HorizontalAlignment, ai.DoNotAdjustLineSpacing, ai.Clear);
                             state.Tracker?.ReferencedImage(this, ref ai);
                         } else {
                             state.Tracker?.ReferencedImage(this, ref ai);

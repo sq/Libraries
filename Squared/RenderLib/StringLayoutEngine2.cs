@@ -75,6 +75,7 @@ namespace Squared.Render.TextLayout2 {
         public uint FragmentIndex;
         // Optional
         public uint DrawCallIndex;
+        public bool Clear;
     }
 
     public struct RubyConfiguration {
@@ -1181,8 +1182,13 @@ recalc:
                 line.DrawCallCount += fragment.DrawCallCount;
             }
 
-            line.FragmentCount++;
-            FragmentIndex++;
+            if ((line.FragmentCount == 0) && (fragment.Category == FragmentCategory.Unknown) && (fragment.DrawCallCount == 0)) {
+                // Suppress empty nothing fragment
+                ;
+            } else {
+                line.FragmentCount++;
+                FragmentIndex++;
+            }
 
             ref var result = ref CurrentFragment;
             result = new Fragment {
@@ -1287,7 +1293,7 @@ recalc:
         public void CreateEmptyBox (
             float width, float height, 
             Vector2 margin, ImageHorizontalAlignment alignment,
-            bool doNotAdjustLineSpacing
+            bool doNotAdjustLineSpacing, bool clear
         ) {
             ref var fragment = ref FinishFragment(true);
 
@@ -1323,6 +1329,7 @@ recalc:
                 // FIXME
                 Margin = margin,
                 Bounds = Bounds.FromPositionAndSize(0f, line.Location.Y, width, height),
+                Clear = clear,
             };
 
             FinishFragment(true);
@@ -1332,9 +1339,18 @@ recalc:
             Listener?.RecordTexture(ref this, image.Texture);
 
             ref var fragment = ref FinishFragment(true);
+            var boxIndex = BoxIndex++;
+            ref var line = ref CurrentLine;
 
+            var margin = image.Margin;
+
+            // HACK: Collapse left/right margins for image by itself on a line
+            if ((line.FirstFragmentIndex == FragmentIndex) && image.Clear)
+                margin.X = 0f;
+
+            var horzAlignment = image.HorizontalAlignment;
             var drawCallIndex = DrawCallIndex;
-            var availWidth = Math.Max(0, Math.Max(MaximumWidth, DesiredWidth) - (image.Margin.X * 2));
+            var availWidth = Math.Max(0, Math.Max(MaximumWidth, DesiredWidth) - (margin.X * 2));
             float maximumWidth = image.MaxWidthPercent.HasValue
                 ? availWidth * image.MaxWidthPercent.Value / 100f
                 : float.MaxValue,
@@ -1352,12 +1368,12 @@ recalc:
                 SortKey = SortKey,
             };
             var bounds = drawCall.EstimateDrawBounds();
-            if ((image.HorizontalAlignment == ImageHorizontalAlignment.Inline) && (WordWrap || CharacterWrap)) {
+            if ((horzAlignment == ImageHorizontalAlignment.Inline) && (WordWrap || CharacterWrap)) {
                 ref var line1 = ref CurrentLine;
                 float effectiveMaxWidth = MaximumWidth - line1.Inset - line1.Crush;
                 if (
                     (bounds.Size.X < effectiveMaxWidth) &&
-                    (line1.ActualWidth + bounds.Size.X + image.Margin.X) >= effectiveMaxWidth
+                    (line1.ActualWidth + bounds.Size.X + margin.X) >= effectiveMaxWidth
                 )
                     FinishLine(false);
             }
@@ -1367,24 +1383,22 @@ recalc:
 
             // FIXME: Something about inline image box placement is wrong in MeasureOnly mode.
 
-            var boxIndex = BoxIndex++;
-            ref var line = ref CurrentLine;
             fragment.BoxIndex = boxIndex;
             fragment.Category = FragmentCategory.Box;
             fragment.Width = bounds.Size.X;
-            switch (image.HorizontalAlignment) {
+            switch (horzAlignment) {
                 case ImageHorizontalAlignment.Inline:
                     // FIXME: Y margin for inline images
-                    fragment.Width += image.Margin.X;
-                    fragment.Overhang = image.Margin.X;
+                    fragment.Width += margin.X;
+                    fragment.Overhang = margin.X;
                     line.Width += fragment.Width;
                     UnconstrainedLineSize.X += fragment.Width;
                     break;
                 case ImageHorizontalAlignment.Left:
-                    line.Inset += fragment.Width + image.Margin.X;
+                    line.Inset += fragment.Width + margin.X;
                     break;
                 case ImageHorizontalAlignment.Right:
-                    line.Crush += fragment.Width + image.Margin.X;
+                    line.Crush += fragment.Width + margin.X;
                     break;
             }
             fragment.Height = image.DoNotAdjustLineSpacing 
@@ -1393,7 +1407,7 @@ recalc:
 
             var baselineAlignment = Arithmetic.Saturate(
                 image.BaselineAlignment ?? 
-                ((image.HorizontalAlignment == ImageHorizontalAlignment.Inline) ? 1.0f : 0.0f)
+                ((horzAlignment == ImageHorizontalAlignment.Inline) ? 1.0f : 0.0f)
             );
             fragment.Baseline = fragment.Height * baselineAlignment;
 
@@ -1401,18 +1415,22 @@ recalc:
             box = new Box {
                 FragmentIndex = FragmentIndex,
                 DrawCallIndex = drawCallIndex,
-                HorizontalAlignment = image.HorizontalAlignment,
+                HorizontalAlignment = horzAlignment,
                 BaselineAlignment = baselineAlignment,
-                Margin = image.Margin,
+                Margin = margin,
                 // FIXME: Baseline alignment
                 Bounds = Bounds.FromPositionAndSize(0f, line.Location.Y, bounds.Size.X, bounds.Size.Y),
+                Clear = image.Clear,
             };
 
             FinishFragment(true);
 
-            // FIXME: SingleFragmentMode?
-            if (image.Clear)
+            if (image.Clear) {
+                // FIXME: PerformLineBreak creates more ugly vertical space between the clearing box and the next line
+                // FinishLine(false);
+                // FIXME: SingleFragmentMode?
                 PerformLineBreak(CurrentDefaultLineSpacing, false);
+            }
         }
 
         private void ArrangeFragments (ref Vector2 constrainedSize) {

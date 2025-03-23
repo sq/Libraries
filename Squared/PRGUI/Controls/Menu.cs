@@ -48,7 +48,7 @@ namespace Squared.PRGUI.Controls {
 
         private Control TooltipTarget => _SelectedItem ?? _HoveringItem;
 
-        protected TooltipTargetSettings TooltipSettings = new TooltipTargetSettings {
+        public TooltipTargetSettings TooltipSettings { get; private set; } = new TooltipTargetSettings {
             ShowWhileFocused = false,
             ShowWhileMouseIsHeld = false,
             ShowWhileMouseIsNotHeld = false,
