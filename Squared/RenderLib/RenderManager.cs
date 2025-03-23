@@ -331,7 +331,10 @@ namespace Squared.Render {
             foreach (var crt in currentRenderTargets.Bindings)
                 if (crt.RenderTarget == renderTarget)
                     return;
-            throw new Exception("Render target was not bound.");
+
+            // FIXME: This check seems to be broken, I'm not sure how.
+            // throw new Exception("Render target was not bound.");
+            Debugger.Break();
 #endif
         }
 

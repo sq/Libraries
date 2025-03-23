@@ -1030,7 +1030,7 @@ namespace Squared.Util.Text {
             while (remainder.Length > 0) {
                 var offset = remainder.IndexOf(separator);
                 var item = remainder.Substring(0, offset < 0 ? remainder.Length : offset);
-                if (!removeEmptyEntries || item.Length > 1)
+                if (!removeEmptyEntries || item.Length >= 1)
                     result.Add(item);
                 if (offset < 0)
                     break;
@@ -1050,7 +1050,7 @@ namespace Squared.Util.Text {
             while (remainder.Length > 0) {
                 var offset = remainder.IndexOfAny(separators);
                 var item = remainder.Substring(0, offset < 0 ? remainder.Length : offset);
-                if (!removeEmptyEntries || item.Length > 1)
+                if (!removeEmptyEntries || item.Length >= 1)
                     result.Add(item);
                 if (offset < 0)
                     break;
