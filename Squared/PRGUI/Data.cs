@@ -919,20 +919,21 @@ namespace Squared.PRGUI {
             return $"Clamp({fop}, {Minimum?.ToString() ?? "<null>"}, {Maximum?.ToString() ?? "<null>"})";
         }
 
-        public ControlDimension ConvertPercentage (float total) {
-            if (!HasPercentage)
-                return this;
-            var result = this;
-            var value = total * _Fixed / 100;
-            if (PercentageIsMaximum) {
-                if (HasMaximum)
-                    result._Maximum = Math.Min(_Maximum, value);
+        public static ref readonly ControlDimension ConvertPercentage (ref ControlDimension self, float total, ref ControlDimension scratchStorage) {
+            if (!self.HasPercentage)
+                return ref self;
+
+            scratchStorage = self;
+            var value = total * self._Fixed / 100;
+            if (self.PercentageIsMaximum) {
+                if (self.HasMaximum)
+                    scratchStorage._Maximum = Math.Min(self._Maximum, value);
                 else
-                    result.Maximum = value;
+                    scratchStorage.Maximum = value;
             } else {
-                result.Fixed = Constrain(value, false);
+                scratchStorage.Fixed = self.Constrain(value, false);
             }
-            return result;
+            return ref scratchStorage;
         }
     }
 }

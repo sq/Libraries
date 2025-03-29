@@ -495,11 +495,6 @@ namespace Squared.PRGUI.NewEngine {
         public override string ToString () {
             return $"#{Key.ID} {Tag} {Config}";
         }
-
-        internal void ConvertProportions (float parentWidth, float parentHeight, out ControlDimension width, out ControlDimension height) {
-            width = Width.ConvertPercentage(parentWidth);
-            height = Height.ConvertPercentage(parentHeight);
-        }
     }
 
     /// <summary>
