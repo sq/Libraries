@@ -38,8 +38,6 @@ namespace Squared.PRGUI.NewEngine {
                 //  so we need to also ensure it's at least as big as the content rect
                 locals.contentSizeExpanded = new Vector2(Math.Max(locals.contentSpace.X, result.ContentSize.X), Math.Max(locals.contentSpace.Y, result.ContentSize.Y));
 
-                ControlKey firstProcessed = ControlKey.Invalid,
-                    lastProcessed = ControlKey.Invalid;
                 float w = Math.Max(0, result.Rect.Width - control.Padding.X), 
                     h = Math.Max(0, result.Rect.Height - control.Padding.Y),
                     x = 0, y = 0;
@@ -60,7 +58,8 @@ namespace Squared.PRGUI.NewEngine {
                     config.GetRunAlignmentF(out float xAlign, out float yAlign);
 
                     columnIndex = 0;
-                    foreach (var ckey in Children(ref control)) {
+                    ref var child = ref FirstChild(ref control);
+                    while (!child.IsInvalid) {
                         ref var column = ref columns[columnIndex];
                         ref var run = ref column.Run;
 
@@ -68,12 +67,13 @@ namespace Squared.PRGUI.NewEngine {
 
                         x = column.X;
                         Pass3_Arrange_OneChild(
-                            control, ref result, depth, config, 
+                            ref control, ref result, depth, config, 
                             ref locals, ref x, ref column.Y, baseline, 
-                            xAlign, yAlign, ckey
+                            xAlign, yAlign, ref child
                         );
 
                         columnIndex = (columnIndex + 1) % config.GridColumnCount;
+                        child = ref NextSibling(ref child);
                     }
                 } else {
                     foreach (var runIndex in Runs(ref result)) {
@@ -99,17 +99,15 @@ namespace Squared.PRGUI.NewEngine {
                         else
                             x = space * xAlign;
 
-                        using (var children = new SiblingEnumerator(this, run.First.Key, run.Last.Key))
-                        while (children.MoveNext()) {
-                            var ckey = children.Current;
-                            if (firstProcessed.IsInvalid)
-                                firstProcessed = ckey;
-                            lastProcessed = ckey;
+                        ref var child = ref FirstItemInRun(ref run);
+                        var stopAt = run.Last.Key;
+                        while (!child.IsInvalid) {
                             Pass3_Arrange_OneChild(
-                                control, ref result, depth, config, 
+                                ref control, ref result, depth, config, 
                                 ref locals, ref x, ref y, baseline, 
-                                xAlign, yAlign, ckey
+                                xAlign, yAlign, ref child
                             );
+                            child = ref NextSibling(ref child, stopAt);
                         }
 
                         // HACK: The floating run's contents should not change the position of other controls
@@ -124,12 +122,6 @@ namespace Squared.PRGUI.NewEngine {
                         }
                     }
                 }
-
-                // FIXME
-                if (false) {
-                    Assert(firstProcessed == control.FirstChild);
-                    Assert(lastProcessed == control.LastChild);
-                }
             }
 
             result.ContentRect.Left = Math.Min(result.Rect.Right, result.Rect.Left + control.Padding.Left);
@@ -138,9 +130,13 @@ namespace Squared.PRGUI.NewEngine {
             result.ContentRect.Height = Math.Max(0, result.Rect.Height - control.Padding.Y);
         }
 
-        private void Pass3_Arrange_OneChild (BoxRecord control, ref BoxLayoutResult result, int depth, ControlConfiguration config, ref Pass3Locals locals, ref float x, ref float y, float baseline, float xAlign, float yAlign, ControlKey ckey) {
-            ref var child = ref this[ckey];
-            ref var childResult = ref Result(ckey);
+        private void Pass3_Arrange_OneChild (
+            ref BoxRecord control, ref BoxLayoutResult result, 
+            int depth, ControlConfiguration config, ref Pass3Locals locals, 
+            ref float x, ref float y, float baseline, float xAlign, float yAlign, 
+            ref BoxRecord child
+        ) {
+            ref var childResult = ref Result(child.Key);
             ref readonly var childConfig = ref child.Config;
             var childMargins = child.Margins;
             var childOuterSize = childResult.Rect.Size + childMargins.Size;
