@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
 using Squared.Game;
@@ -118,7 +119,8 @@ namespace Squared.PRGUI.Controls {
         private float _CachedLineBreakPoint;
 
         protected Vector2 _LastDrawOffset, _LastDrawScale;
-        protected BitmapDrawCall[] _LayoutFilterScratchBuffer;
+
+        private static ThreadLocal<BitmapDrawCall[]> _LayoutFilterScratchBuffer = new ();
 
         private IGlyphSource _MostRecentFont;
         private int _MostRecentFontVersion;
@@ -789,22 +791,9 @@ namespace Squared.PRGUI.Controls {
                 renderer.Layer += 1;
             */
 
-            var segment = layout.DrawCalls;
+            var segment = RunLayoutFilter(ref layout);
             if (segment.Count <= 0)
                 return;
-
-            if (LayoutFilter != null) {
-                var size = layout.DrawCalls.Count;
-                if ((_LayoutFilterScratchBuffer == null) || (_LayoutFilterScratchBuffer.Length < size))
-                    _LayoutFilterScratchBuffer = new BitmapDrawCall[size + 256];
-                var temp = layout;
-                Array.Copy(layout.DrawCalls.Array, layout.DrawCalls.Offset, _LayoutFilterScratchBuffer, 0, layout.DrawCalls.Count);
-                temp.DrawCalls = new ArraySegment<BitmapDrawCall>(_LayoutFilterScratchBuffer, 0, layout.DrawCalls.Count);
-                LayoutFilter(this, ref temp);
-                segment = temp.DrawCalls;
-            } else {
-                _LayoutFilterScratchBuffer = null;
-            }
 
             if (CharacterLimit != null)
                 segment = new ArraySegment<BitmapDrawCall>(segment.Array, segment.Offset, Math.Min(CharacterLimit.Value, segment.Count));
@@ -825,6 +814,25 @@ namespace Squared.PRGUI.Controls {
 
             _LastDrawOffset = textOffset.Floor();
             _LastDrawScale = textScale;
+        }
+
+        protected BitmapDrawCall[] GetLayoutFilterScratchBuffer (int capacity) {
+            var buf = _LayoutFilterScratchBuffer.Value;
+            if ((buf == null) || (buf.Length < capacity))
+                buf = _LayoutFilterScratchBuffer.Value = new BitmapDrawCall[capacity + 64];
+            return buf;
+        }
+
+        protected virtual ArraySegment<BitmapDrawCall> RunLayoutFilter (ref StringLayout layout) {
+            if (LayoutFilter == null)
+                return layout.DrawCalls;
+
+            var buffer = GetLayoutFilterScratchBuffer(layout.Count);
+            var temp = layout;
+            temp.DrawCalls = new ArraySegment<BitmapDrawCall>(buffer, 0, layout.Count);
+            Array.Copy(layout.DrawCalls.Array, layout.DrawCalls.Offset, buffer, 0, layout.DrawCalls.Count);
+            LayoutFilter(this, ref temp);
+            return temp.DrawCalls;
         }
 
         private void DoVisualizeLayout (ref  ImperativeRenderer renderer, Vector2 ca, Vector2 cb, Vector2 textOffset, Vector2 scaledSize) {

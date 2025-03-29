@@ -21,6 +21,13 @@ namespace Squared.CoreCLR
         public readonly struct State {
             public readonly ulong A, B, C, D;
 
+            public State (ulong a, ulong b, ulong c, ulong d) {
+                A = a;
+                B = b;
+                C = c;
+                D = d;
+            }
+
             public State (Xoshiro source) {
                 A = source._s0;
                 B = source._s1;
