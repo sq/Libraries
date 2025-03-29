@@ -12,25 +12,19 @@ using Squared.PRGUI.Layout;
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
         // TODO: Combine all of these into single hybrid enumerable/enumerator types to reduce the overhead of constructing them
-        public unsafe struct SiblingEnumerator : IEnumerator<ControlKey> {
+        public struct SiblingEnumerator : IEnumerator<ControlKey> {
             public readonly LayoutEngine Engine;
             public readonly ControlKey FirstItem;
             public readonly ControlKey? LastItem;
             private bool Started, Reverse;
-            private int Version;
 
             public SiblingEnumerator (LayoutEngine engine, ControlKey firstItem, ControlKey? lastItem, bool reverse = false) {
                 Engine = engine;
-                Version = engine.Version;
                 FirstItem = firstItem;
                 LastItem = lastItem;
                 Started = false;
                 _Current = ControlKey.Invalid;
                 Reverse = reverse;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private void CheckVersion () {
             }
 
             private ControlKey _Current;
@@ -42,18 +36,10 @@ namespace Squared.PRGUI.NewEngine {
 
             public void Dispose () {
                 _Current = ControlKey.Invalid;
-                Version = -1;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext () {
-#if DEBUG
-                if (Version != Engine.Version) {
-                    Engine.AssertionFailed("Context was modified");
-                    return false;
-                }
-#endif
-
                 var cur = _Current;
                 if (cur.ID < 0)
                     return MoveNext_Slow();
@@ -78,12 +64,6 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             void IEnumerator.Reset () {
-#if DEBUG
-                if (Version != Engine.Version) {
-                    Engine.AssertionFailed("Context was modified");
-                    return;
-                }
-#endif
                 _Current = ControlKey.Invalid;
             }
         }

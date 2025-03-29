@@ -14,6 +14,10 @@ namespace Squared.PRGUI.NewEngine {
             public float X, Y;
         }
 
+        private struct Pass3Locals {
+            public Vector2 contentPosition, contentSpace, contentExtent, contentSizeExpanded;
+        }
+
         private unsafe void Pass3_Arrange (ref BoxRecord control, ref BoxLayoutResult result, int depth) {
             ref readonly var config = ref control.Config;
 
@@ -25,12 +29,14 @@ namespace Squared.PRGUI.NewEngine {
 
             // HACK: Don't calculate contentPosition and stuff if we have no children, it's a waste of time
             if (!control.FirstChild.IsInvalid) {
-                Vector2 contentPosition = result.Rect.Position + new Vector2(control.Padding.Left, control.Padding.Top),
+                var locals = new Pass3Locals {
+                    contentPosition = result.Rect.Position + new Vector2(control.Padding.Left, control.Padding.Top),
                     contentSpace = result.Rect.Size - control.Padding.Size,
                     contentExtent = result.Rect.Extent - control.Padding.BottomRight,
-                    // HACK: In the event that a box only contains stacked controls, ContentSize will be 0 (is this a bug?)
-                    //  so we need to also ensure it's at least as big as the content rect
-                    contentSizeExpanded = new Vector2(Math.Max(contentSpace.X, result.ContentSize.X), Math.Max(contentSpace.Y, result.ContentSize.Y));
+                };
+                // HACK: In the event that a box only contains stacked controls, ContentSize will be 0 (is this a bug?)
+                //  so we need to also ensure it's at least as big as the content rect
+                locals.contentSizeExpanded = new Vector2(Math.Max(locals.contentSpace.X, result.ContentSize.X), Math.Max(locals.contentSpace.Y, result.ContentSize.Y));
 
                 ControlKey firstProcessed = ControlKey.Invalid,
                     lastProcessed = ControlKey.Invalid;
@@ -63,8 +69,7 @@ namespace Squared.PRGUI.NewEngine {
                         x = column.X;
                         Pass3_Arrange_OneChild(
                             control, ref result, depth, config, 
-                            contentPosition, contentSpace, contentExtent, 
-                            contentSizeExpanded, ref x, ref column.Y, baseline, 
+                            ref locals, ref x, ref column.Y, baseline, 
                             xAlign, yAlign, ckey
                         );
 
@@ -77,15 +82,15 @@ namespace Squared.PRGUI.NewEngine {
                         float rw = config.IsVertical ? run.MaxOuterWidth : run.TotalWidth,
                             rh = config.IsVertical ? run.TotalHeight : run.MaxOuterHeight;
                         if (config.Clip) {
-                            rw = Math.Min(rw, contentSpace.X);
-                            rh = Math.Min(rh, contentSpace.Y);
+                            rw = Math.Min(rw, locals.contentSpace.X);
+                            rh = Math.Min(rh, locals.contentSpace.Y);
                         }
                         float space = Math.Max(config.IsVertical ? h - rh : w - rw, 0),
                             baseline = config.IsVertical
                                 // HACK: The last run needs to have its baseline expanded to our outer edge
                                 //  so that anchor bottom/right will hit the edges of our content rect
-                                ? (isLastRun ? contentSpace.X - x : run.MaxOuterWidth)
-                                : (isLastRun ? contentSpace.Y - y : run.MaxOuterHeight);
+                                ? (isLastRun ? locals.contentSpace.X - x : run.MaxOuterWidth)
+                                : (isLastRun ? locals.contentSpace.Y - y : run.MaxOuterHeight);
 
                         config.GetRunAlignmentF(out float xAlign, out float yAlign);
 
@@ -102,8 +107,7 @@ namespace Squared.PRGUI.NewEngine {
                             lastProcessed = ckey;
                             Pass3_Arrange_OneChild(
                                 control, ref result, depth, config, 
-                                contentPosition, contentSpace, contentExtent, 
-                                contentSizeExpanded, ref x, ref y, baseline, 
+                                ref locals, ref x, ref y, baseline, 
                                 xAlign, yAlign, ckey
                             );
                         }
@@ -134,7 +138,7 @@ namespace Squared.PRGUI.NewEngine {
             result.ContentRect.Height = Math.Max(0, result.Rect.Height - control.Padding.Y);
         }
 
-        private void Pass3_Arrange_OneChild (BoxRecord control, ref BoxLayoutResult result, int depth, ControlConfiguration config, Vector2 contentPosition, Vector2 contentSpace, Vector2 contentExtent, Vector2 contentSizeExpanded, ref float x, ref float y, float baseline, float xAlign, float yAlign, ControlKey ckey) {
+        private void Pass3_Arrange_OneChild (BoxRecord control, ref BoxLayoutResult result, int depth, ControlConfiguration config, ref Pass3Locals locals, ref float x, ref float y, float baseline, float xAlign, float yAlign, ControlKey ckey) {
             ref var child = ref this[ckey];
             ref var childResult = ref Result(ckey);
             ref readonly var childConfig = ref child.Config;
@@ -146,8 +150,8 @@ namespace Squared.PRGUI.NewEngine {
 
             if (stackedOrFloating) {
                 if (childConfig.IsFloating) {
-                    childResult.Rect.Position = contentPosition + (child.FloatingPosition ?? Vector2.Zero) + child.Margins.TopLeft;
-                    childResult.AvailableSpace = contentExtent - childResult.Rect.Position - new Vector2(childMargins.Right, childMargins.Bottom);
+                    childResult.Rect.Position = locals.contentPosition + (child.FloatingPosition ?? Vector2.Zero) + child.Margins.TopLeft;
+                    childResult.AvailableSpace = locals.contentExtent - childResult.Rect.Position - new Vector2(childMargins.Right, childMargins.Bottom);
 
                     // Unless the floating child has an explicit position, we want to align it within the available space we just calculated
                     if (!child.FloatingPosition.HasValue) {
@@ -157,17 +161,17 @@ namespace Squared.PRGUI.NewEngine {
                         childResult.Rect.Position += alignment;
                     }
                 } else {
-                    var stackSpace = (childConfig.AlignToParentBox ? contentSpace : contentSizeExpanded) - childOuterSize;
+                    var stackSpace = (childConfig.AlignToParentBox ? locals.contentSpace : locals.contentSizeExpanded) - childOuterSize;
                     // If the control is stacked and aligned but did not fill the container (size constraints, etc)
                     //  then try to align it
                     stackSpace.X = Math.Max(stackSpace.X, 0f) * xChildAlign;
                     stackSpace.Y = Math.Max(stackSpace.Y, 0f) * yChildAlign;
-                    childResult.Rect.Position = contentPosition +
+                    childResult.Rect.Position = locals.contentPosition +
                         new Vector2(stackSpace.X + childMargins.Left, stackSpace.Y + childMargins.Top);
                 }
             } else {
-                childResult.Rect.Left = contentPosition.X + childMargins.Left + x;
-                childResult.Rect.Top = contentPosition.Y + childMargins.Top + y;
+                childResult.Rect.Left = locals.contentPosition.X + childMargins.Left + x;
+                childResult.Rect.Top = locals.contentPosition.Y + childMargins.Top + y;
 
                 if (config.IsVertical) {
                     var alignment = (xChildAlign * Math.Max(0, baseline - childOuterSize.X));
@@ -182,8 +186,8 @@ namespace Squared.PRGUI.NewEngine {
                 }
 
                 if (!child.Config.NoMeasurement) {
-                    result.ContentSize.X = Math.Max(result.ContentSize.X, childResult.Rect.Right - contentPosition.X);
-                    result.ContentSize.Y = Math.Max(result.ContentSize.Y, childResult.Rect.Bottom - contentPosition.Y);
+                    result.ContentSize.X = Math.Max(result.ContentSize.X, childResult.Rect.Right - locals.contentPosition.X);
+                    result.ContentSize.Y = Math.Max(result.ContentSize.Y, childResult.Rect.Bottom - locals.contentPosition.Y);
                 }
 
                 // TODO: Clip left/top edges as well?

@@ -271,14 +271,17 @@ namespace Squared.PRGUI.NewEngine {
                         break;
 
                     float p = 0;
-                    foreach (var ckey in Enumerate(run.First.Key, run.Last.Key)) {
-                        ref var child = ref this[ckey];
+                    ref var child = ref FirstItemInRun(ref run);
+                    var stopAt = run.Last.Key;
+                    while (!child.IsInvalid) {
                         // HACK: The floating run and non-floating run potentially walk us through the same controls,
                         //  so skip anything we shouldn't be processing in this run. Yuck.
-                        if (child.Config.IsStackedOrFloating != run.IsFloating)
+                        if (child.Config.IsStackedOrFloating != run.IsFloating) {
+                            child = ref NextSibling(ref child, stopAt);
                             continue;
+                        }
 
-                        ref var childResult = ref Result(ckey);
+                        ref var childResult = ref Result(child.Key);
                         child.ConvertProportions(cw, ch, out var childWidth, out var childHeight);
 #if DEBUG
                         if (childResult.ParentRunIndex != runIndex)
@@ -359,6 +362,8 @@ namespace Squared.PRGUI.NewEngine {
                             else
                                 p += childOuterW;
                         }
+
+                        child = ref NextSibling(ref child, stopAt);
                     }
 
                     countX = newCountX;

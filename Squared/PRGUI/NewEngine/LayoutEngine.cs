@@ -156,6 +156,45 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ref BoxRecord FirstItemInRun (ref LayoutRun run) {
+            var key = run.First;
+            if (key.IsInvalid)
+                return ref BoxRecord.Invalid;
+            else
+                return ref this[key.Key];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ref BoxRecord FirstChild (ref BoxRecord parent) {
+            var key = parent.FirstChild;
+            if (key.IsInvalid)
+                return ref BoxRecord.Invalid;
+            else
+                return ref this[key];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ref BoxRecord NextSibling (ref BoxRecord child) {
+            var key = child.NextSibling;
+            if (key.IsInvalid)
+                return ref BoxRecord.Invalid;
+            else
+                return ref this[key];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ref BoxRecord NextSibling (ref BoxRecord child, ControlKey stopAt) {
+            if (child.Key == stopAt)
+                return ref BoxRecord.Invalid;
+
+            var key = child.NextSibling;
+            if (key.IsInvalid)
+                return ref BoxRecord.Invalid;
+            else
+                return ref this[key];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ChildrenEnumerable Children (ref BoxRecord parent, bool reverse = false) {
             Assert(!parent.IsInvalid);
             return new ChildrenEnumerable(this, ref parent, reverse);

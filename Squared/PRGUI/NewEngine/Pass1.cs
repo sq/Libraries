@@ -42,9 +42,10 @@ namespace Squared.PRGUI.NewEngine {
 
             float padX = control.Padding.X, padY = control.Padding.Y, p = 0;
             int currentRunIndex = -1, currentColumnIndex = 0;
-            foreach (var ckey in Children(ref control)) {
-                ref var child = ref this[ckey];
-                ref var childResult = ref UnsafeResult(ckey);
+
+            ref var child = ref FirstChild(ref control);
+            while (!child.IsInvalid) {
+                ref var childResult = ref UnsafeResult(child.Key);
 
                 Pass1_ComputeSizesAndBuildRuns(ref child, ref childResult, depth + 1);
 
@@ -105,6 +106,8 @@ namespace Squared.PRGUI.NewEngine {
                         }
                     }
                 }
+
+                child = ref NextSibling(ref child);
             }
 
             IncreaseContentSizeForCompletedRun(in control, ref result, currentRunIndex);
