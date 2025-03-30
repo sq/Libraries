@@ -13,6 +13,7 @@ namespace Squared.PRGUI.NewEngine {
             ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
             ref readonly var config = ref control.Config;
+            var isVertical = config.IsVertical;
             InitializeResult(ref control, ref result, depth);
 
             if (result.Pass1Processed)
@@ -76,7 +77,7 @@ namespace Squared.PRGUI.NewEngine {
                     );
 
                     if (!child.Config.IsFloating) {
-                        p += config.IsVertical ? outerW : outerH;
+                        p += isVertical ? outerW : outerH;
 
                         // At a minimum we should be able to hold all our children if they were stacked on each other
                         if (expandX)
@@ -98,10 +99,10 @@ namespace Squared.PRGUI.NewEngine {
                         // If we're not in wrapped mode, we will try to expand to hold our largest run
                         // FIXME: Collapse margins
                         if (!config.IsWrap || child.Config.IsStacked) {
-                            if (child.Config.IsStacked || (config.IsVertical && expandY))
+                            if (child.Config.IsStacked || (isVertical && expandY))
                                 result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);
 
-                            if (child.Config.IsStacked || (!config.IsVertical && expandX))
+                            if (child.Config.IsStacked || (!isVertical && expandX))
                                 result.Rect.Width = Math.Max(result.Rect.Width, run.TotalWidth + padX);
                         }
                     }

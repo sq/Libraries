@@ -109,6 +109,7 @@ namespace Squared.PRGUI.NewEngine {
             ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
             ref readonly var config = ref control.Config;
+            var isVertical = config.IsVertical;
             if (!config.IsWrap)
                 throw new Exception("Wrapping not enabled");
 
@@ -118,7 +119,7 @@ namespace Squared.PRGUI.NewEngine {
                 contentSpaceX = control.Width.Constrain(999999f, true);
             if (contentSpaceY <= 0)
                 contentSpaceY = control.Height.Constrain(999999f, true);
-            float capacity = config.IsVertical ? contentSpaceY : contentSpaceX,
+            float capacity = isVertical ? contentSpaceY : contentSpaceX,
                 offset = 0, extent = 0;
 
             // HACK: Unfortunately, we have to build new runs entirely from scratch because modifying the existing ones
@@ -135,12 +136,12 @@ namespace Squared.PRGUI.NewEngine {
                 childResult.ParentRunIndex = -1;
                 ref readonly var childConfig = ref child.Config;
 
-                float startMargin = config.IsVertical ? child.Margins.Top : child.Margins.Left,
-                    endMargin = config.IsVertical ? child.Margins.Bottom : child.Margins.Right,
-                    size = config.IsVertical ? childResult.Rect.Height : childResult.Rect.Width;
+                float startMargin = isVertical ? child.Margins.Top : child.Margins.Left,
+                    endMargin = isVertical ? child.Margins.Bottom : child.Margins.Right,
+                    size = isVertical ? childResult.Rect.Height : childResult.Rect.Width;
                 
                 // Containers that wrap will auto-expand to available space so we don't count the size of their content
-                if (config.IsVertical) {
+                if (isVertical) {
                     if (childConfig.IsVertical && childConfig.IsWrap)
                         size = child.Height.Constrain(0, true);
                 } else {
@@ -178,7 +179,7 @@ namespace Squared.PRGUI.NewEngine {
                 if (previousRunIndex != currentRunIndex) {
                     if (previousRunIndex >= 0) {
                         ref var previousRun = ref Run(previousRunIndex);
-                        extent += config.IsVertical ? previousRun.MaxOuterWidth : previousRun.MaxOuterHeight;
+                        extent += isVertical ? previousRun.MaxOuterWidth : previousRun.MaxOuterHeight;
                     }
                     offset = totalSize;
                 } else {
@@ -190,14 +191,14 @@ namespace Squared.PRGUI.NewEngine {
 
             if (currentRunIndex >= 0) {
                 ref var currentRun = ref Run(currentRunIndex);
-                extent += config.IsVertical ? currentRun.MaxOuterWidth : currentRun.MaxOuterHeight;
+                extent += isVertical ? currentRun.MaxOuterWidth : currentRun.MaxOuterHeight;
             }
 
             // Now that we computed our new runs with wrapping applied we can expand all our children appropriately
             Pass2b_ExpandChildren(ref control, ref result, depth);
 
             var oldSize = result.Rect.Size;
-            if (config.IsVertical)
+            if (isVertical)
                 result.Rect.Width = control.Width.Constrain(Math.Max(result.Rect.Width, extent + control.Padding.X), true);
             else
                 result.Rect.Height = control.Height.Constrain(Math.Max(result.Rect.Height, extent + control.Padding.Y), true);
@@ -207,6 +208,7 @@ namespace Squared.PRGUI.NewEngine {
 
         private void Pass2b_ExpandChildren (ref BoxRecord control, ref BoxLayoutResult result, int depth) {
             ref readonly var config = ref control.Config;
+            var isVertical = config.IsVertical;
 
             var oldSize = result.Rect.Size;
             float cw = result.Rect.Width - control.Padding.X,
@@ -218,12 +220,12 @@ namespace Squared.PRGUI.NewEngine {
             var spaceAfterLastExpandableRun = 0f;
             foreach (var runIndex in Runs(ref result)) {
                 ref var run = ref Run(runIndex);
-                var expand = config.IsVertical ? run.ExpandCountX > 0 : run.ExpandCountY > 0;
+                var expand = isVertical ? run.ExpandCountX > 0 : run.ExpandCountY > 0;
                 if (expand) {
                     lastExpandableRun = runIndex;
                     spaceAfterLastExpandableRun = 0;
                 } else {
-                    spaceAfterLastExpandableRun += config.IsVertical ? run.MaxOuterWidth : run.MaxOuterHeight;
+                    spaceAfterLastExpandableRun += isVertical ? run.MaxOuterWidth : run.MaxOuterHeight;
                 }
             }
 
@@ -241,30 +243,30 @@ namespace Squared.PRGUI.NewEngine {
                 //  to ALSO be 2000px wide. This ensures that if Constrain_Size is set we will only expand other items
                 //  to the size of the menu itself
                 // In the demo this is necessary to ensure that the 'item a ... item b' menu item is laid out correctly
-                float runMaxOuterWidth = config.Clip && config.IsVertical ? Math.Min(cw, run.MaxOuterWidth) : run.MaxOuterWidth,
-                    runMaxOuterHeight = config.Clip && !config.IsVertical ? Math.Min(ch, run.MaxOuterHeight) : run.MaxOuterHeight,
+                float runMaxOuterWidth = config.Clip && isVertical ? Math.Min(cw, run.MaxOuterWidth) : run.MaxOuterWidth,
+                    runMaxOuterHeight = config.Clip && !isVertical ? Math.Min(ch, run.MaxOuterHeight) : run.MaxOuterHeight,
                     // The last run in a box might not contain any expandable controls, in which case the pass up above determined
                     //  that an earlier run should be expanded instead. We want to ensure that when we expand a run other than
                     //  the last one, we leave enough space for the non-expandable runs that follow it, like a status bar.
                     unexpandableBuffer = (runIndex == result.FloatingRunIndex) ? 0 : spaceAfterLastExpandableRun,
                     // HACK: For the last run in a box we want to expand the run to fill the entire available space
                     //  otherwise listbox items will have a width of 0 :(
-                    effectiveRunMaxWidth = expandThisRun && config.IsVertical ? Math.Max(cw - unexpandableBuffer, runMaxOuterWidth) : runMaxOuterWidth,
-                    effectiveRunMaxHeight = expandThisRun && !config.IsVertical ? Math.Max(ch - unexpandableBuffer, runMaxOuterHeight) : runMaxOuterHeight,
+                    effectiveRunMaxWidth = expandThisRun && isVertical ? Math.Max(cw - unexpandableBuffer, runMaxOuterWidth) : runMaxOuterWidth,
+                    effectiveRunMaxHeight = expandThisRun && !isVertical ? Math.Max(ch - unexpandableBuffer, runMaxOuterHeight) : runMaxOuterHeight,
                     effectiveRunTotalWidth = run.TotalWidth,
                     effectiveRunTotalHeight = run.TotalHeight,
                     // HACK: In the old engine the last run would be expanded to fill on both axes, and we rely on this
                     //  right now for various things. This should be improved on
                     // We need unexpandableBuffer here too for cases where xSpace/ySpace are doing the expanding
-                    xSpace = config.IsVertical
+                    xSpace = isVertical
                         ? (expandThisRun ? cw - effectiveRunMaxWidth - unexpandableBuffer : 0)
                         : cw - effectiveRunTotalWidth,
-                    ySpace = config.IsVertical
+                    ySpace = isVertical
                         ? ch - effectiveRunTotalHeight 
                         : (expandThisRun ? ch - effectiveRunMaxHeight - unexpandableBuffer : 0),
                     newXSpace = xSpace, newYSpace = ySpace,
-                    minOuterWidth = config.IsVertical ? effectiveRunMaxWidth : 0,
-                    minOuterHeight = config.IsVertical ? 0 : effectiveRunMaxHeight;
+                    minOuterWidth = isVertical ? effectiveRunMaxWidth : 0,
+                    minOuterHeight = isVertical ? 0 : effectiveRunMaxHeight;
 
                 for (int pass = 0; pass < 10; pass++) {
                     if (countX < 1)
@@ -339,7 +341,7 @@ namespace Squared.PRGUI.NewEngine {
                                 childResult.AvailableSpace.X = Math.Max(childResult.AvailableSpace.X, newChildW);
                                 newChildW = childWidth.Constrain(newChildW - margins.X, true) + margins.X;
                                 if (config.Clip || (config.ConstrainGrowth && (newChildW > childOuterW)))
-                                    newChildW = Math.Min(newChildW, config.IsVertical ? cw : cw - p);
+                                    newChildW = Math.Min(newChildW, isVertical ? cw : cw - p);
                                 float expanded = newChildW - childOuterW;
                                 if (expanded < Math.Max(0, amountX - 1))
                                     newCountX--;
@@ -353,7 +355,7 @@ namespace Squared.PRGUI.NewEngine {
                                 run.TotalHeight -= childOuterH;
                                 var newChildH = Math.Max(childOuterH + amountY, minOuterHeight);
                                 if (config.Clip || (config.ConstrainGrowth && (newChildH > childOuterH)))
-                                    newChildH = Math.Min(newChildH, config.IsVertical ? ch - p : ch); 
+                                    newChildH = Math.Min(newChildH, isVertical ? ch - p : ch); 
                                 childResult.AvailableSpace.Y = Math.Max(childResult.AvailableSpace.Y, newChildH);
                                 newChildH = childHeight.Constrain(newChildH - margins.Y, true) + margins.Y;
                                 float expanded = childOuterH - childResult.Rect.Height;
@@ -365,7 +367,7 @@ namespace Squared.PRGUI.NewEngine {
                                 run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, newChildH);
                             }
 
-                            if (config.IsVertical)
+                            if (isVertical)
                                 p += childOuterH;
                             else
                                 p += childOuterW;
@@ -380,7 +382,7 @@ namespace Squared.PRGUI.NewEngine {
                     ySpace = newYSpace;
                 }
 
-                if (config.IsVertical) {
+                if (isVertical) {
                     cw -= run.MaxOuterWidth;
                 } else {
                     ch -= run.MaxOuterHeight;
@@ -390,6 +392,7 @@ namespace Squared.PRGUI.NewEngine {
 
         private void Pass2c_Recalculate (ref BoxRecord control, ref BoxLayoutResult result) {
             ref readonly var config = ref control.Config;
+            var isVertical = config.IsVertical;
             if (control.FirstChild.IsInvalid)
                 return;
 
@@ -404,7 +407,7 @@ namespace Squared.PRGUI.NewEngine {
                 if (runIndex == result.FloatingRunIndex) {
                     cw = Math.Max(cw, run.MaxOuterWidth);
                     ch = Math.Max(ch, run.MaxOuterHeight);
-                } else if (config.IsVertical) {
+                } else if (isVertical) {
                     cw += run.MaxOuterWidth;
                     ch = Math.Max(ch, run.TotalHeight);
                 } else {

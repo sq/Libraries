@@ -20,6 +20,7 @@ namespace Squared.PRGUI.NewEngine {
 
         private unsafe void Pass3_Arrange (ref BoxRecord control, ref BoxLayoutResult result, int depth) {
             ref readonly var config = ref control.Config;
+            var isVertical = config.IsVertical;
 
             // HACK to fix layout starting with a floating control as the root
             // Without this, tooltips will glitch
@@ -79,14 +80,14 @@ namespace Squared.PRGUI.NewEngine {
                     foreach (var runIndex in Runs(ref result)) {
                         ref var run = ref Run(runIndex);
                         bool isLastRun = run.NextRunIndex < 0;
-                        float rw = config.IsVertical ? run.MaxOuterWidth : run.TotalWidth,
-                            rh = config.IsVertical ? run.TotalHeight : run.MaxOuterHeight;
+                        float rw = isVertical ? run.MaxOuterWidth : run.TotalWidth,
+                            rh = isVertical ? run.TotalHeight : run.MaxOuterHeight;
                         if (config.Clip) {
                             rw = Math.Min(rw, locals.contentSpace.X);
                             rh = Math.Min(rh, locals.contentSpace.Y);
                         }
-                        float space = Math.Max(config.IsVertical ? h - rh : w - rw, 0),
-                            baseline = config.IsVertical
+                        float space = Math.Max(isVertical ? h - rh : w - rw, 0),
+                            baseline = isVertical
                                 // HACK: The last run needs to have its baseline expanded to our outer edge
                                 //  so that anchor bottom/right will hit the edges of our content rect
                                 ? (isLastRun ? locals.contentSpace.X - x : run.MaxOuterWidth)
@@ -94,7 +95,7 @@ namespace Squared.PRGUI.NewEngine {
 
                         config.GetRunAlignmentF(out float xAlign, out float yAlign);
 
-                        if (config.IsVertical)
+                        if (isVertical)
                             y = space * yAlign;
                         else
                             x = space * xAlign;
@@ -113,7 +114,7 @@ namespace Squared.PRGUI.NewEngine {
                         // HACK: The floating run's contents should not change the position of other controls
                         if (runIndex == result.FloatingRunIndex)
                             ;
-                        else if (config.IsVertical) {
+                        else if (isVertical) {
                             x += run.MaxOuterWidth;
                             y = 0;
                         } else {
