@@ -67,14 +67,15 @@ namespace Squared.PRGUI.NewEngine {
 
             columnIndex = 0;
 
+            // FIXME: SkipInit
             ControlDimension scratch1 = default, scratch2 = default;
 
             foreach (var ckey in Children(ref control)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref Result(ckey);
 
-                ref readonly var childWidth = ref ControlDimension.ConvertPercentage(ref child.Width, cw, ref scratch1);
-                ref readonly var childHeight = ref ControlDimension.ConvertPercentage(ref child.Height, ch, ref scratch2);
+                ref var childWidth = ref ControlDimension.ConvertPercentage(ref child.Width, cw, ref scratch1);
+                ref var childHeight = ref ControlDimension.ConvertPercentage(ref child.Height, ch, ref scratch2);
 
                 var margins = child.Margins;
                 ref readonly var childConfig = ref child.Config;
@@ -229,6 +230,7 @@ namespace Squared.PRGUI.NewEngine {
                 }
             }
 
+            // FIXME: SkipInit
             ControlDimension scratch1 = default, scratch2 = default;
 
             foreach (var runIndex in Runs(ref result)) {
@@ -291,8 +293,8 @@ namespace Squared.PRGUI.NewEngine {
 
                         ref var childResult = ref Result(child.Key);
 
-                        ref readonly var childWidth = ref ControlDimension.ConvertPercentage(ref child.Width, cw, ref scratch1);
-                        ref readonly var childHeight = ref ControlDimension.ConvertPercentage(ref child.Height, ch, ref scratch2);
+                        ref var childWidth = ref ControlDimension.ConvertPercentage(ref child.Width, cw, ref scratch1);
+                        ref var childHeight = ref ControlDimension.ConvertPercentage(ref child.Height, ch, ref scratch2);
 #if DEBUG
                         if (childResult.ParentRunIndex != runIndex)
                             throw new Exception();

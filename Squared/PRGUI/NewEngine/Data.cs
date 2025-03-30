@@ -167,7 +167,7 @@ namespace Squared.PRGUI.NewEngine {
 
         public uint AllFlags {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => ((uint)_ContainerFlags << 0) | ((uint)_BoxFlags << 16);
+            readonly get => ((uint)_ContainerFlags << 0) | ((uint)_BoxFlags << 16);
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 _ContainerFlags = (ContainerFlag)(value & 0xFFFFu);
@@ -178,7 +178,7 @@ namespace Squared.PRGUI.NewEngine {
         [Unserialized]
         public ChildDirection ChildDirection {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (ChildDirection)_ContainerFlags & ChildDirection.MASK;
+            readonly get => (ChildDirection)_ContainerFlags & ChildDirection.MASK;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => _ContainerFlags = (ContainerFlag)
                 (((ChildDirection)_ContainerFlags & ~ChildDirection.MASK) | value);
@@ -187,7 +187,7 @@ namespace Squared.PRGUI.NewEngine {
         [Unserialized]
         public ChildAlignment ChildAlign {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (ChildAlignment)_ContainerFlags & ChildAlignment.MASK;
+            readonly get => (ChildAlignment)_ContainerFlags & ChildAlignment.MASK;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => _ContainerFlags = (ContainerFlag)
                 (((ChildAlignment)_ContainerFlags & ~ChildAlignment.MASK) | value);
@@ -196,7 +196,7 @@ namespace Squared.PRGUI.NewEngine {
         [Unserialized]
         public ContainerFlags ChildFlags {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (ContainerFlags)_ContainerFlags & ContainerFlags.MASK;
+            readonly get => (ContainerFlags)_ContainerFlags & ContainerFlags.MASK;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => _ContainerFlags = (ContainerFlag)
                 (((ContainerFlags)_ContainerFlags & ~ContainerFlags.MASK) | value);
@@ -205,7 +205,7 @@ namespace Squared.PRGUI.NewEngine {
         [Unserialized]
         public BoxAnchorMode Anchor {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (BoxAnchorMode)_BoxFlags & BoxAnchorMode.Fill;
+            readonly get => (BoxAnchorMode)_BoxFlags & BoxAnchorMode.Fill;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => _BoxFlags = (BoxFlag)
                 (((BoxAnchorMode)_BoxFlags & ~BoxAnchorMode.Fill) | value);
@@ -214,7 +214,7 @@ namespace Squared.PRGUI.NewEngine {
         [Unserialized]
         public BoxFlags Flags {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (BoxFlags)_BoxFlags & BoxFlags.MASK;
+            readonly get => (BoxFlags)_BoxFlags & BoxFlags.MASK;
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set => _BoxFlags = (BoxFlag)
                 (((BoxFlags)_BoxFlags & ~BoxFlags.MASK) | value);
@@ -223,70 +223,70 @@ namespace Squared.PRGUI.NewEngine {
         [Unserialized]
         public bool ForceBreak {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (_BoxFlags & BoxFlag.Break) != default;
+            readonly get => (_BoxFlags & BoxFlag.Break) != default;
             set => _BoxFlags = (_BoxFlags & ~BoxFlag.Break) | (value ? BoxFlag.Break : default);
         }
         [Unserialized]
         public bool NoMeasurement {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (_BoxFlags & BoxFlag.NoMeasurement) == BoxFlag.NoMeasurement;
+            readonly get => (_BoxFlags & BoxFlag.NoMeasurement) == BoxFlag.NoMeasurement;
             set => _BoxFlags = (_BoxFlags & ~BoxFlag.NoMeasurement) | (value ? BoxFlag.NoMeasurement : default);
         }
         [Unserialized]
         public bool AlignToParentBox {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (_BoxFlags & BoxFlag.AlignToParentBox) == BoxFlag.AlignToParentBox;
+            readonly get => (_BoxFlags & BoxFlag.AlignToParentBox) == BoxFlag.AlignToParentBox;
             set => _BoxFlags = (_BoxFlags & ~BoxFlag.AlignToParentBox) | (value ? BoxFlag.AlignToParentBox : default);
         }
 
         // TODO: Consider making these public and add setters
         [Unserialized]
-        public bool Clip {
+        public readonly bool Clip {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (_ContainerFlags & ContainerFlag.Boxes_Clip) == ContainerFlag.Boxes_Clip;
         }
         [Unserialized]
-        public bool ConstrainGrowth {
+        public readonly bool ConstrainGrowth {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (_ContainerFlags & ContainerFlag.Boxes_Constrain_Growth) == ContainerFlag.Boxes_Constrain_Growth;
         }
         [Unserialized]
-        public bool IsVertical {
+        public readonly bool IsVertical {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (_ContainerFlags & ContainerFlag.Layout_Column) != default;
         }
         [Unserialized]
-        public bool IsStacked {
+        public readonly bool IsStacked {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (_BoxFlags & BoxFlag.Stacked) == BoxFlag.Stacked;
         }
         [Unserialized]
-        public bool IsStackedOrFloating {
+        public readonly bool IsStackedOrFloating {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (_BoxFlags & BoxFlag.Stacked) != default;
         }
         [Unserialized]
-        public bool IsFloating {
+        public readonly bool IsFloating {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (_BoxFlags & BoxFlag.Floating) == BoxFlag.Floating;
         }
         [Unserialized]
-        public bool IsWrap {
+        public readonly bool IsWrap {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (_ContainerFlags & ContainerFlag.Arrange_Wrap) != default;
         }
         [Unserialized]
-        public bool FillRow {
+        public readonly bool FillRow {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (_BoxFlags & BoxFlag.Fill_Row) == BoxFlag.Fill_Row;
         }
         [Unserialized]
-        public bool FillColumn {
+        public readonly bool FillColumn {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (_BoxFlags & BoxFlag.Fill_Column) == BoxFlag.Fill_Column;
         }
 
-        public bool Equals (ControlConfiguration rhs) =>
+        public readonly bool Equals (ControlConfiguration rhs) =>
             (_BoxFlags == rhs._BoxFlags) &&
             (_ContainerFlags == rhs._ContainerFlags);
 
@@ -308,7 +308,7 @@ namespace Squared.PRGUI.NewEngine {
             return $"{_BoxFlags} {_ContainerFlags}";
         }
         
-        internal void GetAlignmentF (
+        internal readonly void GetAlignmentF (
             float runXAlign, float runYAlign, 
             out float xAlign, out float yAlign,
             bool stacked
@@ -345,7 +345,7 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
-        internal void GetRunAlignmentF (out float xAlign, out float yAlign) {
+        internal readonly void GetRunAlignmentF (out float xAlign, out float yAlign) {
             // FIXME: Default for secondary axis should be null instead of 0 i think? Or 0.5?
             switch (ChildAlign) {
                 default:

@@ -655,14 +655,14 @@ namespace Squared.PRGUI {
             return lhs;
         }
 
-        public bool HasMinimum {
+        public readonly bool HasMinimum {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (Flags & Flag.Minimum) == Flag.Minimum;
         }
 
         public float? Minimum {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => HasMinimum ? _Minimum : (float?)null;
+            readonly get => HasMinimum ? _Minimum : (float?)null;
             set {
                 if (value == null) {
                     Flags &= ~Flag.Minimum;
@@ -674,14 +674,14 @@ namespace Squared.PRGUI {
             }
         }
 
-        public bool HasMaximum {
+        public readonly bool HasMaximum {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (Flags & Flag.Maximum) == Flag.Maximum;
         }
 
         public float? Maximum {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => HasMaximum ? _Maximum : (float?)null;
+            readonly get => HasMaximum ? _Maximum : (float?)null;
             set {
                 if (value == null) {
                     Flags &= ~Flag.Maximum;
@@ -693,14 +693,14 @@ namespace Squared.PRGUI {
             }
         }
 
-        public bool HasFixed {
+        public readonly bool HasFixed {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (Flags & Flag.Fixed) == Flag.Fixed;
         }
 
         public float? Fixed {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => HasFixed ? _Fixed : (float?)null;
+            readonly get => HasFixed ? _Fixed : (float?)null;
             set {
                 if (value == null) {
                     Flags &= ~Flag.Fixed;
@@ -712,14 +712,14 @@ namespace Squared.PRGUI {
             }
         }
 
-        public bool HasPercentage {
+        public readonly bool HasPercentage {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (Flags & Flag.FPercentage) == Flag.FPercentage;
         }
 
         public float? Percentage {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => HasPercentage ? _Fixed : (float?)null;
+            readonly get => HasPercentage ? _Fixed : (float?)null;
             set {
                 if (value == null) {
                     Flags &= ~Flag.FPercentage;
@@ -733,7 +733,7 @@ namespace Squared.PRGUI {
 
         public bool PercentageIsMaximum {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (Flags & Flag.PercentageIsFixed) != Flag.PercentageIsFixed;
+            readonly get => (Flags & Flag.PercentageIsFixed) != Flag.PercentageIsFixed;
             set {
                 if (!value)
                     Flags |= Flag.PercentageIsFixed;
@@ -919,7 +919,8 @@ namespace Squared.PRGUI {
             return $"Clamp({fop}, {Minimum?.ToString() ?? "<null>"}, {Maximum?.ToString() ?? "<null>"})";
         }
 
-        public static ref readonly ControlDimension ConvertPercentage (ref ControlDimension self, float total, ref ControlDimension scratchStorage) {
+        // It would be ideal to return 'ref readonly' but then accessing properties of ControlDimension generates defensive copies.
+        public static ref ControlDimension ConvertPercentage (ref ControlDimension self, float total, ref ControlDimension scratchStorage) {
             if (!self.HasPercentage)
                 return ref self;
 
