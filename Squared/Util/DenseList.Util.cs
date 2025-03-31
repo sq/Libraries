@@ -657,6 +657,15 @@ namespace Squared.Util {
             return result;
         }
 
+        public U Reduce<U, V> (U initialValue, Func<U, T, V, U> reducer, V userData) {
+            var result = initialValue;
+            for (int i = 0, c = Count; i < c; i++) {
+                ref var item = ref Ext.Item(ref this, i);
+                result = reducer(result, item, userData);
+            }
+            return result;
+        }
+
         // It's unfortunate that this returns an interface, which means calls to it will box the result.
         // Not much we can do about it though.
         IOrderedEnumerable<T> IOrderedEnumerable<T>.CreateOrderedEnumerable<TKey> (Func<T, TKey> keySelector, IComparer<TKey> comparer, bool descending) {

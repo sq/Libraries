@@ -242,18 +242,13 @@ namespace Squared.Render {
 
     public static class UniformBinding {
         // Making a dictionary larger increases performance
-        private const int BindingDictionaryCapacity = 4096;
+        private const int BindingDictionaryCapacity = 1024;
 
-#if FNA
         public static bool ForceCompatibilityMode = false;
         public static bool IgnoreMissingUniforms = true;
-#else
-        public static bool ForceCompatibilityMode = true;
-        public static bool IgnoreMissingUniforms = false;
-#endif
 
         private static readonly Dictionary<Effect, List<IUniformBinding>> BindingsByEffect =
-            new Dictionary<Effect, List<IUniformBinding>>(new ReferenceComparer<Effect>());
+            new Dictionary<Effect, List<IUniformBinding>>(BindingDictionaryCapacity, new ReferenceComparer<Effect>());
 
         public static void CollectGarbage () {
             var deadEffects = new List<Effect>();

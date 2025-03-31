@@ -5,12 +5,15 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Squared.Util;
 
 namespace Squared.Threading {
     public class MethodPrecompiler {
         public Action<string> LogPrint;
+
+        public int MethodsQueued, MethodsCompiled;
 
         internal HashSet<Type> PrecompiledTypes = new HashSet<Type>(ReferenceComparer<Type>.Instance);
         internal HashSet<(Type, Type)> PrecompiledMethodBuilders = new HashSet<(Type, Type)>();
@@ -45,6 +48,8 @@ namespace Squared.Threading {
                         lp(msg);
                     else
                         System.Diagnostics.Debug.WriteLine(msg);
+                } finally {
+                    Interlocked.Increment(ref Precompiler.MethodsCompiled);
                 }
             }
         }
@@ -76,6 +81,11 @@ namespace Squared.Threading {
         }
 
         public int PrecompileMethods (ThreadGroup threadGroup, Type type, List<Type> queue) {
+            if (type.IsInterface)
+                return 0;
+            if (type.IsPrimitive)
+                return 0;
+
             lock (PrecompiledTypes) {
                 if (PrecompiledTypes.Contains(type))
                     return 0;
@@ -89,9 +99,11 @@ namespace Squared.Threading {
             int result = 0;
 
             var baseType = type.BaseType;
-            // Make sure we catch state machines defined in base types (i.e. CombatScriptContext<> via ActionScriptContext)
-            if (baseType.Assembly != typeof(object).Assembly)
-                PrecompileMethods(threadGroup, baseType, queue);
+            if (baseType != null) {
+                // Make sure we catch state machines defined in base types (i.e. CombatScriptContext<> via ActionScriptContext)
+                if (baseType?.Assembly != typeof(object).Assembly)
+                    PrecompileMethods(threadGroup, baseType, queue);
+            }
 
             foreach (var nestedType in type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic)) {
                 // Precompile any nested types that are async state machines or generators
@@ -183,6 +195,7 @@ namespace Squared.Threading {
             if (result > 0)
                 threadGroup.NotifyQueuesChanged(result > 4);
 
+            Interlocked.Add(ref MethodsQueued, result);
             return result;
         }
 
@@ -207,6 +220,8 @@ namespace Squared.Threading {
             var returnType = fieldType.IsGenericType
                 ? fieldType.GetGenericArguments()[0]
                 : null;
+
+            Interlocked.Increment(ref MethodsQueued);
             workQueue.Enqueue(new PrecompileMethodWorkItem {
                 Precompiler = this,
                 TypeName = (LogPrint != null) ? fieldType.FullName : null,

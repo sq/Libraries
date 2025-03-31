@@ -362,12 +362,7 @@ namespace Squared.Render.Tracing {
                 return;
 
             try {
-#if FNA
                 device.SetStringMarkerEXT(name);
-#else
-                // FIXME
-                D3D9.SetMarker(0, name);
-#endif
             } catch (Exception exc) {
                 Console.WriteLine("Render tracing disabled: {0}", exc);
                 TracingBroken = 1;

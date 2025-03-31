@@ -264,16 +264,6 @@ namespace Squared.Render {
                 if (UniformBindings.TryGetValue(key, out existing))
                     return existing.Cast<T>();
 
-#if FNA
-                // This is fine :-)
-#else
-                if (material.OwningThread != Thread.CurrentThread)
-                    throw new UniformBindingException(
-                        "Uniform bindings must be allocated on the thread that owns the material. An attempt was made to allocate a binding for '" + 
-                        uniform.Name + "' on '" + material.Effect.CurrentTechnique.Name + "'"
-                    );
-#endif
-
                 var result = UniformBinding<T>.TryCreate(effect, uniform.Name);
 
                 UniformBindings.Add(key, result);
@@ -440,7 +430,7 @@ namespace Squared.Render {
                     yield return wfns;
             }
 
-            while (remaining > 0)
+            while (Volatile.Read(ref remaining) > 0)
                 yield return wfns;
 
             onProgress(1f);
