@@ -35,6 +35,8 @@ namespace Squared.PRGUI.Controls {
         public float? MostRecentTitleHeight { get; protected set; }
         private Tween<float> DisclosureLevel = 1f;
 
+        public virtual float TitleHorizontalAlignment => 0.5f;
+
         public float? MostRecentTitleOuterHeight => MostRecentTitleHeight + GetTitleDecorator(Context?.Decorations)?.Padding.Y;
 
         protected DynamicStringLayout TitleLayout = new DynamicStringLayout {
@@ -382,7 +384,7 @@ namespace Squared.PRGUI.Controls {
 
                 // HACK: We want to center the title normally (it feels weird if we don't), but we
                 //  also want to prevent it from overlapping the arrow
-                var offsetX = (titleContentBox.Width - layout.Size.X) / 2f;
+                var offsetX = (titleContentBox.Width - layout.Size.X) * TitleHorizontalAlignment;
                 if (Collapsible)
                     offsetX = Math.Max(offsetX, DisclosureArrowPadding);
 

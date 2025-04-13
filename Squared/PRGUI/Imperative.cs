@@ -656,6 +656,15 @@ namespace Squared.PRGUI.Imperative {
             Control.Height.Maximum = height;
             return this;
         }
+        public ControlBuilder<TControl> SetPercentageSize (float? width = null, float? height = null, bool? isMaximum = null) {
+            Control.Width.Percentage = width;
+            Control.Height.Percentage = height;
+            if (isMaximum.HasValue && width.HasValue)
+                Control.Width.PercentageIsMaximum = isMaximum.Value;
+            if (isMaximum.HasValue && height.HasValue)
+                Control.Height.PercentageIsMaximum = isMaximum.Value;
+            return this;
+        }
 
         public ControlBuilder<TControl> SetTooltip (AbstractTooltipContent value, string format = null) {
             if (Control is Slider cast)
