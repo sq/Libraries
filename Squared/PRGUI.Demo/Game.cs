@@ -1548,7 +1548,7 @@ namespace PRGUI.Demo {
             RenderCoordinator.WaitForActiveDraws();
             Materials.SetViewTransform(ViewTransform.CreateOrthographic(pp.BackBufferWidth, pp.BackBufferHeight));
             Context.CanvasSize = new Vector2(pp.BackBufferWidth, pp.BackBufferHeight);
-            if (!UseSavedTree || UIContext.UseNewEngine)
+            if (!UseSavedTree)
                 Context.Update();
             UIRenderTarget.Resize(pp.BackBufferWidth, pp.BackBufferHeight);
         }
