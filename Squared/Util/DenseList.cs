@@ -461,7 +461,12 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Contains (in T value) {
+        public bool Contains (T value) {
+            return IndexOf(in value) >= 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool Contains (ref T value) {
             return IndexOf(in value) >= 0;
         }
 
