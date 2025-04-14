@@ -36,12 +36,12 @@ namespace Squared.PRGUI.Imperative {
         internal ContainerBuilder (UIContext context, Control control, bool isNewInstance) {
             if (control == null)
                 throw new ArgumentNullException("control");
-            if (!(control is IControlContainer))
+            if (control is not IControlContainer icc)
                 throw new InvalidCastException("control must implement IControlContainer");
 
             Context = context;
             Control = control;
-            Container = (IControlContainer)control;
+            Container = icc;
             NextIndex = Container?.ChildrenToSkipWhenBuilding ?? 0;
             Children = Container.Children;
             PreviousRemovedControls = new DenseList<Control>();
@@ -512,7 +512,7 @@ namespace Squared.PRGUI.Imperative {
             bool? preventCrush = null, bool? wrap = null,
             bool? autoBreak = null
         ) {
-            if (!(Control is ContainerBase cast))
+            if (Control is not ContainerBase cast)
                 return this;
 
             cast.Container.Alignment = alignment ?? cast.Container.Alignment;

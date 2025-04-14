@@ -126,7 +126,7 @@ namespace Squared.PRGUI {
                 !Control.IsRecursivelyTransparent(control, includeSelf: false) && 
                 // We shouldn't auto-shift focus for modals since it's somewhat expensive and we don't
                 //  want to focus a random top level control after they close
-                !(control is IModal)
+                (control is not IModal)
             )
                 idealNewTarget = idealNewTarget ?? PickFocusableSiblingForRotation(control, 1, false, out bool temp);
 
@@ -190,7 +190,7 @@ namespace Squared.PRGUI {
                     .ToDenseList(where: c => 
                         (((c as IControlContainer)?.ChildrenAcceptFocus ?? false) || c.AcceptsFocus) &&
                         (c.Enabled || c.AcceptsFocusWhenDisabled) && c.Visible &&
-                        !(c is FocusProxy)
+                        (c is not FocusProxy)
                     );
                 var currentIndex = inTabOrder.IndexOf(currentTopLevel);
                 var newIndex = Arithmetic.Wrap(currentIndex + delta, 0, inTabOrder.Count - 1);
@@ -449,7 +449,7 @@ namespace Squared.PRGUI {
         }
 
         private static bool IsValidContainerToSearchForFocusableControls (Control control) {
-            if (!(control is IControlContainer ic))
+            if (control is not IControlContainer ic)
                 return false;
             else if (!ic.ChildrenAcceptFocus)
                 return false;
