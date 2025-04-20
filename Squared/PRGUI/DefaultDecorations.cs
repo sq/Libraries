@@ -1640,18 +1640,23 @@ namespace Squared.PRGUI {
 
         // HACK: Even if a control is undecorated, explicit background colors should work
         protected virtual void None_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            if (!settings.BackgroundColor.HasValue)
-                return;
-            var color = settings.BackgroundColor.Value;
-            if (color == default)
+            if (!settings.BackgroundColor.HasValue && (settings.BackgroundImage?.Texture.IsDisposedOrNull != false))
                 return;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+
+            var color = settings.BackgroundColor.Value;
+            if ((color == default) && (settings.BackgroundImage?.Texture.IsDisposedOrNull != false))
+                return;
+
             renderer.RasterizeRectangle(
                 a, b,
                 radius: 0,
                 outlineRadius: 0, outlineColor: Color.Transparent,
-                innerColor: color, outerColor: color
+                innerColor: color, outerColor: color,
+                texture: settings.BackgroundImage?.Texture.Instance,
+                textureRegion: settings.BackgroundImage?.TextureBounds ?? default,
+                textureSettings: settings.BackgroundImage?.Settings ?? default
             );
         }
 

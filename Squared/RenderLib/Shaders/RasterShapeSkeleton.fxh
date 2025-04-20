@@ -326,6 +326,11 @@ void RasterShapeVertexShader_Core (
     bool isSimpleRectangle = all(centerColor == edgeColor) && 
         (type == TYPE_Rectangle) && 
         (params.y <= 0); /* FIXME: Annular radius */
+    
+#if VARIANT_TEXTURED
+    // HACK: Ensure that you can have a transparent backdrop beneath a texture in Over mode
+    bool isHollow = false;
+#else
     bool isHollow = isSimpleRectangle && 
         (centerColor.a <= 0) &&
         // HACK: If a rectangle's outline is big enough, it can cause the hollow optimization
@@ -333,6 +338,7 @@ void RasterShapeVertexShader_Core (
         // FIXME: Is this a problem for shadows too?
         (abs(ab_in.z - ab_in.x) > (outlineSize * 2)) &&
         (abs(ab_in.w - ab_in.y) > (outlineSize * 2));
+#endif
 
     bool dead;
     if (isHollow) {
