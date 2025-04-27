@@ -21,6 +21,7 @@ namespace Squared.PRGUI {
             Active = new Color(245, 245, 245),
             Inactive = new Color(170, 170, 170),
             ContainerOutline = new Color(32, 32, 32) * 0.5f,
+            FocusedContainerOutline = Color.White * 0.9f,
             InertOutline = new Color(255, 255, 255) * 0.33f,
             TooltipOutline = new Color(16, 16, 16) * 0.5f,
             ScrollbarThumb = new Color(200, 200, 200),
@@ -366,7 +367,7 @@ namespace Squared.PRGUI {
                 Padding = new Margins(2),
                 GetTextSettings = GetTextSettings,
                 GetFont = () => DefaultFont,
-                Below = Container_Below,
+                Below = FocusableContainer_Below,
                 ContentClip = Container_ContentClip,
             };
 
@@ -1313,7 +1314,7 @@ namespace Squared.PRGUI {
 
         private RasterPolygonVertex[] CheckboxTemp = new RasterPolygonVertex[3];
 
-        protected virtual void Checkbox_Above (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings _settings) {
+        protected void Checkbox_Check (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings _settings) {
             var settings = _settings;
             AdjustRectForCheckbox(ref settings);
 
@@ -1337,7 +1338,11 @@ namespace Squared.PRGUI {
                 );
                 renderer.RasterSoftOutlines = so;
             }
-            Button_Above(ref context, ref renderer, ref settings);
+        }
+
+        protected virtual void Checkbox_Above (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings _settings) {
+            Checkbox_Check(ref context, ref renderer, ref _settings);
+            Button_Above(ref context, ref renderer, ref _settings);
         }
 
         protected virtual void RadioButton_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings _settings) {
@@ -1420,6 +1425,31 @@ namespace Squared.PRGUI {
                 },
                 annularRadius: Button_GetOutlineSize(EdgeGleamThickness),
                 blendState: BlendState.Additive
+            );
+        }
+
+        protected virtual void FocusableContainer_Below (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
+            ConfigureFill(
+                "Container", ref settings, out var texture, out var textureRegion, out var textureSettings, 
+                out var color1, out var color2, out var fillSettings
+            );
+
+            var fa = GetFocusedAlpha(ref context, settings.State, out _);
+
+            settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
+            // FIXME: Should we draw the outline in Above?
+            renderer.RasterizeRectangle(
+                a, b,
+                radius: ContainerCornerRadius,
+                outlineRadius: Button_GetOutlineSize(InertOutlineThickness), 
+                outlineColor: pSRGBColor.Lerp(ColorScheme.ContainerOutline, ColorScheme.FocusedContainerOutline, fa),
+                innerColor: color1 ?? ColorScheme.ContainerFill, 
+                outerColor: color2 ?? ColorScheme.ContainerFill,
+                shadow: ContainerShadow,
+                fill: fillSettings,
+                texture: texture,
+                textureRegion: textureRegion,
+                textureSettings: textureSettings
             );
         }
 

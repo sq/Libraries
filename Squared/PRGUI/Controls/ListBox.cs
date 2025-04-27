@@ -433,8 +433,15 @@ namespace Squared.PRGUI.Controls {
             if (children.Count > 0) {
                 float h = 0;
                 // HACK: Measure a few items to produce a better height estimate
-                for (int i = 0, c = Math.Min(children.Count, 4); i < c; i++)
-                    h = Math.Max(h, children[i].GetRect(applyOffset: false).Height);
+                int c = 5;
+                foreach (var item in children) {
+                    if (!item.Visible)
+                        continue;
+                    h = Math.Max(h, item.GetRect(applyOffset: false).Height);
+                    c--;
+                    if (c == 0)
+                        break;
+                }
                 VirtualItemHeight = h;
                 // HACK: Traditional listboxes on windows scroll multiple item(s) at a time on mousewheel
                 //  instead of scrolling on a per-pixel basis
