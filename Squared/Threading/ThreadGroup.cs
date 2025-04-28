@@ -217,27 +217,33 @@ namespace Squared.Threading {
         public bool StepMainThread (float? currentElapsedMs = null) {
             bool allExhausted = true;
             int totalSteps = 0;
+            bool hasLimit = MainThreadStepLengthLimitMs.HasValue;
             float stepLengthLimitMs = (MainThreadStepLengthLimitMs ?? 999999) - (currentElapsedMs ?? 0);
             long stepLengthLimitTicks = (long)(stepLengthLimitMs * Time.MillisecondInTicks);
 
             var sc = SynchronizationContext.Current;
             var msc = SynchronizationContext;
-            var started = GetTime();
+            var started = hasLimit ? GetTime() : 0;
+            var mtql = MainThreadQueueList;
             try {
                 if (msc != null)
                     SynchronizationContext.SetSynchronizationContext(msc);
                 // FIXME: This will deadlock if you create a new queue while it's stepping the main thread
-                lock (MainThreadQueueList)
-                foreach (var q in MainThreadQueueList) {
-                    bool exhausted;
-                    // We want to run one queue item at a time to try and drain all the main thread queues evenly
-                    totalSteps += q.Step(out exhausted, 1);
-                    if (!exhausted)
-                        allExhausted = false;
+                lock (mtql) {
+                    for (int i = 0; i < mtql.Count; i++) {
+                        var q = mtql.DangerousGetItem(i);
+                        bool exhausted;
+                        // We want to run one queue item at a time to try and drain all the main thread queues evenly
+                        totalSteps += q.Step(out exhausted, 1);
+                        if (!exhausted)
+                            allExhausted = false;
 
-                    var elapsedTicks = (GetTime() - started);
-                    if (elapsedTicks > stepLengthLimitTicks)
-                        return false;
+                        if (hasLimit) {
+                            var elapsedTicks = (GetTime() - started);
+                            if (elapsedTicks > stepLengthLimitTicks)
+                                return false;
+                        }
+                    }
                 }
             } finally {
                 if (msc != null)
