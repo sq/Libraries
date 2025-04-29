@@ -235,8 +235,10 @@ namespace Squared.PRGUI {
                 for (int i = 0; i < ModalStack.Count; i++) {
                     var modal = ModalStack[i];
                     if (modal.BackgroundFadeLevel > 0f) {
-                        maxFadeLevel = Math.Max(maxFadeLevel, modal.BackgroundFadeLevel);
-                        fadeBackgroundAtIndex = seq.IndexOf((Control)modal);
+                        var cm = (Control)modal;
+                        var newMaxFadeLevel = Math.Max(maxFadeLevel, modal.BackgroundFadeLevel);
+                        maxFadeLevel = Arithmetic.Lerp(maxFadeLevel, newMaxFadeLevel, cm.Appearance.Opacity.Get(NowL));
+                        fadeBackgroundAtIndex = seq.IndexOf(cm);
                         fadeCutout = modal.BackgroundFadeCutout;
                     }
                 }

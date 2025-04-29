@@ -263,9 +263,10 @@ namespace Squared.PRGUI.Controls {
 
         protected virtual void PlayShowAnimation () {
             var fadeIn = ShowAnimation;
-            if (fadeIn != null)
+            if (fadeIn != null) {
+                Appearance.Opacity = 0f;
                 StartAnimation(fadeIn);
-            else
+            } else
                 Appearance.Opacity = 1f;
         }
 
