@@ -189,7 +189,7 @@ namespace Squared.PRGUI {
                 var inTabOrder = Controls.InTabOrder(FrameIndex, false)
                     .ToDenseList(where: c => 
                         (((c as IControlContainer)?.ChildrenAcceptFocus ?? false) || c.AcceptsFocus) &&
-                        (c.Enabled || c.AcceptsFocusWhenDisabled) && c.Visible &&
+                        (c.Enabled || c.AcceptsFocusWhenDisabled) && !Control.IsRecursivelyTransparent(c, true, NowL) &&
                         (c is not FocusProxy)
                     );
                 var currentIndex = inTabOrder.IndexOf(currentTopLevel);
@@ -319,7 +319,7 @@ namespace Squared.PRGUI {
                 ) {
                     var container = value as IControlContainer;
                     if (IsValidContainerToSearchForFocusableControls(container))
-                        childTarget = container.DefaultFocusTarget ?? container.Children.InTabOrder(FrameIndex, true).FirstOrDefault();
+                        childTarget = container.DefaultFocusTarget ?? PickFocusableChild((Control)container);
                 }
 
                 // HACK: If the focus is shifted to an invalid focus target but it's a container,
