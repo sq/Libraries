@@ -58,6 +58,11 @@ namespace Squared.Render {
         /// </summary>
         public bool DisableIssue = false;
 
+        /// <summary>
+        /// If set, DeviceManager.PushStates and PopStates will automatically be called around this batch.
+        /// </summary>
+        public bool SaveAndRestoreStates = false;
+
         Action<DeviceManager, object> _Before, _After;
         private object _UserData;
 
@@ -80,6 +85,9 @@ namespace Squared.Render {
 
         public override void Issue (DeviceManager manager) {
             manager.BatchGroupStack.Push(this);
+            if (SaveAndRestoreStates)
+                manager.PushStates();
+
             base.Issue(manager);
 
             // HACK: If the user set a material on us explicitly, apply our parameters to it
@@ -130,6 +138,8 @@ namespace Squared.Render {
                     */
                 }
 
+                if (SaveAndRestoreStates)
+                    manager.PopStates();
                 manager.BatchGroupStack.Pop();
             }
         }
@@ -279,6 +289,7 @@ namespace Squared.Render {
             ViewTransformModifier = null;
             IsReleased = false;
             DisableIssue = false;
+            SaveAndRestoreStates = false;
         }
 
         public void SetViewTransform (

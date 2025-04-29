@@ -244,11 +244,7 @@ namespace Squared.PRGUI.Controls {
             if (IsActive)
                 return NextResultFuture;
             var f = NextResultFuture = new Future<TResult>();
-            var fadeIn = ShowAnimation;
-            if (fadeIn != null)
-                StartAnimation(fadeIn);
-            else
-                Appearance.Opacity = 1f;
+            PlayShowAnimation();
             GenerateDynamicContent(true);
             _FocusDonor = focusDonor ?? context.Focused;
             IsActive = true;
@@ -263,6 +259,14 @@ namespace Squared.PRGUI.Controls {
                 Shown(this);
             ShowNextUpdate = context.IsUpdating;
             return f;
+        }
+
+        protected virtual void PlayShowAnimation () {
+            var fadeIn = ShowAnimation;
+            if (fadeIn != null)
+                StartAnimation(fadeIn);
+            else
+                Appearance.Opacity = 1f;
         }
 
         protected override void OnLayoutComplete (ref UIOperationContext context, ref bool relayoutRequested) {
