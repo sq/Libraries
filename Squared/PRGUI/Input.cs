@@ -209,6 +209,9 @@ namespace Squared.PRGUI.Input {
                     }
                 }
 
+                // FIXME: This was probably important, but I'm not sure why exactly
+                shouldFilterKeyPress = false;
+
                 if (isPressed != wasPressed) {
                     Context.HandleKeyEvent(isPressed ? UIEvents.KeyDown : UIEvents.KeyUp, key, null);
 

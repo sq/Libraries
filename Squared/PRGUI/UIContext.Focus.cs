@@ -133,6 +133,10 @@ namespace Squared.PRGUI {
             // Auto-shifting failed, so try to return to the most recently focused control
             idealNewTarget = idealNewTarget ?? PreviousFocused ?? PreviousTopLevelFocused;
 
+            // HACK: If focus is stuck on a modal that's no longer a valid target, pick the topmost modal (if any) and focus that
+            if ((idealNewTarget == null) && (control is IModal))
+                idealNewTarget = ModalStack.LastOrDefault() as Control;
+
             return idealNewTarget;
         }
 
@@ -148,10 +152,18 @@ namespace Squared.PRGUI {
 
             if (PreviousFocused == control)
                 PreviousFocused = null;
-            if (PreviousTopLevelFocused == control)
+
+            if (PreviousTopLevelFocused == control) {
                 PreviousTopLevelFocused = null;
+                PreviousFocused = null;
+            }
+
             if (Control.IsEqualOrAncestor(_MouseCaptured, control))
                 MouseCaptured = null;
+
+            if ((_Focused != control) && Control.IsEqualOrAncestor(_Focused, control))
+                InvalidFocusTargets[_Focused] =
+                    PickIdealNewFocusTargetForInvalidFocusTarget(control);
 
             InvalidFocusTargets[control] = 
                 PickIdealNewFocusTargetForInvalidFocusTarget(control);
@@ -161,8 +173,11 @@ namespace Squared.PRGUI {
 
             if (PreviousFocused == control)
                 PreviousFocused = null;
-            if (PreviousTopLevelFocused == control)
+
+            if (PreviousTopLevelFocused == control) {
                 PreviousTopLevelFocused = null;
+                PreviousFocused = null;
+            }
 
             if (removed)
                 NotifyModalClosed(control as IModal);
@@ -319,7 +334,7 @@ namespace Squared.PRGUI {
                 ) {
                     var container = value as IControlContainer;
                     if (IsValidContainerToSearchForFocusableControls(container))
-                        childTarget = container.DefaultFocusTarget ?? PickFocusableChild((Control)container);
+                         childTarget = container.DefaultFocusTarget ?? PickFocusableChild((Control)container);
                 }
 
                 // HACK: If the focus is shifted to an invalid focus target but it's a container,

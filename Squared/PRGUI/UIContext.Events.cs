@@ -422,6 +422,10 @@ namespace Squared.PRGUI {
                 Log($"Dispatching {name} {evt.Key} {evt.Modifiers} to {a.Target} for accelerator");
                 if (FireEvent(name, a.Target, evt))
                     return true;
+
+                if (a.Target.IsValidMouseInputTarget && (name == UIEvents.KeyPress))
+                    if (FireSyntheticClick(a.Target))
+                        return true;
             }
 
             return false;

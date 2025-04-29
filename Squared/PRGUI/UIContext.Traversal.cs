@@ -29,8 +29,9 @@ namespace Squared.PRGUI {
                     obj.GetHashCode();
             }
 
-            public (int tabIndex, int globalIndex) GetSortingTuple () =>
-                (control.TabOrder, globalIndex);
+            // FIXME: Generate a full chain of tab order values
+            public (int parentTabIndex, int tabIndex, int globalIndex) GetSortingTuple () =>
+                ((parent as Control)?.TabOrder ?? 0, control.TabOrder, globalIndex);
         }
 
         public sealed class FocusMap : List<FocusMapEntry> {
