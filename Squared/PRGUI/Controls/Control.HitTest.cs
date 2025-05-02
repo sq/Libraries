@@ -171,6 +171,9 @@ namespace Squared.PRGUI {
                 if (!control.Visible || control.Intangible)
                     continue;
 
+                if ((control is IModal im) && im.BlockHitTests)
+                    stop = true;
+
                 var result = new Result {
                     Depth = depth,
                     Control = control,

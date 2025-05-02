@@ -372,6 +372,8 @@ namespace Squared.PRGUI {
                 throw new InvalidOperationException("Modal already visible");
             else
                 ModalStack.Add(modal);
+            // HACK: Record which modal we've pushed so that a modal can retain focus even while it's fading in
+            MostRecentlyPushedModal = modal;
             modal.OnShown();
             SetOrQueueFocus(ctl, false, false);
             FireEvent(UIEvents.Shown, ctl);

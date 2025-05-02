@@ -377,11 +377,11 @@ namespace Squared.PRGUI.Input {
 
         public bool ShowFuzzyRects = false, EnableFading = false;
 
-        public float FuzzyHitTestDistance = 24f;
-        public float SlowPxPerSecond = 64f,
-            FastPxPerSecond = 960f;
-        public float AccelerationExponent = 2.333f,
-            Deadzone = 0.11f;
+        public float FuzzyHitTestDistance = 16f;
+        public float SlowPxPerSecond = 48f,
+            FastPxPerSecond = 860f;
+        public float AccelerationExponent = 2f,
+            Deadzone = 0.12f;
         public float? FixedTimeStep = null;
 
         // Force feedback

@@ -473,6 +473,8 @@ namespace Squared.PRGUI {
         }
 
         public bool TryMoveFocusDirectionally (int x, int y, bool isUserInitiated = true, Control relativeTo = null) {
+            // FIXME: It seems like when the gamepad controller invokes this it can ignore modals' focus retention
+            // Modals' block hit test should probably apply to this too.
             relativeTo = relativeTo ?? Focused;
 
             var focusRect = relativeTo.GetRect(displayRect: true, context: this);
