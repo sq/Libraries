@@ -727,7 +727,10 @@ namespace Squared.PRGUI.Controls {
                     break;
                 case Keys.Left:
                 case Keys.Right:
-                    delta = indexDirection;
+                    if (ColumnCount > 1)
+                        delta = indexDirection;
+                    else
+                        return false;
                     break;
                 case Keys.Up:
                 case Keys.Down:
