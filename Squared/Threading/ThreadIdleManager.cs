@@ -19,7 +19,8 @@ namespace Squared.Threading {
 
         private volatile int RequestState = 0;
         private volatile int RunState = RunState_Sleeping;
-        private ManualResetEvent Event, WakeAll;
+        private AutoResetEvent Event;
+        private ManualResetEvent WakeAll;
         private WaitHandle[] WaitHandles;
 
         private delegate int WaitMultipleDelegate (WaitHandle[] waitHandles, int millisecondsTimeout, bool exitContext, bool WaitAll);
@@ -39,8 +40,8 @@ namespace Squared.Threading {
 
         public ThreadIdleManager (ManualResetEvent wakeAll) {
             WakeAll = wakeAll;
-            Event = new ManualResetEvent(true);
-            WaitHandles = new[] { Event, wakeAll };
+            Event = new AutoResetEvent(true);
+            WaitHandles = new WaitHandle[] { Event, wakeAll };
         }
 
         /// <returns>true if the thread is allowed to begin running, false if it has been disposed</returns>
@@ -49,8 +50,6 @@ namespace Squared.Threading {
             var previousState = Interlocked.Exchange(ref RunState, RunState_Running);
             if (previousState == RunState_Disposed)
                 Volatile.Write(ref RunState, RunState_Disposed);
-            if (previousState != RunState_Running)
-                Event.Reset();
             return (previousState != RunState_Disposed);
         }
 
@@ -85,7 +84,19 @@ namespace Squared.Threading {
             if (Interlocked.Exchange(ref RequestState, 0) != 0)
                 return true;
 
-            var result = WaitAny(WaitHandles, timeoutMs);
+            int result;
+            if ((WaitHandles[0] != null) && (WaitHandles[1] != null)) {
+                result = WaitAny(WaitHandles, timeoutMs);
+                // HACK: Eagerly de-signal the 'wake all threads' signal if it woke us up
+                // Somehow this fixes the issue where a game will peg lots of CPU cores when its main window is inactive
+                if (result == 1)
+                    WakeAll?.Reset();
+            } else {
+                result = WaitHandles[0].WaitOne(timeoutMs)
+                    ? 0
+                    : WaitHandle.WaitTimeout;
+            }
+
             Interlocked.CompareExchange(ref RunState, RunState_Running, RunState_Sleeping);
             return result != WaitHandle.WaitTimeout;
         }

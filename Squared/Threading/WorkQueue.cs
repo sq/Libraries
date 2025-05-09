@@ -430,8 +430,14 @@ namespace Squared.Threading {
             do {
                 try {
                     running = (actualMaximumCount > 0) &&
-                        (numProcessed < actualMaximumCount) &&
-                        TryDequeue(ref item);
+                        (numProcessed < actualMaximumCount);
+
+                    if (running) {
+                        var dequeued = TryDequeue(ref item);
+                        if (!dequeued)
+                            exhausted = true;
+                        running = running && dequeued;
+                    }
 
                     if (running) {
                         try {
@@ -447,10 +453,6 @@ namespace Squared.Threading {
                     break;
                 }
             } while (running);
-
-            // HACK
-            if (numProcessed > 0)
-                exhausted = _Items.IsEmpty;
 
             actualMaximumCount -= numProcessed;
             Interlocked.Decrement(ref _NumProcessing);
@@ -469,9 +471,10 @@ namespace Squared.Threading {
         }
 
         public int Step (out bool exhausted, int? maximumCount = null) {
+            var config = Configuration;
             int actualMaximumCount = Math.Min(
-                maximumCount ?? Configuration.DefaultStepCount, 
-                Configuration.MaxStepCount ?? Configuration.DefaultStepCount
+                maximumCount ?? config.DefaultStepCount, 
+                config.MaxStepCount ?? config.DefaultStepCount
             );
 
             StepInternal(out int result, out exhausted, actualMaximumCount);
@@ -496,7 +499,7 @@ namespace Squared.Threading {
 
         private bool IsWorkPossiblyWaiting {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => (ItemsWaitingForProcessing > 0) || !_Items.IsEmpty;
+            get => ItemsWaitingForProcessing > 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

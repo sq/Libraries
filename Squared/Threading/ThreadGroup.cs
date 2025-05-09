@@ -109,7 +109,8 @@ namespace Squared.Threading {
         private readonly UnorderedList<IWorkQueue> MainThreadQueueList = 
             new UnorderedList<IWorkQueue>();
 
-        internal ManualResetEvent WakeAllThreadsEvent = new ManualResetEvent(false);
+        internal Thread OrchestratorThread;
+        internal AutoResetEvent WakeAllThreadsEvent = new AutoResetEvent(false);
 
         // This list is immutable and will be swapped out using CompareExchange
         //  when the set of queues changes, so that workers don't need to lock it
@@ -165,10 +166,19 @@ namespace Squared.Threading {
             SynchronizationContext = SynchronizationContext.Current;
             if (enableCoarseTime) {
                 TimeThread = new Thread(TimeThreadProc) {
-                    IsBackground = true
+                    IsBackground = true,
+                    Priority = ThreadPriority.AboveNormal,
+                    Name = "ThreadGroup.CoarseTime",
                 };
                 TimeThread.Start();
             }
+
+            OrchestratorThread = new Thread(OrchestratorThreadMain) {
+                IsBackground = true,
+                Priority = ThreadPriority.AboveNormal,
+                Name = "ThreadGroup.Orchestrator",
+            };
+            OrchestratorThread.Start();
         }
 
         private void TimeThreadProc () {
@@ -377,19 +387,19 @@ namespace Squared.Threading {
             var index = Interlocked.Increment(ref NextThreadToWake);
             var thread1 = Threads[index % Threads.Length];
             thread1?.Wake();
-            /*
-            var thread2 = Threads[(index + 1) % Threads.Length];
-            if (thread2 != thread1)
-                thread2?.Wake();
-            */
         }
 
         private void WakeAllThreads () {
-            // ManualResetEvent.Set should wake all threads currently waiting on it
             WakeAllThreadsEvent.Set();
-            // At this point we've woken up any threads that were waiting for work, and any attempts
-            //  to go back to sleep until this point have failed. Turn the wake-all signal back off.
-            WakeAllThreadsEvent.Reset();
+        }
+
+        private void OrchestratorThreadMain () {
+            var threads = Threads;
+            while (!IsDisposed) {
+                WakeAllThreadsEvent.WaitOne();
+                foreach (var thread in threads)
+                    thread?.Wake();
+            }
         }
 
         public void Dispose () {

@@ -36,7 +36,7 @@ namespace Squared.Threading {
             Name = string.Format($"{owner.Name} worker #{index} [ThreadGroup {owner.GetHashCode():X8}]");
             Thread.Name = Name;
             Thread.IsBackground = owner.CreateBackgroundThreads;
-            IdleManager = new ThreadIdleManager(owner.WakeAllThreadsEvent);
+            IdleManager = new ThreadIdleManager(null);
             if (owner.COMThreadingModel != ApartmentState.Unknown)
                 Thread.SetApartmentState(owner.COMThreadingModel);
             Thread.Start(this);
