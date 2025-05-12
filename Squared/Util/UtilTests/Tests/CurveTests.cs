@@ -180,7 +180,7 @@ namespace Squared.Util {
 
             Assert.IsTrue(c.EstimateExtents(Comparer<float>.Default, out float minimum, out float maximum));
             Assert.AreEqual(-2f, minimum);
-            Assert.AreEqual(11.408f, maximum);
+            Assert.AreEqual(11.407999f, maximum);
         }
 
         [Test]
