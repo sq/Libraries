@@ -30,13 +30,13 @@ namespace Squared.Util {
         public long TotalBytesAllocated => _TotalBytesAllocated;
         public int BytesInUse => _BytesInUse;
 
-        public NativeAllocation Allocate (int bytes) =>
-            new NativeAllocation(this, bytes);
+        public NativeAllocation Allocate (int bytes, bool reportToGc = false) =>
+            new NativeAllocation(this, bytes, reportToGc);
 
-        public NativeAllocation Allocate<T> (int elements)
+        public NativeAllocation Allocate<T> (int elements, bool reportToGc = false)
             where T : unmanaged 
         {
-            return Allocate(elements * Marshal.SizeOf<T>());
+            return Allocate(elements * Marshal.SizeOf<T>(), reportToGc);
         }
 
         public override string ToString () {
@@ -60,8 +60,9 @@ namespace Squared.Util {
         public IntPtr IntPtr => (IntPtr)Data;
         public readonly int Size;
         public readonly NativeAllocator Allocator;
+        public readonly bool ReportToGc;
 
-        internal NativeAllocation (NativeAllocator allocator, int size) {
+        internal NativeAllocation (NativeAllocator allocator, int size, bool reportToGc) {
             if (size < 0)
                 throw new ArgumentOutOfRangeException(nameof(size));
 
@@ -70,7 +71,10 @@ namespace Squared.Util {
             Interlocked.Add(ref allocator._BytesInUse, size);
             _RefCount = 1;
             _Data = (void*)Marshal.AllocHGlobal(size);
-            GC.AddMemoryPressure(size);
+            // FIXME: This can trigger synchronous garbage collections at inopportune times.
+            ReportToGc = reportToGc;
+            if (reportToGc)
+                GC.AddMemoryPressure(size);
             MemoryUtil.Memset((byte*)_Data, 0, size);
             Size = size;
 
@@ -103,7 +107,8 @@ namespace Squared.Util {
 
             _Released = true;
             Marshal.FreeHGlobal((IntPtr)_Data);
-            GC.RemoveMemoryPressure(Size);
+            if (ReportToGc)
+                GC.RemoveMemoryPressure(Size);
             Interlocked.Add(ref Allocator._BytesInUse, -Size);
         }
 
