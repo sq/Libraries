@@ -124,7 +124,7 @@ namespace Squared.Render {
         private bool _EnableThreadedPrepare = true;
         private bool _EnableThreadedIssue = false;
         private object _FrameLock = new object();
-        private Frame  _FrameBeingPrepared = null;
+        private volatile Frame _FrameBeingPrepared = null;
 
         private readonly IGraphicsDeviceService DeviceService;
 
@@ -474,7 +474,6 @@ namespace Squared.Render {
             TimeOfLastResetOrDeviceChange = Time.Ticks;
             FirstFrameSinceReset = true;
             _DeviceLost = true;
-            Manager.OnDeviceResetOrLost();
         }
 
         // We must acquire both locks before resetting the device to avoid letting the reset happen during a paint or content load operation.
@@ -519,8 +518,6 @@ namespace Squared.Render {
 
             if (DeviceReset != null)
                 DeviceReset(this, EventArgs.Empty);
-
-            Manager.OnDeviceResetOrLost();
         }
 
         internal void NotifyWindowIsMoving () {

@@ -99,7 +99,12 @@ namespace LargeBufferTest {
             SpriteBatch.End();
         }
 
+        int FrameIndex = 0;
+
         public override void Draw (GameTime gameTime, Frame frame) {
+            if ((++FrameIndex % 60) == 0)
+                GC.Collect();
+
             if (false) {
                 var stats = RenderManager.GetMemoryStatistics();
                 Console.WriteLine(
@@ -122,23 +127,21 @@ namespace LargeBufferTest {
             const int width = 1280;
             const int height = 720;
             var options = new ParallelOptions {
+                MaxDegreeOfParallelism = 8,
             };
-            int layer = 0;
+            var bbs = new List<BitmapBatch>();
             Parallel.For(
                 0, height, options,
                 // One batch per worker thread
-                () => {
-                    var bb = BitmapBatch.New(
-                        frame,
-                        // Suppress batch combining
-                        Interlocked.Increment(ref layer),
-                        Materials.ScreenSpaceBitmap
-                        // capacity: width * height / 8
-                    );
-                    bb.DisableSortKeys = true;
-                    return bb;
-                },
+                () => MakeNewBitmapBatch(frame, Materials),
                 (y, loopState, bb) => {
+                    // Prevent wildly unbalanced batch sizes (it causes problems)
+                    // We shouldn't need to do this but Parallel.For is intrinsically unbalanced
+                    if (bb.Count >= (48 * 1280)) {
+                        bb.Dispose();
+                        bb = MakeNewBitmapBatch(frame, Materials);
+                    }
+
                     var drawCall = new BitmapDrawCall(WhitePixel, new Vector2(0, y)) {
                         MultiplyColor = new Color(255, 0, y % 255),
                     };
@@ -157,8 +160,11 @@ namespace LargeBufferTest {
 
                     return bb;
                 },
-                (bb) => 
-                    bb.Dispose()
+                (bb) => {
+                    lock (bbs)
+                        bbs.Add(bb);
+                    bb.Dispose();
+                }
             );
 
             var ir = new ImperativeRenderer(
@@ -171,6 +177,17 @@ namespace LargeBufferTest {
             );
 
             DrawPerformanceStats(ref ir);
+
+            static BitmapBatch MakeNewBitmapBatch (Frame frame, DefaultMaterialSet materials) {
+                var result = BitmapBatch.New(
+                    frame,
+                    0,
+                    materials.ScreenSpaceBitmap
+                // capacity: width * height / 8
+                );
+                result.DisableSortKeys = true;
+                return result;
+            }
         }
 
         private void DrawPerformanceStats (SpriteBatch spriteBatch) {

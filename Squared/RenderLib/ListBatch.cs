@@ -12,6 +12,7 @@ namespace Squared.Render {
         public static readonly T Invalid;
 
         private Frame _Frame;
+        private Frame.Slab<T> _Slab;
         private ArraySegment<T> _Buffer;
         private int _Count;
         private static Frame.Slab<T> _MostRecentSlab;
@@ -86,13 +87,19 @@ namespace Squared.Render {
             ArraySegment<T> newBuffer;
             if ((mrs?.Frame != _Frame) || !mrs.TryAllocate(newSize, out newBuffer)) {
                 var tup = _Frame.AllocateFromSlab<T>(newSize);
-                _MostRecentSlab = tup.slab;
+                _MostRecentSlab = mrs = tup.slab;
                 newBuffer = tup.result;
             }
 
             var itemsToCopy = Math.Min(_Count, buffer.Count);
-            if (itemsToCopy > 0)
+            if (itemsToCopy > 0) {
                 Array.Copy(buffer.Array, buffer.Offset, newBuffer.Array, newBuffer.Offset, itemsToCopy);
+                if (Frame.Slab<T>.ContainsReferences)
+                    Array.Clear(buffer.Array, buffer.Offset, buffer.Count);
+            }
+
+            _Slab?.Free(buffer);
+            _Slab = mrs;
             _Buffer = newBuffer;
         }
 
@@ -107,6 +114,9 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref T Add (ref T item) {
+            if (item == null)
+                throw new Exception();
+
             var index = _Count++;
             var buffer = _Buffer;
             if (index >= buffer.Count) {
@@ -125,10 +135,10 @@ namespace Squared.Render {
             var offset = _Count;
             var newCount = offset + items.Count;
             EnsureCapacity(newCount);
+            _Count = newCount;
             var buffer = _Buffer;
 
             Array.Copy(items.Array, items.Offset, buffer.Array, buffer.Offset + offset, items.Count);
-            _Count = newCount;
         }
 
         public void RemoveAtOrdered (int index) {
@@ -166,11 +176,18 @@ namespace Squared.Render {
         }
 
         public void Dispose () {
+            _Slab?.Free(_Buffer);
             _Count = 0;
             _Buffer = default;
+            _Slab = null;
+            _Frame = null;
         }
 
         internal void Initialize (Frame frame, bool unsafeFastClear) {
+            _Slab = null;
+            _Buffer = default;
+            _Count = 0;
+
             _Frame = frame;
         }
     }

@@ -17,23 +17,76 @@ using Squared.Util;
 
 namespace Squared.Render {
     public sealed class Frame : IDisposable, IBatchContainer {
-        public interface ISlab {
-            Type Type { get; }
-            void Reset ();
+        internal interface ISlabList : IList {
+            void ResetLocked ();
         }
 
-        internal class Slab<T> : ISlab {
+        internal class SlabList<T> : List<Slab<T>>, ISlabList {
+            public int HighWaterMark;
+
+            public void ResetLocked () {
+                var hwm = HighWaterMark;
+
+                for (int i = Count - 1; i >= 0; i--) {
+                    var slab = this[i];
+                    hwm = Math.Max(hwm, slab.UsedSlots);
+
+                    // Attempt to release unused slabs so the GC can reclaim them
+                    if (slab.UsedSlots == 0) {
+                        if (slab.MarkUnused()) {
+                            // Unordered remove-and-compact
+                            this[i] = this[Count - 1];
+                            RemoveAt(Count - 1);
+                        }
+                    } else
+                        slab.ResetLocked();
+                }
+
+                HighWaterMark = hwm;
+            }
+        }
+
+        internal sealed class Slab<T> {
+            private sealed class FreeListAddressComparer : IComparer<ArraySegment<T>> {
+                public static readonly FreeListAddressComparer Instance = new ();
+
+                public int Compare (ArraySegment<T> x, ArraySegment<T> y) {
+                    return x.Offset.CompareTo(y.Offset);
+                }
+            }
+
+            private sealed class FreeListReverseSizeComparer : IComparer<ArraySegment<T>> {
+                public static readonly FreeListReverseSizeComparer Instance = new ();
+
+                public int Compare (ArraySegment<T> x, ArraySegment<T> y) {
+                    return y.Count.CompareTo(x.Count);
+                }
+            }
+
             public readonly Frame Frame;
+            public readonly List<ArraySegment<T>> FreeList = new (32);
 
-            public const int IdealSizeInBytesNonRef = 1024 * 1024,
-                IdealSizeInBytesRef = 1024 * 32;
-            public const int MinimumItemCount = 512;
+            public const int IdealSizeInBytesNonRef = 1024 * 2048,
+                IdealSizeInBytesRef = 1024 * 32,
+                MinimumItemCount = 512,
+                MaxUnusedFrames = 2;
 
-            public T[] Array;
-            public int UsedSlots;
+            private T[] Array;
+            public int Capacity => Array.Length;
+            internal int UsedSlots;
+            private int FramesUnused,
+                LargestFreeSlot;
 
+            public static readonly bool ContainsReferences;
             private static int EstimatedItemSize,
                 IdealSizeInItems;
+
+            public bool IsEffectivelyEmpty () {
+                AnalyzeFreeList(out int largestFreeSlot, out _);
+                var freeAtEnd = Capacity - UsedSlots;
+                var totalFree = largestFreeSlot + freeAtEnd;
+                return (totalFree >= Capacity);
+            }
 
             private static int EstimateSize (Type type, ref bool containsRefs) {
                 if (!type.IsValueType) {
@@ -52,6 +105,7 @@ namespace Squared.Render {
                 var t = typeof(T);
                 bool containsRefs = false;
                 EstimatedItemSize = EstimateSize(t, ref containsRefs);
+                ContainsReferences = containsRefs;
                 var idealSizeInBytes = containsRefs ? IdealSizeInBytesRef : IdealSizeInBytesNonRef;
                 IdealSizeInItems = (idealSizeInBytes + EstimatedItemSize - 1) / EstimatedItemSize;
                 if (IdealSizeInItems < MinimumItemCount)
@@ -61,38 +115,132 @@ namespace Squared.Render {
             public Slab (Frame frame, int minimumCapacity) {
                 Frame = frame;
                 var itemCount = IdealSizeInItems;
+                // HACK: Don't allocate the exact requested size; add some slop.
                 if (itemCount < minimumCapacity)
-                    itemCount = minimumCapacity;
+                    itemCount += minimumCapacity;
                 Array = new T[itemCount];
                 UsedSlots = 0;
             }
 
-            public Type Type => typeof(T);
+            public void AnalyzeFreeList (out int largestAvailable, out int totalAvailable) {
+                largestAvailable = totalAvailable = 0;
+                lock (FreeList) {
+                    MergeFreeListEntriesThenSortLocked();
+                    foreach (var item in FreeList) {
+                        totalAvailable += item.Count;
+                        largestAvailable = Math.Max(item.Count, largestAvailable);
+                    }
+                }
+            }
+
+            private void MergeFreeListEntriesThenSortLocked () {
+                FreeList.Sort(FreeListAddressComparer.Instance);
+                for (int i = FreeList.Count - 1; i > 0; i--) {
+                    var prev = FreeList[i - 1];
+                    var prevEnd = prev.Offset + prev.Count;
+                    var curr = FreeList[i];
+                    if (prevEnd == curr.Offset) {
+                        FreeList[i - 1] = new ArraySegment<T>(
+                            Array, prev.Offset, prev.Count + curr.Count
+                        );
+                        FreeList.RemoveAt(i);
+                    }
+                }
+
+                FreeList.Sort(FreeListReverseSizeComparer.Instance);
+                LargestFreeSlot = 0;
+                foreach (var item in FreeList)
+                    LargestFreeSlot = Math.Max(item.Count, LargestFreeSlot);
+            }
+
+            private bool TryAllocateFromFreeList (int count, out ArraySegment<T> result) {
+                if (FreeList.Count == 0) {
+                    result = default;
+                    return false;
+                }
+
+                lock (FreeList) {
+                    MergeFreeListEntriesThenSortLocked();
+
+                    for (int i = FreeList.Count - 1; i >= 0; i--) {
+                        var seg = FreeList[i];
+                        if (seg.Count > count) {
+                            FreeList[i] = new ArraySegment<T>(seg.Array, seg.Offset + count, seg.Count - count);
+                            result = new ArraySegment<T>(seg.Array, seg.Offset, count);
+                            FramesUnused = 0;
+                            return true;
+                        } else if (seg.Count == count) {
+                            FreeList.RemoveAt(i);
+                            result = seg;
+                            FramesUnused = 0;
+                            return true;
+                        }
+                    }
+
+    #if DEBUG
+                    AnalyzeFreeList(out int largest, out _);
+                    if (largest >= count)
+                        throw new Exception();
+    #endif
+                }
+
+                result = default;
+                return false;
+            }
 
             public bool TryAllocate (int count, out ArraySegment<T> result) {
                 var array = Array;
                 // Early-out non-atomic check
-                if ((array.Length - UsedSlots) < count) {
-                    result = default;
-                    return false;
-                }
+                if ((array.Length - UsedSlots) < count)
+                    return TryAllocateFromFreeList(count, out result);
 
                 // Atomic bump and then revert on failure
                 var newUsedSlots = Interlocked.Add(ref UsedSlots, count);
                 if (newUsedSlots > Array.Length) {
                     Interlocked.Add(ref UsedSlots, -count);
-                    result = default;
-                    return false;
+
+                    return TryAllocateFromFreeList(count, out result);
                 }
 
                 var oldUsedSlots = newUsedSlots - count;
                 result = new ArraySegment<T>(Array, oldUsedSlots, count);
+                FramesUnused = 0;
                 return true;
             }
 
-            public void Reset () {
+            public bool MarkUnused () {
+                FramesUnused++;
+                return (FramesUnused > MaxUnusedFrames);
+            }
+
+            public void ResetLocked () {
+                lock (FreeList) {
+                    FreeList.Clear();
+                    LargestFreeSlot = 0;
+                }
                 var oldUsedSlots = Interlocked.Exchange(ref UsedSlots, 0);
                 System.Array.Clear(Array, 0, oldUsedSlots);
+            }
+
+            public void Free (ArraySegment<T> buffer) {
+                if (!ReferenceEquals(buffer.Array, Array))
+                    return;
+
+                lock (FreeList) {
+                    FreeList.Add(buffer);
+                    LargestFreeSlot = Math.Max(LargestFreeSlot, buffer.Count);
+                }
+            }
+
+            public override bool Equals (object obj) =>
+                ReferenceEquals(this, obj);
+
+            public override int GetHashCode () => Capacity;
+
+            public override string ToString () {
+                AnalyzeFreeList(out int largestSlot, out int freeSlots);
+                var unallocated = Capacity - UsedSlots;
+                return $"Slab #{base.GetHashCode()} Capacity={Capacity} Available={Math.Max(unallocated, largestSlot)} Empty={IsEffectivelyEmpty()} FramesUnused={FramesUnused}";
             }
         }
 
@@ -135,7 +283,7 @@ namespace Squared.Render {
 
         private readonly object BatchLock = new object();
 
-        private Dictionary<Type, object> _SlabLists = new (1024, ReferenceComparer<Type>.Instance);
+        private Dictionary<Type, ISlabList> _SlabLists = new (1024, ReferenceComparer<Type>.Instance);
 
         public static BatchComparer BatchComparer = new BatchComparer();
 
@@ -205,14 +353,9 @@ namespace Squared.Render {
                 PrepareData = new FramePrepareData();
 
             lock (_SlabLists)
-            foreach (var _list in _SlabLists.Values) {
-                var list = (IList)_list;
-                lock (list) {
-                    for (int i = 0, c = list.Count; i < c; i++) {
-                        var slab = (ISlab)list[i];
-                        slab.Reset();
-                    }
-                }
+            foreach (var list in _SlabLists.Values) {
+                lock (list)
+                    list.ResetLocked();
             }
         }
 
@@ -388,31 +531,38 @@ namespace Squared.Render {
 
         internal (Slab<T> slab, ArraySegment<T> result) AllocateFromSlab<T> (int newSize) {
             var slabs = _SlabLists;
-            List<Slab<T>> slabList;
+            SlabList<T> slabList;
             var t = typeof(T);
 
             lock (slabs) {
                 slabs.TryGetValue(t, out var _slabList);
                 if (_slabList == null) {
-                    slabList = new List<Slab<T>>();
+                    slabList = new SlabList<T>();
                     slabs.Add(t, slabList);
                 } else
-                    slabList = (List<Slab<T>>)_slabList;
-            }
-
-            int c = slabList.Count;
-            for (int i = 0; i < c; i++) {
-                var slab = slabList[i];
-                if (slab.TryAllocate(newSize, out var result))
-                    return (slab, result);
+                    slabList = (SlabList<T>)_slabList;
             }
 
             lock (slabList) {
-                var slab = new Slab<T>(this, newSize);
-                slabList.Add(slab);
-                if (!slab.TryAllocate(newSize, out var result))
-                    throw new Exception("Internal error in slab allocator");
-                return (slab, result);
+                int c = slabList.Count;
+                int totalUsedSlots = 0, totalFreeSlots = 0;
+                for (int i = c - 1; i >= 0; i--) {
+                    var slab = slabList[i];
+                    if (slab.TryAllocate(newSize, out var result))
+                        return (slab, result);
+                    var uslots = slab.UsedSlots;
+                    totalUsedSlots += uslots;
+                    totalFreeSlots += (slab.Capacity - uslots);
+                }
+
+                {
+                    var newSlabSize = Math.Max(slabList.HighWaterMark, newSize);
+                    var slab = new Slab<T>(this, newSlabSize);
+                    if (!slab.TryAllocate(newSize, out var result))
+                        throw new Exception("Internal error in slab allocator");
+                    slabList.Add(slab);
+                    return (slab, result);
+                }
             }
         }
     }

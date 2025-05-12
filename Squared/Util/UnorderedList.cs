@@ -200,13 +200,11 @@ namespace Squared.Util {
         }
 
         public static int PickGrowthSize (int currentSize, int targetSize) {
-            var newCapacity = currentSize;
-            if (newCapacity < 8)
-                newCapacity = 8;
+            if (targetSize < 4)
+                targetSize = 4;
 
-            while (newCapacity < targetSize)
-                // 1.45 growth ratio is better than 2.0, and linear growth ratio is Bad
-                newCapacity = (newCapacity * 145 / 100);
+            var currentIncreased = currentSize * 145 / 100;
+            var newCapacity = Math.Max(currentIncreased, targetSize);
 
             return newCapacity;
         }
