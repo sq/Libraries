@@ -177,13 +177,21 @@ namespace Squared.Render {
             Name = TechniqueName;
             TextureParameters.Clear();
             SynthesizedParameters.Clear();
+
             if (effect == null)
                 return;
-            if (Parameters == null)
+
+            if (InheritEffectFrom != null) {
+                // FIXME: Inherit uniform bindings?
+                Parameters = InheritEffectFrom.Parameters;
+                TextureParameters = InheritEffectFrom.TextureParameters;
+                SynthesizedParameters = InheritEffectFrom.SynthesizedParameters;
+            } else if (Parameters == null)
                 Parameters = new MaterialEffectParameters(effect);
             else
                 Parameters.Initialize(effect);
 
+            if (InheritEffectFrom == null)
             foreach (var p in effect.Parameters) {
                 if (p.ParameterType == EffectParameterType.Texture2D)
                     TextureParameters.Add(p);

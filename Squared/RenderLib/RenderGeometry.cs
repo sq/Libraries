@@ -115,6 +115,7 @@ namespace Squared.Render {
 
         #region Implementation
 
+        // FIXME: Optimize these out by using slab allocator
         private static readonly ListPool<GeometryDrawCall> _ListPool = new ListPool<GeometryDrawCall>(
             256, 4, 128, 1024, 10240
         );
@@ -126,7 +127,7 @@ namespace Squared.Render {
         internal Dictionary<PrimitiveType, UnorderedList<GeometryDrawCall>> Lists = new Dictionary<PrimitiveType, UnorderedList<GeometryDrawCall>>();
 
         private BufferGenerator<GeometryVertex> _BufferGenerator = null;
-        internal UnorderedList<DrawArguments> _DrawArguments; 
+        internal ListBatchDrawCalls<DrawArguments> _DrawArguments;
 
         internal ArrayPoolAllocator<GeometryVertex> VertexAllocator;
         internal ArrayPoolAllocator<short> IndexAllocator;
@@ -137,6 +138,7 @@ namespace Squared.Render {
 
         public void Initialize (IBatchContainer container, int layer, Material material) {
             base.Initialize(container, layer, material, true);
+            _DrawArguments.Initialize(container.Frame, true);
 
             if (VertexAllocator == null)
                 VertexAllocator = container.RenderManager.GetArrayAllocator<GeometryVertex>();
@@ -161,7 +163,7 @@ namespace Squared.Render {
             list.Add(drawCall);
         }
 
-        protected void MakeDrawArguments (
+        private void MakeDrawArguments (
             PrimitiveType primitiveType, 
             ref Internal.VertexBuffer<GeometryVertex> vb, ref Internal.IndexBuffer ib, 
             ref int vertexOffset, ref int indexOffset, out int primCount,
@@ -174,14 +176,15 @@ namespace Squared.Render {
 
             primCount = primitiveType.ComputePrimitiveCount(indexCount);
 
-            _DrawArguments.Add(new DrawArguments {
+            var da = new DrawArguments {
                 PrimitiveType = primitiveType,
                 VertexOffset = vertexOffset,
                 VertexCount = vertexCount,
                 IndexOffset = indexOffset,
                 IndexCount = indexCount,
                 PrimitiveCount = primCount
-            });
+            };
+            _DrawArguments.Add(ref da);
 
             vertexOffset += vertexCount;
             indexOffset += indexCount;
@@ -191,7 +194,6 @@ namespace Squared.Render {
             if (Count > 0) {
                 _BufferGenerator = Container.RenderManager.GetBufferGenerator<BufferGenerator<GeometryVertex>>();
 
-                _DrawArguments = _DrawArgumentsListPool.Allocate(null);
                 var swb = _BufferGenerator.Allocate(VertexCount, IndexCount);
                 _SoftwareBuffer = swb;
 
@@ -199,6 +201,12 @@ namespace Squared.Render {
                 var ib = new Internal.IndexBuffer(swb);
                 int vertexOffset = 0, indexOffset = 0;
                 int totalPrimCount = 0;
+
+                int totalArgumentsCount = 0;
+                foreach (var kvp in Lists)
+                    totalArgumentsCount += kvp.Value.Count;
+
+                _DrawArguments.EnsureCapacity(totalArgumentsCount);
 
                 foreach (var kvp in Lists) {
                     var l = kvp.Value;
@@ -240,7 +248,8 @@ namespace Squared.Render {
                         throw new ThreadStateException("Could not get a hardware buffer for this batch");
 
                     hwb.SetActiveAndApply(manager.Device);
-                    foreach (var da in _DrawArguments) {
+                    for (int i = 0; i < _DrawArguments.Count; i++) {
+                        ref var da = ref _DrawArguments[i];
                         manager.Device.DrawIndexedPrimitives(da.PrimitiveType, 0, da.VertexOffset, da.VertexCount, da.IndexOffset, da.PrimitiveCount);
                     }
                     Squared.Render.NativeBatch.RecordCommands(_DrawArguments.Count);
@@ -251,7 +260,6 @@ namespace Squared.Render {
                     hwb.TrySetInactive();
             }
 
-            _DrawArgumentsListPool.Release(ref _DrawArguments, Threading.WorkQueueNotifyMode.Never);
             _SoftwareBuffer = null;
         }
 
@@ -261,6 +269,7 @@ namespace Squared.Render {
                 _ListPool.Release(ref l, Threading.WorkQueueNotifyMode.Never);
             }
 
+            _DrawArguments.Dispose();
             Lists.Clear();
 
             base.OnReleaseResources();

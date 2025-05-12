@@ -272,8 +272,7 @@ namespace Squared.Render {
                 var gch = GCHandle.Alloc(Destination, GCHandleType.Pinned);
                 try {
                     var size = Marshal.SizeOf(Destination.GetType().GetElementType()) * Destination.Length;
-                    lock (Lock)
-                        Source.GetDataPointerEXT(0, null, gch.AddrOfPinnedObject(), size);
+                    Source.GetDataPointerEXT(0, null, gch.AddrOfPinnedObject(), size);
                 } finally {
                     gch.Free();
                 }
@@ -472,7 +471,8 @@ namespace Squared.Render {
 
             var started = Time.Ticks;
             foreach (var rb in ReadbackQueue)
-                rb.Execute(null);
+                lock (rb.Lock)
+                    rb.Execute(null);
             var ended = Time.Ticks;
             // Debug.WriteLine($"Readback took {Time.SecondsFromTicks(ended - started)}sec");
 

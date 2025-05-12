@@ -72,8 +72,9 @@ namespace Squared.Render.Text {
             internal List<IDynamicAtlas> Atlases = new List<IDynamicAtlas>();
             internal FreeTypeFont Font;
             internal SrGlyph[] LowCacheByCodepoint = new SrGlyph[LowCacheSize];
-            internal Dictionary<uint, SrGlyph> CacheByGlyphId = new Dictionary<uint, SrGlyph>(UintComparer.Instance),
-                CacheByCodepoint = new Dictionary<uint, SrGlyph>(UintComparer.Instance);
+            // HACK: Pre-allocate with a reasonable amount of space to avoid spurious reallocations when first being filled up
+            internal Dictionary<uint, SrGlyph> CacheByGlyphId = new Dictionary<uint, SrGlyph>(512, UintComparer.Instance),
+                CacheByCodepoint = new Dictionary<uint, SrGlyph>(512, UintComparer.Instance);
             internal float _SizePoints;
             internal int _Version;
             private FreeTypeFontFormat? _OverrideFormat;
