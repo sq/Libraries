@@ -257,7 +257,7 @@ namespace Squared.PRGUI.Imperative {
         public ContainerBuilder NewContainer<TControl> (
             ControlFlags? layoutFlags = null, ControlFlags? containerFlags = null
         )
-            where TControl : Control, IControlContainer, new() {
+            where TControl : ContainerBase, new() {
             TControl instance = null;
             if (NextIndex < Children.Count) {
                 instance = Children[NextIndex] as TControl;
@@ -272,7 +272,7 @@ namespace Squared.PRGUI.Imperative {
                 instance = new TControl();
                 instance.Context = Control.Context;
                 result = new ContainerBuilder(instance, true);
-            } else if ((container = (instance as ContainerBase)) != null) {
+            } else if ((container = instance) != null) {
                 container.EnsureDynamicBuilderInitialized(out result);
             } else {
                 result = new ContainerBuilder(instance, false);

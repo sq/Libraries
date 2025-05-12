@@ -1186,7 +1186,7 @@ namespace Squared.PRGUI {
         }
 
         protected virtual void Gauge_Content (ref UIOperationContext context, ref ImperativeRenderer renderer, ref DecorationSettings settings) {
-            Gauge_Fill_Setup(
+            var drawContent = Gauge_Fill_Setup(
                 context, ref renderer, settings,
                 out bool isCircular, out float outlineRadius, out Vector4 cornerRadiuses,
                 out float alpha1, out float alpha2, out string direction,
@@ -1194,6 +1194,8 @@ namespace Squared.PRGUI {
                 out pSRGBColor fillColor1, out pSRGBColor fillColor2,
                 out pSRGBColor outlineColor, out RasterFillMode fillMode
             );
+            if (!drawContent)
+                return;
 
             // FIXME: fillSettings
             ConfigureFill("Gauge_Content", ref settings, out var texture, out var textureRegion, out var textureSettings, out _);

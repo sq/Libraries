@@ -76,6 +76,8 @@ namespace Squared.PRGUI.Controls {
         }
 
         public void SetValue (float value, float? animationDuration) {
+            if (!Arithmetic.IsFinite(value))
+                throw new ArgumentOutOfRangeException(nameof(value));
             value = Math.Max(Math.Min(value, _Limit), 0f);
 
             if (_Value == value)
