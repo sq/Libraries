@@ -133,6 +133,8 @@ namespace Squared.Threading {
         /// </summary>
         void RegisterDrainListener (WorkQueueDrainListener listener);
         void AssertEmpty ();
+        bool WaitUntilDrained (int timeoutMs = -1);
+
         bool IsDrained { get; }
         int Priority { get; }
     }
@@ -518,6 +520,8 @@ namespace Squared.Threading {
                 return true;
 
             var resultCount = Interlocked.Increment(ref NumWaitingForDrain);
+            // HACK: Short enough to prevent us from being stuck to the point of unresponsiveness,
+            //  but long enough to be really obvious so that it will get reported and investigated
             const int actualMaxWaitBecauseSomethingAboutTheseThreadingPrimitivesIsBroken = 1000;
             long endWhen =
                 timeoutMs >= 0

@@ -18,15 +18,16 @@ using Squared.Util;
 namespace Squared.Render {
     public sealed class Frame : IDisposable, IBatchContainer {
         internal interface ISlabList : IList {
-            void ResetLocked ();
+            IWorkQueue ResetLocked (ThreadGroup threadGroup);
         }
 
         internal class SlabList<T> : List<Slab<T>>, ISlabList {
             public int HighWaterMark;
 
-            public void ResetLocked () {
+            public IWorkQueue ResetLocked (ThreadGroup threadGroup) {
                 var hwm = HighWaterMark;
 
+                var queue = threadGroup.GetQueueForType<Slab<T>.ResetWorkItem>();
                 for (int i = Count - 1; i >= 0; i--) {
                     var slab = this[i];
                     hwm = Math.Max(hwm, slab.UsedSlots);
@@ -39,14 +40,23 @@ namespace Squared.Render {
                             RemoveAt(Count - 1);
                         }
                     } else
-                        slab.ResetLocked();
+                        queue.Enqueue(new Slab<T>.ResetWorkItem { Slab = slab });
                 }
 
                 HighWaterMark = hwm;
+                return queue;
             }
         }
 
         internal sealed class Slab<T> {
+            internal struct ResetWorkItem : IWorkItem {
+                public Slab<T> Slab;
+
+                public void Execute (ThreadGroup group) {
+                    Slab.ResetLocked();
+                }
+            }
+
             private sealed class FreeListAddressComparer : IComparer<ArraySegment<T>> {
                 public static readonly FreeListAddressComparer Instance = new ();
 
@@ -284,6 +294,7 @@ namespace Squared.Render {
         private readonly object BatchLock = new object();
 
         private Dictionary<Type, ISlabList> _SlabLists = new (1024, ReferenceComparer<Type>.Instance);
+        private List<IWorkQueue> _SlabQueues = new (128);
 
         public static BatchComparer BatchComparer = new BatchComparer();
 
@@ -352,10 +363,16 @@ namespace Squared.Render {
             if (PrepareData == null)
                 PrepareData = new FramePrepareData();
 
-            lock (_SlabLists)
-            foreach (var list in _SlabLists.Values) {
-                lock (list)
-                    list.ResetLocked();
+            lock (_SlabLists) {
+                _SlabQueues.Clear();
+
+                foreach (var list in _SlabLists.Values) {
+                    lock (list)
+                        _SlabQueues.Add(list.ResetLocked(coordinator.ThreadGroup));
+                }
+
+                foreach (var sq in _SlabQueues)
+                    sq.WaitUntilDrained();
             }
         }
 
