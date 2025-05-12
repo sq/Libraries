@@ -27,7 +27,7 @@ namespace Squared.Render {
 
             public const int IdealSizeInBytesNonRef = 1024 * 1024,
                 IdealSizeInBytesRef = 1024 * 32;
-            public const int MinimumItemCount = 256;
+            public const int MinimumItemCount = 512;
 
             public T[] Array;
             public int UsedSlots;
@@ -71,6 +71,13 @@ namespace Squared.Render {
 
             public bool TryAllocate (int count, out ArraySegment<T> result) {
                 var array = Array;
+                // Early-out non-atomic check
+                if ((array.Length - UsedSlots) < count) {
+                    result = default;
+                    return false;
+                }
+
+                // Atomic bump and then revert on failure
                 var newUsedSlots = Interlocked.Add(ref UsedSlots, count);
                 if (newUsedSlots > Array.Length) {
                     Interlocked.Add(ref UsedSlots, -count);
