@@ -115,10 +115,8 @@ namespace Squared.Render {
 
             try {
                 if (!DisableIssue)
-                for (int i = 0; i < count; i++) {
-                    _DrawCalls.GetItem(i, out var batch);
+                foreach (var batch in _DrawCalls.Items)
                     batch?.IssueAndWrapExceptions(manager);
-                }
             } finally {
                 if (_After != null)
                     _After(manager, _UserData);
@@ -338,7 +336,11 @@ namespace Squared.Render {
             if (batch == null)
                 return;
 
-            _DrawCalls.Remove(batch);
+            var items = _DrawCalls.Items;
+            var offset = Array.IndexOf(items.Array, batch, items.Offset, items.Count);
+            if (offset >= 0)
+                // FIXME: Unordered?
+                _DrawCalls.RemoveAtOrdered(offset);
         }
 
         public void Add (Batch batch) {

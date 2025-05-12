@@ -86,7 +86,7 @@ namespace Squared.Render {
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal void PrepareMany (ref DenseList<Batch> batches) {
+            internal void PrepareMany (ref ListBatchDrawCalls<Batch> batches) {
                 Manager.PrepareMany(ref batches, ref this);
             }
         }

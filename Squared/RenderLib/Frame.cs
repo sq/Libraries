@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -9,11 +10,80 @@ using System.Threading.Tasks;
 using Microsoft.Xna.Framework.Graphics;
 using Squared.Render.Buffers;
 using Squared.Render.Internal;
+using Squared.Task;
 using Squared.Threading;
 using Squared.Util;
 
 namespace Squared.Render {
     public sealed class Frame : IDisposable, IBatchContainer {
+        public interface ISlab {
+            Type Type { get; }
+            void Reset ();
+        }
+
+        internal class Slab<T> : ISlab {
+            public const int IdealSizeInBytesNonRef = 1024 * 1024,
+                IdealSizeInBytesRef = 1024 * 32;
+            public const int MinimumItemCount = 256;
+
+            public T[] Array;
+            public int UsedSlots;
+
+            private static int EstimatedItemSize,
+                IdealSizeInItems;
+
+            private static int EstimateSize (Type type, ref bool containsRefs) {
+                if (!type.IsValueType) {
+                    containsRefs = true;
+                    return Environment.Is64BitProcess ? 8 : 4;
+                } else if (type.IsPrimitive)
+                    return Marshal.SizeOf(type);
+
+                var result = 0;
+                foreach (var field in type.GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic))
+                    result += EstimateSize(field.FieldType, ref containsRefs);
+                return result;
+            }
+
+            static Slab () {
+                var t = typeof(T);
+                bool containsRefs = false;
+                EstimatedItemSize = EstimateSize(t, ref containsRefs);
+                var idealSizeInBytes = containsRefs ? IdealSizeInBytesRef : IdealSizeInBytesNonRef;
+                IdealSizeInItems = (idealSizeInBytes + EstimatedItemSize - 1) / EstimatedItemSize;
+                if (IdealSizeInItems < MinimumItemCount)
+                    IdealSizeInItems = MinimumItemCount;
+            }
+
+            public Slab (int minimumCapacity) {
+                var itemCount = IdealSizeInItems;
+                if (itemCount < minimumCapacity)
+                    itemCount = minimumCapacity;
+                Array = new T[itemCount];
+                UsedSlots = 0;
+            }
+
+            public Type Type => typeof(T);
+
+            public bool TryAllocate (int count, out ArraySegment<T> result) {
+                var array = Array;
+                var space = array.Length - UsedSlots;
+                if (space < count) {
+                    result = default;
+                    return false;
+                }
+
+                result = new ArraySegment<T>(Array, UsedSlots, count);
+                UsedSlots += count;
+                return true;
+            }
+
+            public void Reset () {
+                System.Array.Clear(Array, 0, UsedSlots);
+                UsedSlots = 0;
+            }
+        }
+
         internal struct ReadbackWorkItem : IWorkItem {
             public static WorkItemConfiguration Configuration =>
                 new WorkItemConfiguration {
@@ -53,11 +123,9 @@ namespace Squared.Render {
 
         private readonly object BatchLock = new object();
 
-        public static BatchComparer BatchComparer = new BatchComparer();
+        private Dictionary<Type, List<ISlab>> _Slabs = new (1024, ReferenceComparer<Type>.Instance);
 
-        private static ListPool<Batch> _ListPool = new ListPool<Batch>(
-            16, 256, 4096
-        );
+        public static BatchComparer BatchComparer = new BatchComparer();
 
         public bool ChangeRenderTargets;
         public string Label;
@@ -94,7 +162,7 @@ namespace Squared.Render {
             }
         }
 
-        internal DenseList<Batch> Batches = new DenseList<Batch>();
+        internal ListBatchDrawCalls<Batch> Batches = default;
         internal DenseList<Batch> BatchesToRelease = new DenseList<Batch>();
         internal DenseList<ReadbackWorkItem> ReadbackQueue = new DenseList<ReadbackWorkItem>();
 
@@ -113,8 +181,8 @@ namespace Squared.Render {
         int IBatchContainer.FrameIndex { get { return Index; } }
 
         internal void Initialize (RenderCoordinator coordinator, RenderManager renderManager, int index) {
-            Batches.ListPool = _ListPool;
-            Batches.Clear();
+            // Batches.ListPool = _ListPool;
+            Batches.Initialize(this, false);
             Coordinator = coordinator;
             this.RenderManager = renderManager;
             Index = index;
@@ -123,6 +191,13 @@ namespace Squared.Render {
             ChangeRenderTargets = true;
             if (PrepareData == null)
                 PrepareData = new FramePrepareData();
+
+            lock (_Slabs)
+            foreach (var list in _Slabs.Values) {
+                lock (list)
+                foreach (var slab in list)
+                    slab.Reset();
+            }
         }
 
         public unsafe void Readback<T> (Texture2D source, T[] destination)
@@ -161,7 +236,7 @@ namespace Squared.Render {
 #endif
                 */
 
-                Batches.Add(batch);
+                Batches.Add(ref batch);
                 batch.Container = this;
             }
         }
@@ -246,12 +321,10 @@ namespace Squared.Render {
 
             try {
                 int c = Batches.Count;
-                var _batches = Batches.GetBuffer(false);
-                for (int i = 0; i < c; i++) {
-                    var batch = _batches[i];
+                var _batches = Batches.Items;
+                foreach (var batch in _batches)
                     if (batch != null)
                         batch.IssueAndWrapExceptions(dm);
-                }
             } finally {
                 dm.Finish();
                 RenderManager.PrepareManager.CleanupTextureCache();
@@ -297,6 +370,35 @@ namespace Squared.Render {
 
         public override int GetHashCode() {
             return Index;
+        }
+
+        internal ArraySegment<T> AllocateFromSlab<T> (int newSize) {
+            var slabs = _Slabs;
+            List<ISlab> slabList;
+            var t = typeof(T);
+
+            lock (slabs) {
+                slabs.TryGetValue(t, out slabList);
+                if (slabList == null) {
+                    slabList = new List<ISlab>();
+                    slabs.Add(t, slabList);
+                }
+            }
+
+            lock (slabList) {
+                foreach (var _slab in slabList) {
+                    var slab = (Slab<T>)_slab;
+                    if (slab.TryAllocate(newSize, out var result))
+                        return result;
+                }
+
+                {
+                    var slab = new Slab<T>(newSize);
+                    slabList.Add(slab);
+                    slab.TryAllocate(newSize, out var result);
+                    return result;
+                }
+            }
         }
     }
 }

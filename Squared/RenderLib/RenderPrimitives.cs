@@ -202,10 +202,11 @@ namespace Squared.Render {
             }
 #endif
 
-            var _drawCalls = _DrawCalls.GetBuffer(true);
-            int count = _DrawCalls.Count;
+            // FIXME: Remove this stuff
+            var _drawCalls = _DrawCalls.Items;
+            int count = _drawCalls.Count;
             while (count > 0) {
-                PrimitiveDrawCall<T> lastCall = _drawCalls[count - 1];
+                ref var lastCall = ref _drawCalls.Array[_drawCalls.Offset + count - 1];
 
                 // Attempt to combine
                 if (lastCall.PrimitiveType != item.PrimitiveType)
@@ -222,7 +223,7 @@ namespace Squared.Render {
                 if ((lastCall.Indices ?? item.Indices) != null)
                     break;
 
-                _drawCalls[count - 1] = new PrimitiveDrawCall<T>(
+                _drawCalls.Array[_drawCalls.Offset + count - 1] = new PrimitiveDrawCall<T>(
                     lastCall.PrimitiveType, lastCall.Vertices, 
                     lastCall.VertexOffset, lastCall.VertexCount + item.VertexCount, 
                     null, 0, 
@@ -259,7 +260,7 @@ namespace Squared.Render {
                 var device = manager.Device;
 
                 for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
-                    ref var call = ref _DrawCalls.Item(i);
+                    ref var call = ref _DrawCalls[i];
 
                     var beforeDraw = call.BeforeDraw;
                     if (beforeDraw != null)
@@ -438,7 +439,7 @@ namespace Squared.Render {
             long primCount = 0;
 
             for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
-                ref var call = ref _DrawCalls.Item(i);
+                ref var call = ref _DrawCalls[i];
                 if (call.InstanceCount.HasValue)
                     primCount += call.PrimitiveCount * call.InstanceCount.Value;
                 else
@@ -502,7 +503,7 @@ namespace Squared.Render {
                     var device = manager.Device;
 
                     for (int i = 0, c = _DrawCalls.Count; i < c; i++) {
-                        ref var call = ref _DrawCalls.Item(i);
+                        ref var call = ref _DrawCalls[i];
                         IssueDrawCall(device, ref call, TwoBindings, ThreeBindings);
                     }
 

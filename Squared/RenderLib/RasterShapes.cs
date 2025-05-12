@@ -806,13 +806,13 @@ namespace Squared.Render.RasterShape {
                 var vb = new VertexBuffer<RasterShapeVertex>(swb.Buffer, swb.VertexOffset);
                 var vw = vb.GetWriter(count);
 
-                ref var firstDc = ref _DrawCalls.Item(0);
+                ref var firstDc = ref _DrawCalls[0];
                 BatchManager.Instance.Start(this, ref firstDc, out var state);
                 var qi = Quaternion.Identity;
                 var half = Vector2.One * 0.5f;
 
                 for (int i = 0, j = 0; i < count; i++, j+=4) {
-                    ref var dc = ref _DrawCalls.Item(i);
+                    ref var dc = ref _DrawCalls[i];
                     BatchManager.Instance.Step(this, ref dc, ref state, i);
 
                     ref var fill = ref dc.Fill;

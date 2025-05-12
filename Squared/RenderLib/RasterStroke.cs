@@ -551,13 +551,13 @@ namespace Squared.Render.RasterStroke {
                 var vw = vb.GetWriter(count);
                 var seed = new Vector4(0, 0, 1f / NoiseTextureSize, 0.33f / NoiseTextureSize);
 
-                ref var firstDc = ref _DrawCalls.Item(0);
+                ref var firstDc = ref _DrawCalls[0];
                 // FIXME: If the first draw call is dead this is wrong
                 BatchManager.Instance.Start(this, ref firstDc, out var state);
                 int actualCount = 0;
 
                 for (int i = 0, j = 0; i < count; i++) {
-                    ref var dc = ref _DrawCalls.Item(i);
+                    ref var dc = ref _DrawCalls[i];
                     // HACK: Right now the shader doesn't handle this correctly and generates a little splat
                     if ((dc.TaperRanges.Z + dc.TaperRanges.W) >= 1.0f)
                         continue;
@@ -759,10 +759,9 @@ namespace Squared.Render.RasterStroke {
         }
 
         new public void Add (ref RasterStrokeDrawCall dc) {
-            var result = dc;
-            // FIXME
-            result.Index = _DrawCalls.Count;
-            _DrawCalls.Add(result);
+            var index = _DrawCalls.Count;
+            ref var slot = ref _DrawCalls.Add(ref dc);
+            slot.Index = index;
         }
 
         public static RasterStrokeBatch New (

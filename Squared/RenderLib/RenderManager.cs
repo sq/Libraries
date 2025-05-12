@@ -997,19 +997,18 @@ namespace Squared.Render {
 #endif
         }
         
-        public void PrepareMany (ref DenseList<Batch> batches, ref Batch.PrepareContext context) {
+        public void PrepareMany (ref ListBatchDrawCalls<Batch> batches, ref Batch.PrepareContext context) {
             var count = batches.Count;
             if (count < 2) {
-                if (count == 1)
+                if (count > 0)
                     Prepare(batches[0], ref context);
-
                 return;
             }
 
             var task = default(Task);
             task.Context = context;
             for (int i = 0; i < count; i++) {
-                ref var b = ref batches.Item(i);
+                var b = batches[i];
                 ValidateBatch(b, true);
 
                 if (b is IBatchContainer container)

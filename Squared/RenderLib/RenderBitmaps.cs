@@ -294,18 +294,6 @@ namespace Squared.Render {
                 else
                     Stack = null;
             }
-
-            public void Shrink (int newCount) {
-                if (ID != Batch.LastReservationID)
-                    throw new InvalidOperationException("You can't shrink a reservation after another one has been created");
-                if (newCount > Count)
-                    throw new ArgumentException("Can't grow using shrink, silly", "newCount");
-                if (newCount == Count)
-                    return;
-
-                Batch.RemoveRange(Offset + newCount, Count - newCount);
-                Count = newCount;
-            }
         }
 
         public struct NativeBatch {
@@ -633,11 +621,6 @@ namespace Squared.Render {
             }
 
             return reservation;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void RemoveRange (int index, int count) {
-            _DrawCalls.RemoveRange(index, count);
         }
 
         private struct CurrentNativeBatchState {

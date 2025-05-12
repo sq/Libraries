@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using Squared.Util;
 
 namespace Squared.Render {
@@ -7,20 +8,173 @@ namespace Squared.Render {
         int Count { get; }
     }
 
+    public struct ListBatchDrawCalls<T> : IDisposable {
+        public static readonly T Invalid;
+
+        private Frame _Frame;
+        private ArraySegment<T> _Buffer;
+        private int _Count;
+
+        /// <summary>
+        /// The backing buffer for the draw call list
+        /// </summary>
+        public ArraySegment<T> Buffer {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _Buffer;
+        }
+        /// <summary>
+        /// The backing buffer for the draw call list, trimmed to only the occupied slots
+        /// </summary>
+        public ArraySegment<T> Items {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                var buffer = _Buffer;
+                if (buffer.Array == null)
+                    return new ArraySegment<T>(Array.Empty<T>(), 0, 0);
+                else
+                    return new ArraySegment<T>(buffer.Array, buffer.Offset, _Count);
+            }
+        }
+        /// <summary>
+        /// The number of slots occupied in the backing buffer
+        /// </summary>
+        public int Count {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _Count;
+        }
+        /// <summary>
+        /// The number of items the backing buffer can hold
+        /// </summary>
+        public int Capacity {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => _Buffer.Count;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref readonly T FirstOrDefault () => ref (_Count > 0
+            ? ref this[0]
+            : ref Invalid);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref readonly T LastOrDefault () => ref (_Count > 0
+            ? ref this[_Count - 1]
+            : ref Invalid);
+
+        public ref T this[int index] {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get {
+                int count = _Count;
+                if ((index < 0) || (index >= count))
+                    throw new ArgumentOutOfRangeException(nameof(index));
+                var buffer = _Buffer;
+                return ref buffer.Array[buffer.Offset + index];
+            }
+        }
+
+        public void EnsureCapacity (int capacity) {
+            var buffer = _Buffer;
+            if (capacity <= buffer.Count)
+                return;
+
+            var newSize = UnorderedList<T>.PickGrowthSize(buffer.Count, capacity);
+            if (newSize <= buffer.Count)
+                throw new Exception("Internal error resizing buffer");
+
+            var newBuffer = _Frame.AllocateFromSlab<T>(newSize);
+            var itemsToCopy = Math.Min(_Count, buffer.Count);
+            if (itemsToCopy > 0)
+                Array.Copy(buffer.Array, buffer.Offset, newBuffer.Array, newBuffer.Offset, itemsToCopy);
+            _Buffer = newBuffer;
+        }
+
+        public void Clear () {
+            if (_Count == 0)
+                return;
+
+            var buffer = _Buffer;
+            Array.Clear(buffer.Array, buffer.Offset, _Count);
+            _Count = 0;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ref T Add (ref T item) {
+            var index = _Count++;
+            var buffer = _Buffer;
+            if (index >= buffer.Count) {
+                EnsureCapacity(index + 1);
+                buffer = _Buffer;
+            }
+            ref T resultRef = ref buffer.Array[buffer.Offset + index];
+            resultRef = item;
+            return ref resultRef;
+        }
+
+        public void AddRange (T[] items) =>
+            AddRange(new ArraySegment<T>(items));
+
+        public void AddRange (ArraySegment<T> items) {
+            var offset = _Count;
+            var newCount = offset + items.Count;
+            EnsureCapacity(newCount);
+            var buffer = _Buffer;
+
+            Array.Copy(items.Array, items.Offset, buffer.Array, buffer.Offset + offset, items.Count);
+            _Count = newCount;
+        }
+
+        public void RemoveAtOrdered (int index) {
+            if ((index < 0) || (index >= _Count))
+                throw new ArgumentOutOfRangeException(nameof(index));
+
+            var buffer = _Buffer;
+            _Count--;
+            if (index < _Count)
+                Array.Copy(buffer.Array, buffer.Offset + index + 1, buffer.Array, buffer.Offset + index, _Count - index);
+            buffer.Array[buffer.Offset + _Count] = default;
+        }
+
+        public ArraySegment<T> ReserveSpace (int count) {
+            var newCount = _Count + count;
+            EnsureCapacity(newCount);
+            var oldCount = _Count;
+            var buffer = _Buffer;
+            _Count = newCount;
+            return new ArraySegment<T>(buffer.Array, buffer.Offset + oldCount, count);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void Sort<TComparer> (TComparer comparer, int[] indices = null)
+            where TComparer : IRefComparer<T>
+        {
+            if (indices == null)
+                Util.Sort.FastCLRSortRef(Items, comparer);
+            else
+                Util.Sort.IndexedSortRef(Items, new ArraySegment<int>(indices), comparer);
+        }
+
+        public void UnsafeFastClear () {
+            _Count = 0;
+        }
+
+        public void Dispose () {
+            _Count = 0;
+            _Buffer = default;
+        }
+
+        internal void Initialize (Frame frame, bool unsafeFastClear) {
+            _Frame = frame;
+        }
+    }
+
     public abstract class ListBatch<T> : Batch, IListBatch {
         public const int BatchCapacityLimit = 512;
 
-        private static ListPool<T> _ListPool = new ListPool<T>(
-            320, 16, 64, BatchCapacityLimit, 10240
-        );
-
-        protected DenseList<T> _DrawCalls = new DenseList<T>();
+        protected ListBatchDrawCalls<T> _DrawCalls;
         private static bool _CanFastClearDrawCalls = false;
 
         public ListBatch ()
             : base () 
         {
-            _DrawCalls.ListPool = _ListPool;
         }
 
         public T FirstDrawCall {
@@ -39,10 +193,7 @@ namespace Squared.Render {
             IBatchContainer container, int layer, Material material,
             bool addToContainer, int? capacity = null
         ) {
-            if (_CanFastClearDrawCalls)
-                _DrawCalls.UnsafeFastClear();
-            else
-                _DrawCalls.Clear();
+            _DrawCalls.Initialize(container.Frame, _CanFastClearDrawCalls);
             base.Initialize(container, layer, material, addToContainer);
         }
 
@@ -50,15 +201,17 @@ namespace Squared.Render {
             int? itemSizeLimit, int? largeItemSizeLimit,
             int? smallPoolCapacity, int? largePoolCapacity
         ) {
+            /*
             _ListPool.SmallPoolMaxItemSize = itemSizeLimit.GetValueOrDefault(_ListPool.SmallPoolMaxItemSize);
             _ListPool.LargePoolMaxItemSize = largeItemSizeLimit.GetValueOrDefault(_ListPool.LargePoolMaxItemSize);
             _ListPool.SmallPoolCapacity = smallPoolCapacity.GetValueOrDefault(_ListPool.SmallPoolCapacity);
             _ListPool.LargePoolCapacity = largePoolCapacity.GetValueOrDefault(_ListPool.LargePoolCapacity);
+            */
         }
 
         public static void ConfigureClearBehavior (bool enableFastClear) {
             _CanFastClearDrawCalls = enableFastClear;
-            _ListPool.FastClearEnabled = enableFastClear;
+            // _ListPool.FastClearEnabled = enableFastClear;
         }
 
         public int Count {
@@ -67,8 +220,8 @@ namespace Squared.Render {
             }
         }
 
-        public void EnsureCapacity (int capacity, bool lazy = false) {
-            _DrawCalls.EnsureCapacity(capacity, lazy);
+        public void EnsureCapacity (int capacity) {
+            _DrawCalls.EnsureCapacity(capacity);
         }
 
         protected void Add (ref T item) {

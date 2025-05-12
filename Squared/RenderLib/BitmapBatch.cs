@@ -127,8 +127,10 @@ namespace Squared.Render {
                 _DrawCalls.EnsureCapacity(capacity.Value);
 
             var rm = container.RenderManager;
+            /*
             var lp = (ListPool<BitmapDrawCall>)_DrawCalls.ListPool;
             lp.ThreadGroup = rm.ThreadGroup;
+            */
 
             var prior = (BitmapBatchPrepareState)Interlocked.Exchange(ref _State, (int)BitmapBatchPrepareState.NotPrepared);
             if ((prior == BitmapBatchPrepareState.Issuing) || (prior == BitmapBatchPrepareState.Preparing))
@@ -168,7 +170,7 @@ namespace Squared.Render {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (BitmapDrawCall[] items, int firstIndex, int count) {
-            _DrawCalls.AddRange(items, firstIndex, count);
+            _DrawCalls.AddRange(new ArraySegment<BitmapDrawCall>(items, firstIndex, count));
         }
 
         public void AddRange (
@@ -194,7 +196,7 @@ namespace Squared.Render {
             // Do a big block copy first before modifying the bitmaps (if at all), since the larger copy can perform
             //  better than a bunch of small item JIT_MemCpys. The first few items will fall out of cache once we're
             //  done but that's not a big problem since BitmapDrawCalls are big to begin with
-            _DrawCalls.AddRange(items, firstIndex, count);
+            _DrawCalls.AddRange(new ArraySegment<BitmapDrawCall>(items, firstIndex, count));
 
             if (
                 !hasOffset && !hasMultiplyColor && !hasAddColor &&
@@ -204,17 +206,18 @@ namespace Squared.Render {
             }
 
             Vector2 _scale = scale ?? Vector2.One,
-                _offset = offset ?? default(Vector2);
-            Color _multiplyColor = multiplyColor ?? default(Color),
-                _addColor = addColor ?? default(Color);
-            var _sortKey = sortKey ?? default(DrawCallSortKey);
-            var _userData = userData ?? default(Vector4);
+                _offset = offset ?? default;
+            Color _multiplyColor = multiplyColor ?? default,
+                _addColor = addColor ?? default;
+            var _sortKey = sortKey ?? default;
+            var _userData = userData ?? default;
             var _opacity = multiplyOpacity ?? 1.0f;
             if (multiplyOpacity.HasValue && hasMultiplyColor)
                 _multiplyColor *= _opacity;
 
+            var destBuffer = _DrawCalls.Items;
             for (int i = 0; i < count; i++) {
-                ref var item = ref _DrawCalls.Item(destinationOffset + i);
+                ref var item = ref destBuffer.Array[destBuffer.Offset + destinationOffset + i];
                 if (!item.Textures.Texture1.IsInitialized)
                     continue;
 
@@ -293,8 +296,8 @@ namespace Squared.Render {
                 return false;
             }
 
-            using (var callBuffer = _DrawCalls.GetBuffer(false, threadLocals.TinyScratchBuffer)) {
-                var callSegment = new ArraySegment<BitmapDrawCall>(callBuffer.Data, callBuffer.Offset, _DrawCalls.Count);
+            {
+                var callSegment = _DrawCalls.Items;
                 int drawCallsPrepared = 0;
                 var parameters = new BatchBuilderParameters {
                     material = Material,
