@@ -132,6 +132,9 @@ namespace Squared.Render {
             AddRange(new ArraySegment<T>(items));
 
         public void AddRange (ArraySegment<T> items) {
+            if (items.Count == 0)
+                return;
+
             var offset = _Count;
             var newCount = offset + items.Count;
             EnsureCapacity(newCount);
