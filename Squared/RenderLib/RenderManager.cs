@@ -1026,15 +1026,11 @@ namespace Squared.Render {
 
         internal void ValidateBatch (Batch batch, bool enqueuing) {
 #if DEBUG
-            batch.GetState(out bool isInitialized, out bool isCombined, out bool isPrepareQueued, out bool isPrepared, out bool isIssued);
+            batch.GetState(out bool isInitialized, out _, out bool isPrepareQueued, out bool isPrepared, out bool isIssued);
             Thread.MemoryBarrier();
 
             if (!isInitialized)
                 throw new Exception("Uninitialized batch");
-            /*
-            else if (state.IsCombined)
-                throw new Exception("Batch combined");
-            */
             else if (isPrepared)
                 throw new Exception("Batch already prepared");
             else if (isIssued)
@@ -1115,12 +1111,9 @@ namespace Squared.Render {
             if (manager.IsDisposed)
                 return;
 
-            batch.GetState(out bool isInitialized, out bool isCombined, out bool isPrepareQueued, out bool isPrepared, out bool temp1);
+            batch.GetState(out bool isInitialized, out _, out bool isPrepareQueued, out bool isPrepared, out bool temp1);
             if (!isInitialized)
                 throw new BatchIssueFailedException(batch, new Exception("Batch not initialized"));
-            else if (isCombined)
-                // HACK
-                return;
             else if (isPrepareQueued)
                 throw new BatchIssueFailedException(batch, new Exception("Batch in prepare queue"));
             else if (!isPrepared)

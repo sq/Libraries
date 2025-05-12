@@ -27,79 +27,9 @@ namespace Squared.Render {
         private static readonly int BitmapBatchTypeId = IdForType<BitmapBatch>.Id;
 
         static BitmapBatch () {
-            BatchCombiner.Combiners.Add(new BitmapBatchCombiner());
             // We can safely enable fast clear because BitmapDrawCall does not contain any object references,
             //  so leaving old garbage data around will not cause any problems
             ConfigureClearBehavior(true);
-        }
-
-        sealed class BitmapBatchCombiner : IBatchCombiner {
-            public bool CanCombine (Batch lhs, Batch rhs) {
-                // Combining large batches could be counter-productive
-                const int combineThreshold = 2048;
-
-                if ((lhs == null) || (rhs == null))
-                    return false;
-
-                BitmapBatch bblhs = lhs as BitmapBatch, bbrhs = rhs as BitmapBatch;
-
-                if ((bblhs == null) || (bbrhs == null))
-                    return false;
-
-                if (bblhs.Material.MaterialID != bbrhs.Material.MaterialID)
-                    return false;
-
-                if (bblhs.Layer != bbrhs.Layer)
-                    return false;
-
-                if (bblhs.UseZBuffer != bbrhs.UseZBuffer)
-                    return false;
-
-                if (bblhs.ZBufferOnlySorting != bbrhs.ZBufferOnlySorting)
-                    return false;
-
-                if (bblhs.TwoPassDraw != bbrhs.TwoPassDraw)
-                    return false;
-
-                if (bblhs.DepthPrePassOnly != bbrhs.DepthPrePassOnly)
-                    return false;
-
-                if (bblhs.SamplerState != bbrhs.SamplerState)
-                    return false;
-
-                if (bblhs.SamplerState2 != bbrhs.SamplerState2)
-                    return false;
-
-                if ((bblhs.Count > combineThreshold) || (bbrhs.Count > combineThreshold))
-                    return false;
-
-                if (!bblhs.MaterialParameters.Equals(ref bbrhs.MaterialParameters))
-                    return false;
-
-                return true;
-            }
-
-            public Batch Combine (Batch lhs, Batch rhs) {
-                var bl = (BitmapBatch)lhs;
-                var br = (BitmapBatch)rhs;
-
-                for (int i = 0, l = br._DrawCalls.Count; i < l; i++) {
-                    ref var rb = ref br._DrawCalls.Item(i);
-                    if (!BitmapDrawCall.CheckValid(ref rb))
-                        // FIXME
-                        // throw new Exception("Invalid draw call in batch");
-                        continue;
-
-                    bl._DrawCalls.Add(ref rb);
-                }
-
-                br._DrawCalls.Clear();
-                rhs.SetCombined(true);
-                if (CaptureStackTraces)
-                    lhs.BatchesCombinedIntoThisOne.Add(rhs);
-
-                return lhs;
-            }
         }
 
         /// <summary>

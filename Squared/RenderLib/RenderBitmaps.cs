@@ -756,9 +756,6 @@ namespace Squared.Render {
             if (PrepareSucceeded && (_DrawCalls.Count > 0)) {
                 StateTransition(BitmapBatchPrepareState.Prepared, BitmapBatchPrepareState.Issuing);
 
-                if (State.IsCombined)
-                    throw new InvalidOperationException("Batch was combined into another batch");
-
                 if (_BufferGenerator == null)
                     throw new InvalidOperationException("Already issued");
 

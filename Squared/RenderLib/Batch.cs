@@ -146,18 +146,6 @@ namespace Squared.Render {
                         Flags &= ~PrepareStateFlags.Issued;
                 }
             }
-
-            public bool IsCombined {
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => (Flags & PrepareStateFlags.Combined) == PrepareStateFlags.Combined;
-                [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                set {
-                    if (value)
-                        Flags |= PrepareStateFlags.Combined;
-                    else
-                        Flags &= ~PrepareStateFlags.Combined;
-                }
-            }
         }
 
         [Flags]
@@ -165,8 +153,7 @@ namespace Squared.Render {
             Initialized = 1,
             PrepareQueued = 2,
             Prepared = 4,
-            Issued = 8,
-            Combined = 16
+            Issued = 8
         }
 
         public static bool CaptureStackTraces = false;
@@ -186,8 +173,6 @@ namespace Squared.Render {
         internal long InstanceId;
         internal bool Released;
         internal IBatchPool Pool;
-
-        internal DenseList<Batch> BatchesCombinedIntoThisOne;
 
         private static long LifetimeBatchCount = 0;
         private static long NextInstanceId = 0;
@@ -258,7 +243,6 @@ namespace Squared.Render {
 
             Name = null;
             StackTrace = null;
-            BatchesCombinedIntoThisOne.Clear();
             Released = false;
             Layer = layer;
             Material = material;
@@ -404,10 +388,6 @@ namespace Squared.Render {
 
         internal bool IsPrepareQueued => State.IsPrepareQueued;
 
-        internal void SetCombined (bool newState) {
-            State.IsCombined = newState;
-        }
-
         internal void SetPrepareQueued (bool newState) {
             State.IsPrepareQueued = newState;
         }
@@ -416,7 +396,7 @@ namespace Squared.Render {
         internal void GetState (out bool isInitialized, out bool isCombined, out bool isPrepareQueued, out bool isPrepared, out bool isIssued) {
             var flags = State.Flags;
             isInitialized = (flags & PrepareStateFlags.Initialized) == PrepareStateFlags.Initialized;
-            isCombined = (flags & PrepareStateFlags.Combined) == PrepareStateFlags.Combined;
+            isCombined = false;
             isPrepareQueued = (flags & PrepareStateFlags.PrepareQueued) == PrepareStateFlags.PrepareQueued;
             isPrepared = (flags & PrepareStateFlags.Prepared) == PrepareStateFlags.Prepared;
             isIssued = (flags & PrepareStateFlags.Issued) == PrepareStateFlags.Issued;

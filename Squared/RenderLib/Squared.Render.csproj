@@ -61,7 +61,6 @@
     <Compile Include="Atlas.cs" />
     <Compile Include="AutoRenderTarget.cs" />
     <Compile Include="Batch.cs" />
-    <Compile Include="BatchCombiner.cs" />
     <Compile Include="BatchGroup.cs" />
     <Compile Include="ColorLUT.cs" />
     <Compile Include="ColorSpace.cs" />
@@ -73,6 +72,7 @@
     <Compile Include="ImperativeRenderer.cs" />
     <Compile Include="JumpFlood.GPU.cs" />
     <Compile Include="JumpFlood.CPU.cs" />
+    <Compile Include="ListBatch.cs" />
     <Compile Include="MaterialParameterValues.cs" />
     <Compile Include="Mips.cs" />
     <Compile Include="PolygonBuffer.cs" />

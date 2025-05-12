@@ -178,7 +178,6 @@ namespace Squared.Render {
             //  get reset pretty late instead of when the frame is initialized.
             PrepareData.Initialize(RenderManager);
 
-            var numRemoved = BatchCombiner.CombineBatches(ref Batches, ref BatchesToRelease);
             // Batch combining shuffles the batches around to group by type. Once it's done,
             //  we need to do the final sort to preserve layer and material ordering.
             Batches.Sort(BatchComparer);
