@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -22,6 +23,8 @@ namespace Squared.Render {
         }
 
         internal class Slab<T> : ISlab {
+            public readonly Frame Frame;
+
             public const int IdealSizeInBytesNonRef = 1024 * 1024,
                 IdealSizeInBytesRef = 1024 * 32;
             public const int MinimumItemCount = 256;
@@ -55,7 +58,8 @@ namespace Squared.Render {
                     IdealSizeInItems = MinimumItemCount;
             }
 
-            public Slab (int minimumCapacity) {
+            public Slab (Frame frame, int minimumCapacity) {
+                Frame = frame;
                 var itemCount = IdealSizeInItems;
                 if (itemCount < minimumCapacity)
                     itemCount = minimumCapacity;
@@ -67,20 +71,21 @@ namespace Squared.Render {
 
             public bool TryAllocate (int count, out ArraySegment<T> result) {
                 var array = Array;
-                var space = array.Length - UsedSlots;
-                if (space < count) {
+                var newUsedSlots = Interlocked.Add(ref UsedSlots, count);
+                if (newUsedSlots > Array.Length) {
+                    Interlocked.Add(ref UsedSlots, -count);
                     result = default;
                     return false;
                 }
 
-                result = new ArraySegment<T>(Array, UsedSlots, count);
-                UsedSlots += count;
+                var oldUsedSlots = newUsedSlots - count;
+                result = new ArraySegment<T>(Array, oldUsedSlots, count);
                 return true;
             }
 
             public void Reset () {
-                System.Array.Clear(Array, 0, UsedSlots);
-                UsedSlots = 0;
+                var oldUsedSlots = Interlocked.Exchange(ref UsedSlots, 0);
+                System.Array.Clear(Array, 0, oldUsedSlots);
             }
         }
 
@@ -123,7 +128,7 @@ namespace Squared.Render {
 
         private readonly object BatchLock = new object();
 
-        private Dictionary<Type, List<ISlab>> _Slabs = new (1024, ReferenceComparer<Type>.Instance);
+        private Dictionary<Type, object> _SlabLists = new (1024, ReferenceComparer<Type>.Instance);
 
         public static BatchComparer BatchComparer = new BatchComparer();
 
@@ -192,11 +197,15 @@ namespace Squared.Render {
             if (PrepareData == null)
                 PrepareData = new FramePrepareData();
 
-            lock (_Slabs)
-            foreach (var list in _Slabs.Values) {
-                lock (list)
-                foreach (var slab in list)
-                    slab.Reset();
+            lock (_SlabLists)
+            foreach (var _list in _SlabLists.Values) {
+                var list = (IList)_list;
+                lock (list) {
+                    for (int i = 0, c = list.Count; i < c; i++) {
+                        var slab = (ISlab)list[i];
+                        slab.Reset();
+                    }
+                }
             }
         }
 
@@ -370,32 +379,33 @@ namespace Squared.Render {
             return Index;
         }
 
-        internal ArraySegment<T> AllocateFromSlab<T> (int newSize) {
-            var slabs = _Slabs;
-            List<ISlab> slabList;
+        internal (Slab<T> slab, ArraySegment<T> result) AllocateFromSlab<T> (int newSize) {
+            var slabs = _SlabLists;
+            List<Slab<T>> slabList;
             var t = typeof(T);
 
             lock (slabs) {
-                slabs.TryGetValue(t, out slabList);
-                if (slabList == null) {
-                    slabList = new List<ISlab>();
+                slabs.TryGetValue(t, out var _slabList);
+                if (_slabList == null) {
+                    slabList = new List<Slab<T>>();
                     slabs.Add(t, slabList);
-                }
+                } else
+                    slabList = (List<Slab<T>>)_slabList;
+            }
+
+            int c = slabList.Count;
+            for (int i = 0; i < c; i++) {
+                var slab = slabList[i];
+                if (slab.TryAllocate(newSize, out var result))
+                    return (slab, result);
             }
 
             lock (slabList) {
-                foreach (var _slab in slabList) {
-                    var slab = (Slab<T>)_slab;
-                    if (slab.TryAllocate(newSize, out var result))
-                        return result;
-                }
-
-                {
-                    var slab = new Slab<T>(newSize);
-                    slabList.Add(slab);
-                    slab.TryAllocate(newSize, out var result);
-                    return result;
-                }
+                var slab = new Slab<T>(this, newSize);
+                slabList.Add(slab);
+                if (!slab.TryAllocate(newSize, out var result))
+                    throw new Exception("Internal error in slab allocator");
+                return (slab, result);
             }
         }
     }

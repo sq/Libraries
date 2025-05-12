@@ -14,6 +14,7 @@ namespace Squared.Render {
         private Frame _Frame;
         private ArraySegment<T> _Buffer;
         private int _Count;
+        private static Frame.Slab<T> _MostRecentSlab;
 
         /// <summary>
         /// The backing buffer for the draw call list
@@ -81,7 +82,14 @@ namespace Squared.Render {
             if (newSize <= buffer.Count)
                 throw new Exception("Internal error resizing buffer");
 
-            var newBuffer = _Frame.AllocateFromSlab<T>(newSize);
+            var mrs = _MostRecentSlab;
+            ArraySegment<T> newBuffer;
+            if ((mrs?.Frame != _Frame) || !mrs.TryAllocate(newSize, out newBuffer)) {
+                var tup = _Frame.AllocateFromSlab<T>(newSize);
+                _MostRecentSlab = tup.slab;
+                newBuffer = tup.result;
+            }
+
             var itemsToCopy = Math.Min(_Count, buffer.Count);
             if (itemsToCopy > 0)
                 Array.Copy(buffer.Array, buffer.Offset, newBuffer.Array, newBuffer.Offset, itemsToCopy);
