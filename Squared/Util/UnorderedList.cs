@@ -33,7 +33,6 @@ namespace Squared.Util {
         public int BufferVersion;
 
         protected T[] _Items;
-        protected int _BufferOffset, _BufferSize;
         internal int _Count;
 
         public struct Enumerator : IEnumerator<T> {
@@ -162,8 +161,6 @@ namespace Squared.Util {
             var buffer = Allocator.Allocate(size);
             BufferVersion++;
             _Items = buffer.Array;
-            _BufferOffset = buffer.Offset;
-            _BufferSize = buffer.Count;
         }
 
         public UnorderedList () {
@@ -179,27 +176,27 @@ namespace Squared.Util {
         public UnorderedList (T[] values) {
             AllocateNewBuffer(Math.Max(DefaultSize, values.Length));
             _Count = values.Length;
-            Array.Copy(values, 0, _Items, _BufferOffset, _Count);
+            Array.Copy(values, 0, _Items, 0, _Count);
         }
 
         public Enumerator GetParallelEnumerator (int partitionIndex, int partitionCount) {
             int partitionSize = (int)Math.Ceiling(_Count / (float)partitionCount);
             int start = partitionIndex * partitionSize;
-            return new Enumerator(this, start + _BufferOffset, Math.Min(_Count - start, partitionSize));
+            return new Enumerator(this, start, Math.Min(_Count - start, partitionSize));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public Enumerator GetEnumerator () {
-            return new Enumerator(this, _BufferOffset, _Count);
+            return new Enumerator(this, 0, _Count);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         IEnumerator<T> IEnumerable<T>.GetEnumerator () {
-            return new Enumerator(this, _BufferOffset, _Count);
+            return new Enumerator(this, 0, _Count);
         }
 
         IEnumerator IEnumerable.GetEnumerator () {
-            return new Enumerator(this, _BufferOffset, _Count);
+            return new Enumerator(this, 0, _Count);
         }
 
         public static int PickGrowthSize (int currentSize, int targetSize) {
@@ -214,15 +211,13 @@ namespace Squared.Util {
             return newCapacity;
         }
 
-        private void Grow (int targetCapacity) {
-            ArraySegment<T> newBuffer, oldBuffer = new ArraySegment<T>(_Items, _BufferOffset, _BufferSize);
-            var newCapacity = PickGrowthSize(_BufferSize, targetCapacity);
-            newBuffer = Allocator.Resize(oldBuffer,  newCapacity);
+        protected virtual void Grow (int targetCapacity) {
+            ArraySegment<T> newBuffer, oldBuffer = new ArraySegment<T>(_Items, 0, _Items.Length);
+            var newCapacity = PickGrowthSize(_Items.Length, targetCapacity);
+            newBuffer = Allocator.Resize(oldBuffer, newCapacity);
 
             BufferVersion++;
             _Items = newBuffer.Array;
-            _BufferOffset = newBuffer.Offset;
-            _BufferSize = newBuffer.Count;
         }
 
         protected void BoundsCheckFailed () {
@@ -234,14 +229,14 @@ namespace Squared.Util {
             if ((index < 0) || (index > _Count))
                 BoundsCheckFailed();
             if (index < Count)
-                Array.Copy(_Items, index + _BufferOffset, _Items, index + _BufferOffset + 1, Count - index);
-            _Items[index + _BufferOffset] = item;
+                Array.Copy(_Items, index, _Items, index + 1, Count - index);
+            _Items[index] = item;
             _Count += 1;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void EnsureCapacity (int capacity) {
-            if (_BufferSize >= capacity)
+            if (_Items.Length >= capacity)
                 return;
 
             Grow(capacity);
@@ -264,9 +259,9 @@ namespace Squared.Util {
                 // Either clear the space that will be occupied by new items, or clear
                 //  the space that was previously occupied by items and is no longer used
                 if (count > _Count)
-                    Array.Clear(_Items, _BufferOffset + _Count, count - _Count);
+                    Array.Clear(_Items, _Count, count - _Count);
                 else
-                    Array.Clear(_Items, _BufferOffset + count, _Count - count);
+                    Array.Clear(_Items, count, _Count - count);
             }
             _Count = count;
         }
@@ -276,7 +271,7 @@ namespace Squared.Util {
             int newCount = _Count + 1;
             EnsureCapacity(newCount);
 
-            _Items[_BufferOffset + newCount - 1] = item;
+            _Items[newCount - 1] = item;
             _Count = newCount;
         }
 
@@ -285,7 +280,7 @@ namespace Squared.Util {
             int newCount = _Count + 1;
             EnsureCapacity(newCount);
 
-            _Items[_BufferOffset + newCount - 1] = item;
+            _Items[newCount - 1] = item;
             _Count = newCount;
         }
 
@@ -295,7 +290,7 @@ namespace Squared.Util {
             EnsureCapacity(newCount);
 
             _Count = newCount;
-            return ref _Items[_BufferOffset + newCount - 1];
+            return ref _Items[newCount - 1];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -303,7 +298,7 @@ namespace Squared.Util {
             int newCount = _Count + count;
             EnsureCapacity(newCount);
 
-            int insertOffset = _BufferOffset + newCount - count;
+            int insertOffset = newCount - count;
             Array.Copy(items, sourceOffset, _Items, insertOffset, count);
 
             _Count = newCount;
@@ -325,7 +320,7 @@ namespace Squared.Util {
             int newCount = _Count + listCount;
             EnsureCapacity(newCount);
 
-            int insertOffset = _BufferOffset + newCount - listCount;
+            int insertOffset = newCount - listCount;
             for (var i = 0; i < listCount; i++)
                 _Items[insertOffset + i] = items[i];
 
@@ -352,19 +347,19 @@ namespace Squared.Util {
         }
 
         public bool Contains (in T item) {
-            var index = Array.IndexOf(_Items, item, _BufferOffset, _Count);
+            var index = Array.IndexOf(_Items, item, 0, _Count);
             return (index >= 0);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal ref T Item1 () => ref _Items[_BufferOffset];
+        internal ref T Item1 () => ref _Items[0];
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ref readonly T DangerousReadItem (int index) {
             if ((index < 0) || (index >= _Count))
                 BoundsCheckFailed();
 
-            return ref _Items[_BufferOffset + index];
+            return ref _Items[index];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -372,7 +367,7 @@ namespace Squared.Util {
             if ((index < 0) || (index >= _Count))
                 BoundsCheckFailed();
 
-            return ref _Items[_BufferOffset + index];
+            return ref _Items[index];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -380,7 +375,7 @@ namespace Squared.Util {
             if ((index < 0) || (index >= _Count))
                 BoundsCheckFailed();
 
-            return _Items[_BufferOffset + index];
+            return _Items[index];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -388,7 +383,7 @@ namespace Squared.Util {
             if ((index < 0) || (index >= _Count))
                 BoundsCheckFailed();
 
-            result = _Items[_BufferOffset + index];
+            result = _Items[index];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -398,7 +393,7 @@ namespace Squared.Util {
                 return false;
             }
 
-            result = _Items[_BufferOffset + index];
+            result = _Items[index];
             return true;
         }
 
@@ -407,7 +402,7 @@ namespace Squared.Util {
             if ((index < 0) || (index >= _Count))
                 return default(T);
 
-            return _Items[_BufferOffset + index];
+            return _Items[index];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -415,7 +410,7 @@ namespace Squared.Util {
             if ((index < 0) || (index >= _Count))
                 BoundsCheckFailed();
 
-            _Items[_BufferOffset + index] = newValue;
+            _Items[index] = newValue;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -423,7 +418,7 @@ namespace Squared.Util {
             if ((index < 0) || (index >= _Count))
                 BoundsCheckFailed();
 
-            _Items[_BufferOffset + index] = newValue;
+            _Items[index] = newValue;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -431,7 +426,7 @@ namespace Squared.Util {
             if ((index < 0) || (index >= _Count))
                 BoundsCheckFailed();
 
-            _Items[_BufferOffset + index] = default;
+            _Items[index] = default;
         }
 
         /// <summary>
@@ -444,11 +439,11 @@ namespace Squared.Util {
             var newCount = _Count - 1;
 
             if (index < newCount) {
-                ref var deadSlot = ref _Items[_BufferOffset + newCount];
-                _Items[_BufferOffset + index] = deadSlot;
+                ref var deadSlot = ref _Items[newCount];
+                _Items[index] = deadSlot;
                 deadSlot = default(T);
             } else {
-                _Items[_BufferOffset + index] = default(T);
+                _Items[index] = default(T);
             }
 
             _Count = newCount;
@@ -460,8 +455,8 @@ namespace Squared.Util {
 
             _Count--;
             if (index < _Count)
-                Array.Copy(_Items, _BufferOffset + index + 1, _Items, _BufferOffset + index, _Count - index);
-            _Items[_BufferOffset + _Count] = default(T);
+                Array.Copy(_Items, index + 1, _Items, index, _Count - index);
+            _Items[_Count] = default(T);
         }
 
         public void DangerousRemoveRange (int index, int count) {
@@ -474,9 +469,9 @@ namespace Squared.Util {
 
             _Count -= count;
             if (index < _Count)
-                Array.Copy(_Items, _BufferOffset + index + count, _Items, _BufferOffset + index, _Count - index);
+                Array.Copy(_Items, index + count, _Items, index, _Count - index);
 
-            Array.Clear(_Items, _BufferOffset + _Count, count);
+            Array.Clear(_Items, _Count, count);
         }
 
         /// <summary>
@@ -488,7 +483,7 @@ namespace Squared.Util {
                 return false;
             }
 
-            result = _Items[_BufferOffset + 0];
+            result = _Items[0];
             DangerousRemoveAt(0);
             return true;
         }
@@ -499,7 +494,7 @@ namespace Squared.Util {
                 return false;
             }
 
-            result = _Items[_BufferOffset + 0];
+            result = _Items[0];
             RemoveAtOrdered(0);
             return true;
         }
@@ -514,7 +509,7 @@ namespace Squared.Util {
                 return false;
             }
 
-            result = _Items[_BufferOffset + 0];
+            result = _Items[0];
             DangerousRemoveAt(0);
             empty = _Count == 0;
             return true;
@@ -527,7 +522,7 @@ namespace Squared.Util {
                 return false;
             }
 
-            result = _Items[_BufferOffset + 0];
+            result = _Items[0];
             RemoveAtOrdered(0);
             empty = _Count == 0;
             return true;
@@ -541,7 +536,7 @@ namespace Squared.Util {
             }
 
             var index = --_Count;
-            ref var slot = ref _Items[_BufferOffset + index];
+            ref var slot = ref _Items[index];
             result = slot;
             slot = default(T);
             return true;
@@ -557,13 +552,13 @@ namespace Squared.Util {
         public int Capacity {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
-                return _BufferSize;
+                return _Items.Length;
             }
         }
 
         public void Clear () {
-            Array.Clear(_Items, _BufferOffset, _BufferSize);
-            // Array.Clear(_Items, _BufferOffset, _Count);
+            // FIXME: Determine whether we need to clear excess
+            Array.Clear(_Items, 0, _Items.Length);
             _Count = 0;
         }
 
@@ -577,47 +572,45 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public T[] GetBufferArray () {
-            if (_BufferOffset != 0)
-                throw new InvalidOperationException("This buffer is a subregion of an array. Use GetBuffer.");
             return _Items;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ArraySegment<T> GetBuffer (bool trimmed = false) {
-            return new ArraySegment<T>(_Items, _BufferOffset, trimmed ? _Count : _BufferSize);
+            return new ArraySegment<T>(_Items, 0, trimmed ? _Count : _Items.Length);
         }
 
         public T[] ToArray () {
             var result = new T[_Count];
-            Array.Copy(_Items, _BufferOffset, result, 0, _Count);
+            Array.Copy(_Items, 0, result, 0, _Count);
             return result;
         }
 
         public void CopyTo (IList<T> output) {
             for (int i = 0; i < _Count; i++)
-                output.Add(_Items[_BufferOffset + i]);
+                output.Add(_Items[i]);
         }
 
         public void CopyTo (UnorderedList<T> output) {
             var segment = output.ReserveSpace(_Count);
-            Array.Copy(_Items, _BufferOffset, segment.Array, segment.Offset, _Count);
+            Array.Copy(_Items, 0, segment.Array, segment.Offset, _Count);
         }
 
         public void CopyTo (T[] buffer, int offset, int count) {
             if (count > _Count)
                 count = _Count;
 
-            Array.Copy(_Items, _BufferOffset, buffer, offset, count);
+            Array.Copy(_Items, 0, buffer, offset, count);
         }
 
         public void Sort (IComparer<T> comparer = null) {
-            Array.Sort(_Items, _BufferOffset, _Count, comparer);
+            Array.Sort(_Items, 0, _Count, comparer);
         }
 
         public void FastCLRSort<TComparer> (TComparer comparer, int offset = 0, int count = int.MaxValue)
             where TComparer : IComparer<T>
         {
-            var items = new ArraySegment<T>(_Items, _BufferOffset, _Count);
+            var items = new ArraySegment<T>(_Items, 0, _Count);
             count = Math.Min(count, _Count - offset);
             if (count < 0)
                 throw new ArgumentOutOfRangeException("offset or count out of range");
@@ -627,7 +620,7 @@ namespace Squared.Util {
         public void IndexedSort<TComparer> (TComparer comparer, int[] indices)
             where TComparer : IComparer<T>
         {
-            var items = new ArraySegment<T>(_Items, _BufferOffset, _Count);
+            var items = new ArraySegment<T>(_Items, 0, _Count);
             var _indices = new ArraySegment<int>(indices, 0, _Count);
             Util.Sort.IndexedSort(items, _indices, comparer);
         }
@@ -635,7 +628,7 @@ namespace Squared.Util {
         public void FastCLRSortRef<TComparer> (TComparer comparer, int offset = 0, int count = int.MaxValue)
             where TComparer : IRefComparer<T>
         {
-            var items = new ArraySegment<T>(_Items, _BufferOffset, _Count);
+            var items = new ArraySegment<T>(_Items, 0, _Count);
             count = Math.Min(count, _Count - offset);
             if (count < 0)
                 throw new ArgumentOutOfRangeException("offset or count out of range");
@@ -645,7 +638,7 @@ namespace Squared.Util {
         public void IndexedSortRef<TComparer> (TComparer comparer, int[] indices)
             where TComparer : IRefComparer<T>
         {
-            var items = new ArraySegment<T>(_Items, _BufferOffset, _Count);
+            var items = new ArraySegment<T>(_Items, 0, _Count);
             var _indices = new ArraySegment<int>(indices, 0, _Count);
             Util.Sort.IndexedSortRef(items, _indices, comparer);
         }
@@ -655,7 +648,7 @@ namespace Squared.Util {
             EnsureCapacity(newCount);
             var oldCount = _Count;
             _Count = newCount;
-            return new ArraySegment<T>(_Items, oldCount + _BufferOffset, count);
+            return new ArraySegment<T>(_Items, oldCount, count);
         }
 
         public bool SequenceEqual (UnorderedList<T> rhs) => SequenceEqual(rhs, EqualityComparer<T>.Default);
@@ -683,9 +676,9 @@ namespace Squared.Util {
             int oldCount = _Count, newCount = newItems._Count;
             EnsureCapacity(newCount);
             _Count = newCount;
-            newItems.CopyTo(_Items, _BufferOffset, newCount);
+            newItems.CopyTo(_Items, 0, newCount);
             if (clearEmptySpace && (newCount < oldCount))
-                Array.Clear(_Items, _BufferOffset + newCount, oldCount - newCount);
+                Array.Clear(_Items, newCount, oldCount - newCount);
         }
     }
 }

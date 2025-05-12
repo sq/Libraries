@@ -80,9 +80,10 @@ namespace Squared.Threading {
 
                 bool exhausted;
                 queue.Step(out exhausted, 1);
-
-                Assert.IsTrue(exhausted);
                 Assert.IsTrue(item.Ran);
+
+                queue.Step(out exhausted, 1);
+                Assert.IsTrue(exhausted);
             }
         }
 
