@@ -320,11 +320,9 @@ namespace Squared.Render {
             dm.Begin(ChangeRenderTargets);
 
             try {
-                int c = Batches.Count;
-                var _batches = Batches.Items;
-                foreach (var batch in _batches)
-                    if (batch != null)
-                        batch.IssueAndWrapExceptions(dm);
+                var items = Batches.Items;
+                for (int i = 0, c = items.Count; i < c; i++)
+                    items.Array[i + items.Offset]?.IssueAndWrapExceptions(dm);
             } finally {
                 dm.Finish();
                 RenderManager.PrepareManager.CleanupTextureCache();

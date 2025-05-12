@@ -108,15 +108,15 @@ namespace Squared.Render {
                 }
             }
 
-            var count = _DrawCalls.Count;
-
             if (_Before != null)
                 _Before(manager, _UserData);
 
             try {
-                if (!DisableIssue)
-                foreach (var batch in _DrawCalls.Items)
-                    batch?.IssueAndWrapExceptions(manager);
+                if (!DisableIssue) {
+                    var items = _DrawCalls.Items;
+                    for (int i = 0, c = items.Count; i < c; i++)
+                        items.Array[items.Offset + i]?.IssueAndWrapExceptions(manager);
+                }
             } finally {
                 if (_After != null)
                     _After(manager, _UserData);

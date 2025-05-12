@@ -24,6 +24,7 @@ namespace Squared.Render {
         }
         /// <summary>
         /// The backing buffer for the draw call list, trimmed to only the occupied slots
+        /// WARNING: Don't use foreach on this! ArraySegment's enumerator is a class!
         /// </summary>
         public ArraySegment<T> Items {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
