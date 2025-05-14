@@ -87,7 +87,17 @@ namespace Squared.Render {
         /// </summary>
         public Material InheritDefaultParametersFrom;
 
-        public MaterialEffectParameters Parameters { get; private set; }
+        private MaterialEffectParameters _Parameters;
+        private List<EffectParameter> _TextureParameters = new ();
+        private List<SynthesizedParameter> _SynthesizedParameters = new ();
+
+        public MaterialEffectParameters Parameters =>
+            InheritEffectFrom?.Parameters ?? _Parameters;
+        public List<EffectParameter> TextureParameters =>
+            InheritEffectFrom?.TextureParameters ?? _TextureParameters;
+
+        internal List<SynthesizedParameter> SynthesizedParameters =>
+            InheritEffectFrom?.SynthesizedParameters ?? _SynthesizedParameters;
 
         public readonly Action<DeviceManager>[] BeginHandlers;
         public readonly Action<DeviceManager>[] EndHandlers;
@@ -110,9 +120,6 @@ namespace Squared.Render {
         }
 
         private DenseList<Effect> DiscardedEffects;
-
-        internal List<EffectParameter> TextureParameters = new ();
-        internal List<SynthesizedParameter> SynthesizedParameters = new ();
 
         public string Name;
 
@@ -175,21 +182,19 @@ namespace Squared.Render {
         private void InitializeForEffect (Effect effect) {
             UniformBindings.Clear();
             Name = TechniqueName;
-            TextureParameters.Clear();
-            SynthesizedParameters.Clear();
+            _TextureParameters.Clear();
+            _SynthesizedParameters.Clear();
 
             if (effect == null)
                 return;
 
-            if (InheritEffectFrom != null) {
-                // FIXME: Inherit uniform bindings?
-                Parameters = InheritEffectFrom.Parameters;
-                TextureParameters = InheritEffectFrom.TextureParameters;
-                SynthesizedParameters = InheritEffectFrom.SynthesizedParameters;
-            } else if (Parameters == null)
-                Parameters = new MaterialEffectParameters(effect);
+            if (InheritEffectFrom != null)
+                return;
+
+            if (_Parameters == null)
+                _Parameters = new MaterialEffectParameters(effect);
             else
-                Parameters.Initialize(effect);
+                _Parameters.Initialize(effect);
 
             if (InheritEffectFrom == null)
             foreach (var p in effect.Parameters) {
