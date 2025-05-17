@@ -1097,8 +1097,8 @@ namespace Squared.PRGUI {
             alpha1 = alpha2 = 0f;
 
             settings.Box.SnapAndInset(out Vector2 a, out Vector2 b);
-            ca = a + (settings.ContentBox.Position - settings.Box.Position).Round();
-            cb = b - (settings.Box.Extent - settings.ContentBox.Extent).Round();
+            ca = a + (settings.ContentBox.Position - settings.Box.Position).Round(0);
+            cb = b - (settings.Box.Extent - settings.ContentBox.Extent).Round(0);
             fillColor1 = fillColor2 = outlineColor = default(pSRGBColor);
             fillMode = default(RasterFillMode);
             gradientPower = settings.HasTrait("eased-gradient") ? 2.5f : 1f;
@@ -1109,13 +1109,13 @@ namespace Squared.PRGUI {
                 default:
                 case "ltr":
                 case "rtl":
-                    if (ca.X >= cb.X)
+                    if ((cb.X - ca.X) <= 1)
                         return false;
                     fillMode = RasterFillMode.Angular + (direction == "rtl" ? 270 : 90);
                     break;
                 case "ttb":
                 case "btt":
-                    if (ca.Y >= cb.Y)
+                    if ((cb.Y - ca.Y) <= 1)
                         return false;
                     fillMode = RasterFillMode.Angular + (direction == "btt" ? 180 : 0);
                     break;

@@ -113,10 +113,10 @@ namespace Squared.PRGUI {
         // FIXME
         private InternalStateFlags InternalState = InternalStateFlags.Visible | InternalStateFlags.Enabled | InternalStateFlags.LayoutKeyIsInvalid;
 
-        protected bool IsLayoutInvalid {
+        public bool IsLayoutInvalid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (InternalState & (InternalStateFlags.LayoutInvalid | InternalStateFlags.LayoutKeyIsInvalid)) != default;
-            set {
+            protected set {
                 SetInternalFlag(InternalStateFlags.LayoutInvalid, value);
             }
         }
