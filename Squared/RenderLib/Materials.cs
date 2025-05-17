@@ -89,14 +89,15 @@ namespace Squared.Render {
 
         private MaterialEffectParameters _Parameters;
         private List<EffectParameter> _TextureParameters = new ();
-        private List<SynthesizedParameter> _SynthesizedParameters = new ();
+        // This was previously a List but the overhead of the enumerator is significant
+        private SynthesizedParameter[] _SynthesizedParameters = Array.Empty<SynthesizedParameter>();
 
         public MaterialEffectParameters Parameters =>
             InheritEffectFrom?.Parameters ?? _Parameters;
         public List<EffectParameter> TextureParameters =>
             InheritEffectFrom?.TextureParameters ?? _TextureParameters;
 
-        internal List<SynthesizedParameter> SynthesizedParameters =>
+        internal SynthesizedParameter[] SynthesizedParameters =>
             InheritEffectFrom?.SynthesizedParameters ?? _SynthesizedParameters;
 
         public readonly Action<DeviceManager>[] BeginHandlers;
@@ -183,7 +184,7 @@ namespace Squared.Render {
             UniformBindings.Clear();
             Name = TechniqueName;
             _TextureParameters.Clear();
-            _SynthesizedParameters.Clear();
+            _SynthesizedParameters = Array.Empty<SynthesizedParameter>();
 
             if (effect == null)
                 return;
@@ -196,7 +197,7 @@ namespace Squared.Render {
             else
                 _Parameters.Initialize(effect);
 
-            if (InheritEffectFrom == null)
+            var sp = new List<SynthesizedParameter>();
             foreach (var p in effect.Parameters) {
                 if (p.ParameterType == EffectParameterType.Texture2D)
                     TextureParameters.Add(p);
@@ -217,7 +218,7 @@ namespace Squared.Render {
                         continue;
 
                     if (type == SynthesizedParameterType.NoiseTextureSize) {
-                        SynthesizedParameters.Add(new SynthesizedParameter {
+                        sp.Add(new SynthesizedParameter {
                             Size = a.GetValueInt32(), Target = p,
                             Type = SynthesizedParameterType.NoiseTextureSize,
                         });
@@ -226,13 +227,15 @@ namespace Squared.Render {
                         var source = effect.Parameters[sourceName];
                         if (source == null)
                             throw new Exception($"Synthesized effect parameter {p.Name}'s source {sourceName} does not exist!");
-                        SynthesizedParameters.Add(new SynthesizedParameter {
+                        sp.Add(new SynthesizedParameter {
                             Source = source, Target = p,
                             Type = type
                         });
                     }
                 }
             }
+
+            _SynthesizedParameters = sp.ToArray();
         }
 
         internal Effect Effect {
@@ -352,7 +355,10 @@ namespace Squared.Render {
 
         private void SynthesizeParameters (RenderManager renderManager) {
             var dfp = renderManager.DistanceFieldProvider;
-            foreach (var sp in SynthesizedParameters) {
+            var sps = SynthesizedParameters;
+            for (int i = 0; i < sps.Length; i++) {
+                // Copying this to a local would incur the cost of a couple write barriers, so it's better to use it by-ref
+                ref var sp = ref sps[i];
                 var texture = sp.Source?.GetValueTexture2D();
                 switch (sp.Type) {
                     case SynthesizedParameterType.NoiseTextureSize:
