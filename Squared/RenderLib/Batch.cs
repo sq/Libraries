@@ -248,6 +248,7 @@ namespace Squared.Render {
             Material = material;
             MaterialParameters.Clear();
 
+            // FIXME: This is expensive
             lock (container.RenderManager.ReleaseQueue)
                 container.RenderManager.ReleaseQueue.Enqueue(this);
 

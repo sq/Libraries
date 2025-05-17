@@ -74,13 +74,14 @@ namespace Squared.Render {
             }
 
             public readonly Frame Frame;
-            public readonly List<ArraySegment<T>> FreeList = new (32);
+            private readonly List<ArraySegment<T>> FreeList = new (32);
 
             public const int IdealSizeInBytesNonRef = 1024 * 2048,
                 IdealSizeInBytesRef = 1024 * 32,
                 MinimumItemCount = 512,
                 MaxUnusedFrames = 2;
 
+            private bool FreeListDirty = false;
             private T[] Array;
             public int Capacity => Array.Length;
             internal int UsedSlots;
@@ -144,6 +145,9 @@ namespace Squared.Render {
             }
 
             private void MergeFreeListEntriesThenSortLocked () {
+                if (!FreeListDirty)
+                    return;
+
                 FreeList.Sort(FreeListAddressComparer.Instance);
                 for (int i = FreeList.Count - 1; i > 0; i--) {
                     var prev = FreeList[i - 1];
@@ -161,6 +165,8 @@ namespace Squared.Render {
                 LargestFreeSlot = 0;
                 foreach (var item in FreeList)
                     LargestFreeSlot = Math.Max(item.Count, LargestFreeSlot);
+
+                FreeListDirty = false;
             }
 
             private bool TryAllocateFromFreeList (int count, out ArraySegment<T> result) {
@@ -180,6 +186,7 @@ namespace Squared.Render {
                             FramesUnused = 0;
                             return true;
                         } else if (seg.Count == count) {
+                            // HACK: FreeListDirty=true unnecessary since removal doesn't make a merge possible or break ordering
                             FreeList.RemoveAt(i);
                             result = seg;
                             FramesUnused = 0;
@@ -237,6 +244,7 @@ namespace Squared.Render {
                     return;
 
                 lock (FreeList) {
+                    FreeListDirty = true;
                     FreeList.Add(buffer);
                     LargestFreeSlot = Math.Max(LargestFreeSlot, buffer.Count);
                 }

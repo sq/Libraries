@@ -783,8 +783,13 @@ namespace Squared.Util {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void AddRange (ref DenseList<T> items) {
-            for (int i = 0, c = items.Count; i < c; i++)
-                Add(ref items.Item(i));
+            EnsureCapacity(Count + items.Count, false);
+            if (HasList && items.HasList) {
+                items._Items.CopyTo(_Items);
+            } else {
+                for (int i = 0, c = items.Count; i < c; i++)
+                    Add(ref items.Item(i));
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -281,7 +281,22 @@ namespace Squared.Render {
             SetInternalFlag(StateFlags.IsCleared, true);
         }
 
+        private void AddRange_Fast (ref MaterialParameterValues rhs) {
+            // If we're empty we can skip the validation built into Set and just copy the other set's keys and values
+            if (rhs.Count == 0)
+                return;
+
+            KeyHash = rhs.KeyHash;
+            Keys.AddRange(ref rhs.Keys);
+            Values.AddRange(ref rhs.Values);
+        }
+
         public void AddRange (ref MaterialParameterValues rhs) {
+            if (Keys.Count == 0) {
+                AddRange_Fast(ref rhs);
+                return;
+            }
+
             for (int i = 0, c = rhs.Count; i < c; i++) {
                 ref var key = ref rhs.Keys.Item(i);
                 ref var value = ref rhs.Values.Item(key.ValueIndex);

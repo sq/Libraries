@@ -94,6 +94,7 @@ namespace Squared.Render {
             var itemsToCopy = Math.Min(_Count, buffer.Count);
             if (itemsToCopy > 0) {
                 Array.Copy(buffer.Array, buffer.Offset, newBuffer.Array, newBuffer.Offset, itemsToCopy);
+                // FIXME: Do this asynchronously somehow? It's very expensive
                 if (Frame.Slab<T>.ContainsReferences)
                     Array.Clear(buffer.Array, buffer.Offset, buffer.Count);
             }
