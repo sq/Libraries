@@ -119,7 +119,7 @@ namespace Squared.PRGUI.Controls {
         AbstractString Accessibility.IReadingTarget.Text {
             get {
                 // FIXME: Reverse this order?
-                if (!string.IsNullOrWhiteSpace(Label) && Label.Contains('{'))
+                if (!string.IsNullOrWhiteSpace(Label) && (Label.IndexOf('{') >= 0))
                     return string.Format(Label, GetValueText());
                 else if (Description != null)
                     return $"{Description}: {GetValueText()}";
@@ -217,7 +217,7 @@ namespace Squared.PRGUI.Controls {
 
             if (!string.IsNullOrWhiteSpace(Label)) {
                 // HACK
-                if (Label.Contains('{'))
+                if (Label.IndexOf('{') >= 0)
                     Text = string.Format(Label.ToString(), GetValueText());
                 else
                     Text = Label;
