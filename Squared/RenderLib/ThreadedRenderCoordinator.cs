@@ -838,6 +838,9 @@ namespace Squared.Render {
                 lock (_FrameLock)
                     newFrame = Interlocked.Exchange(ref _FrameBeingPrepared, null);
 
+                if (newFrame == null)
+                    return;
+
                 StartWorkPhase(WorkPhases.BeforePrepare);
                 RunBeforePrepareHandlers(newFrame);
                 NextFrameTiming.BeforePrepare = EndWorkPhase(WorkPhases.BeforePrepare);

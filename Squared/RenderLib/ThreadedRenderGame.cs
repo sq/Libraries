@@ -216,6 +216,10 @@ namespace Squared.Render {
         }
 
         sealed protected override void Draw (GameTime gameTime) {
+            // HACK: Suppress Win32OnPaint events from FNA since they'll cause us to crash
+            if (gameTime.ElapsedGameTime <= TimeSpan.Zero)
+                return;
+
             var priorIndex = Batch.LifetimeCount;
             RenderCoordinator.NextFrameTiming.PriorPrimitiveCount = NativeBatch.LifetimePrimitiveCount;
             RenderCoordinator.NextFrameTiming.PriorCommandCount = NativeBatch.LifetimeCommandCount;
