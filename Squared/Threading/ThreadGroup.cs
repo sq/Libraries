@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using Squared.Util;
 using System.Linq;
 using System.Runtime;
-using static System.Collections.Specialized.BitVector32;
 
 namespace Squared.Threading {
     public sealed class ThreadGroup : IDisposable {
