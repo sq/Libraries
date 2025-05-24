@@ -114,6 +114,9 @@ namespace Squared.PRGUI.Controls {
         public bool EnableSelect {
             get => _EnableSelect && (MaxSelectedCount > 0);
             set {
+                if (_EnableSelect == value)
+                    return;
+
                 _EnableSelect = value;
                 if (!value)
                     Manager.ClearSelection();
@@ -124,6 +127,9 @@ namespace Squared.PRGUI.Controls {
         public int MaxSelectedCount {
             get => Manager.MaxSelectedCount;
             set {
+                if (Manager.MaxSelectedCount == value)
+                    return;
+
                 Manager.MaxSelectedCount = value;
                 if (value <= 0)
                     Manager.ClearSelection();
@@ -698,6 +704,8 @@ namespace Squared.PRGUI.Controls {
                 return false;
             if (name != UIEvents.KeyPress)
                 return true;
+            if (!EnableSelect)
+                return false;
 
             var upward = (args.Key == Keys.Up) ||
                 (args.Key == Keys.PageUp) ||
@@ -740,6 +748,7 @@ namespace Squared.PRGUI.Controls {
                     if (args.Modifiers.Control)
                         SelectAll();
                     return true;
+
                 default: {
                     if (
                         Items.GetControlForValue(SelectedItem, out Control selectedControl) &&
