@@ -28,12 +28,14 @@ namespace Squared.Render {
                 var hwm = HighWaterMark;
 
                 var queue = threadGroup.GetQueueForType<Slab<T>.ResetWorkItem>();
+                var originalCount = Count;
                 for (int i = Count - 1; i >= 0; i--) {
                     var slab = this[i];
                     hwm = Math.Max(hwm, slab.UsedSlots);
 
                     // Attempt to release unused slabs so the GC can reclaim them
-                    if (slab.UsedSlots == 0) {
+                    // But always keep at least one slab
+                    if ((slab.UsedSlots == 0) && (Count > 1)) {
                         if (slab.MarkUnused()) {
                             // Unordered remove-and-compact
                             this[i] = this[Count - 1];
@@ -42,6 +44,9 @@ namespace Squared.Render {
                     } else
                         queue.Enqueue(new Slab<T>.ResetWorkItem { Slab = slab });
                 }
+
+                if ((Count == 0) && (originalCount > 0))
+                    Debugger.Break();
 
                 HighWaterMark = hwm;
                 return queue;
