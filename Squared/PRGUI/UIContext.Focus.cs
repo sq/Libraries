@@ -94,10 +94,12 @@ namespace Squared.PRGUI {
         }
 
         private void DefocusInvalidFocusTargets () {
-            while ((Focused != null) && !Focused.IsValidFocusTarget && InvalidFocusTargets.TryGetValue(Focused, out Control idealNewTarget)) {
+            Control idealNewTarget = null;
+
+            while ((Focused != null) && (!Focused.IsValidFocusTarget || InvalidFocusTargets.TryGetValue(Focused, out idealNewTarget))) {
                 InvalidFocusTargets.Remove(Focused);
                 var current = Focused;
-                var ok = (idealNewTarget == null) && TrySetFocus(idealNewTarget);
+                var ok = (idealNewTarget != null) && TrySetFocus(idealNewTarget);
 
                 if (!ok) {
                     var interim = Focused;
@@ -126,15 +128,18 @@ namespace Squared.PRGUI {
                 !Control.IsRecursivelyTransparent(control, includeSelf: false) && 
                 // We shouldn't auto-shift focus for modals since it's somewhat expensive and we don't
                 //  want to focus a random top level control after they close
-                (control is not IModal)
+                (control is not IModal) &&
+                FindTopLevelAncestor(control) != null
             )
                 idealNewTarget = idealNewTarget ?? PickFocusableSiblingForRotation(control, 1, false, out bool temp);
 
             // Auto-shifting failed, so try to return to the most recently focused control
             idealNewTarget = idealNewTarget ?? PreviousFocused ?? PreviousTopLevelFocused;
+            if (FindTopLevelAncestor(idealNewTarget) == null)
+                idealNewTarget = null;
 
             // HACK: If focus is stuck on a modal that's no longer a valid target, pick the topmost modal (if any) and focus that
-            if ((idealNewTarget == null) && (control is IModal))
+            if (idealNewTarget == null)
                 idealNewTarget = ModalStack.LastOrDefault() as Control;
 
             return idealNewTarget;
