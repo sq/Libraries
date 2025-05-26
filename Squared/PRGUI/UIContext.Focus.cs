@@ -96,7 +96,12 @@ namespace Squared.PRGUI {
         private void DefocusInvalidFocusTargets () {
             Control idealNewTarget = null;
 
-            while ((Focused != null) && (!Focused.IsValidFocusTarget || InvalidFocusTargets.TryGetValue(Focused, out idealNewTarget))) {
+            // HACK: Not sure why this is necessary
+            int iterations = 10;
+            while (
+                (Focused != null) && 
+                (!Focused.IsValidFocusTarget || InvalidFocusTargets.TryGetValue(Focused, out idealNewTarget))
+            ) {
                 InvalidFocusTargets.Remove(Focused);
                 var current = Focused;
                 var ok = (idealNewTarget != null) && TrySetFocus(idealNewTarget);
@@ -112,6 +117,9 @@ namespace Squared.PRGUI {
                 } else {
                     // Log($"Moved focus from invalid target {current} to {Focused}");
                 }
+
+                if (iterations-- <= 0)
+                    break;
             }
             InvalidFocusTargets.Clear();
         }
