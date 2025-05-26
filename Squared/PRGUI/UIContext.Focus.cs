@@ -143,8 +143,11 @@ namespace Squared.PRGUI {
 
             // Auto-shifting failed, so try to return to the most recently focused control
             idealNewTarget = idealNewTarget ?? PreviousFocused ?? PreviousTopLevelFocused;
-            if (FindTopLevelAncestor(idealNewTarget) == null)
-                idealNewTarget = null;
+            var tla = FindTopLevelAncestor(idealNewTarget);
+            // HACK: Don't return focus to inside of a collapsed window, since it would un-collapse it.
+            if ((tla == null) || ((tla is Window w) && w.Collapsed))
+                if (idealNewTarget != null)
+                    idealNewTarget = null;
 
             // HACK: If focus is stuck on a modal that's no longer a valid target, pick the topmost modal (if any) and focus that
             if (idealNewTarget == null)
@@ -174,12 +177,15 @@ namespace Squared.PRGUI {
             if (Control.IsEqualOrAncestor(_MouseCaptured, control))
                 MouseCaptured = null;
 
-            if ((_Focused != control) && Control.IsEqualOrAncestor(_Focused, control))
-                InvalidFocusTargets[_Focused] =
-                    PickIdealNewFocusTargetForInvalidFocusTarget(control);
+            if (control.AcceptsFocus) {
+                if ((_Focused != control) && Control.IsEqualOrAncestor(_Focused, control))
+                    InvalidFocusTargets[_Focused] =
+                        PickIdealNewFocusTargetForInvalidFocusTarget(control);
 
-            InvalidFocusTargets[control] = 
-                PickIdealNewFocusTargetForInvalidFocusTarget(control);
+                if (_Focused == control)
+                    InvalidFocusTargets[control] =
+                        PickIdealNewFocusTargetForInvalidFocusTarget(control);
+            }
 
             if (Control.IsEqualOrAncestor(KeyboardSelection, control))
                 ClearKeyboardSelection();
