@@ -212,8 +212,9 @@ namespace Squared.Render {
             _ => false,
         };
 
-        private readonly HashSet<Texture2D> AutoAllocatedTextureResources = 
-            new HashSet<Texture2D>(ReferenceComparer<Texture2D>.Instance);
+        private readonly Queue<Action> AutoAllocatedTextureResourceActionQueue = new ();
+        private bool AutoAllocatedTextureResourcesInUse = false;
+        private readonly HashSet<Texture2D> AutoAllocatedTextureResources = new (ReferenceComparer<Texture2D>.Instance);
 
         internal void LogPrint (string text) {
             if (OnLogMessage != null)
@@ -328,30 +329,60 @@ namespace Squared.Render {
         }
 
         private void OnAutoAllocatedTextureDisposed (object sender, EventArgs e) {
-            if (sender is Texture2D tex)
-                lock (AutoAllocatedTextureResources)
-                    AutoAllocatedTextureResources.Remove(tex);
+            if (!(sender is Texture2D tex))
+                return;
+
+            lock (AutoAllocatedTextureResources) {
+                if (AutoAllocatedTextureResourcesInUse) {
+                    AutoAllocatedTextureResourceActionQueue.Enqueue(() => OnAutoAllocatedTextureDisposed(sender, e));
+                    return;
+                }
+
+                AutoAllocatedTextureResources.Remove(tex);
+            }
         }
 
         public void RegisterAutoAllocatedTextureResource (Texture2D texture) {
-            lock (AutoAllocatedTextureResources)
+            lock (AutoAllocatedTextureResources) {
+                if (AutoAllocatedTextureResourcesInUse) {
+                    AutoAllocatedTextureResourceActionQueue.Enqueue(() => RegisterAutoAllocatedTextureResource(texture));
+                    return;
+                }
+
                 AutoAllocatedTextureResources.Add(texture);
+            }
 
             texture.Disposing += _OnAutoAllocatedTextureDisposed;
         }
 
         public void ForEachAutoAllocatedTextureResource (Action<Texture2D> callback) {
-            lock (AutoAllocatedTextureResources)
-                foreach (var tex in AutoAllocatedTextureResources)
-                    if (tex?.IsDisposed == false)
-                        callback(tex);
+            lock (AutoAllocatedTextureResources) {
+                try {
+                    AutoAllocatedTextureResourcesInUse = true;
+                    foreach (var tex in AutoAllocatedTextureResources)
+                        if (tex?.IsDisposed == false)
+                            callback(tex);
+                } finally {
+                    AutoAllocatedTextureResourcesInUse = false;
+                    while (AutoAllocatedTextureResourceActionQueue.Count > 0)
+                        AutoAllocatedTextureResourceActionQueue.Dequeue()();
+                }
+            }
         }
 
         public void ForEachAutoAllocatedTextureResource (Action<Texture2D, object> callback, object userData) {
-            lock (AutoAllocatedTextureResources)
-                foreach (var tex in AutoAllocatedTextureResources)
-                    if (tex?.IsDisposed == false)
-                        callback(tex, userData);
+            lock (AutoAllocatedTextureResources) {
+                try {
+                    AutoAllocatedTextureResourcesInUse = true;
+                    foreach (var tex in AutoAllocatedTextureResources)
+                        if (tex?.IsDisposed == false)
+                            callback(tex, userData);
+                } finally {
+                    AutoAllocatedTextureResourcesInUse = false;
+                    while (AutoAllocatedTextureResourceActionQueue.Count > 0)
+                        AutoAllocatedTextureResourceActionQueue.Dequeue()();
+                }
+            }
         }
 
         private void SetGraphicsDevice (GraphicsDevice device) {
