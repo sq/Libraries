@@ -17,6 +17,8 @@ namespace Squared.PRGUI {
 
         private HashSet<Control> FocusSearchHistory = new HashSet<Control>();
         private (Control value, bool force, bool isUserInitiated, bool? suppressAnimations, bool overrideKeyboardSelection) QueuedFocus;
+        // HACK: Avoid spamming the debug log with this warning every frame
+        private (IModal, Control) LastRetainedFocusWarning;
 
         private void AutomaticallyTransferFocusOnTopLevelChange (Control target) {
             if (target.AcceptsFocus)
@@ -108,8 +110,8 @@ namespace Squared.PRGUI {
 
                 if (!ok) {
                     var interim = Focused;
-                    idealNewTarget = PickIdealNewFocusTargetForInvalidFocusTarget(Focused);
-                    if (!TrySetFocus(idealNewTarget)) {
+                    idealNewTarget = PickIdealNewFocusTargetForInvalidFocusTarget(interim);
+                    if ((idealNewTarget == interim) || (idealNewTarget == current) || !TrySetFocus(idealNewTarget)) {
                         // Log($"Could not move focus from invalid target {current}");
                         break;
                     } else
@@ -144,10 +146,11 @@ namespace Squared.PRGUI {
             // Auto-shifting failed, so try to return to the most recently focused control
             idealNewTarget = idealNewTarget ?? PreviousFocused ?? PreviousTopLevelFocused;
             var tla = FindTopLevelAncestor(idealNewTarget);
-            // HACK: Don't return focus to inside of a collapsed window, since it would un-collapse it.
-            if ((tla == null) || ((tla is Window w) && w.Collapsed))
-                if (idealNewTarget != null)
-                    idealNewTarget = null;
+            if (tla == null)
+                idealNewTarget = null;
+            else if ((tla is TitledContainer tc) && tc.Collapsed)
+                // HACK: Don't return focus to inside of a collapsed window, since it would un-collapse it.
+                idealNewTarget = null;
 
             // HACK: If focus is stuck on a modal that's no longer a valid target, pick the topmost modal (if any) and focus that
             if (idealNewTarget == null)
@@ -424,7 +427,11 @@ namespace Squared.PRGUI {
                 !Control.IsRecursivelyTransparent(((Control)ActiveModal)) &&
                 (TopLevelFocused == activeModal)
             ) {
-                Log($"Modal {activeModal} is retaining focus and blocked focus change to {newFocusTarget}");
+                var tup = (activeModal, newFocusTarget);
+                if (LastRetainedFocusWarning != tup) {
+                    LastRetainedFocusWarning = tup;
+                    Log($"Modal {activeModal} is retaining focus and blocked focus change to {newFocusTarget}");
+                }
                 return false;
             }
 
