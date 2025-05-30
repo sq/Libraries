@@ -1085,7 +1085,7 @@ namespace Squared.PRGUI {
         }
 
         internal bool ShouldModalBlockHitTests (IModal m) =>
-            (m != null) && m.BlockHitTests && !Control.IsRecursivelyTransparent((Control)m, includeOpacityAsOfTime: NowL);
+            (m != null) && m.BlockHitTests && !Control.IsRecursivelyTransparent((Control)m, includeOpacityAsOfTime: NowL, ignoreFadeIn: true);
 
         // Position is relative to the top-left corner of the canvas
         public Control HitTest (Vector2 position, in HitTestOptions options, out Vector2 localPosition) {

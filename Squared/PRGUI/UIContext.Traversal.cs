@@ -75,7 +75,7 @@ namespace Squared.PRGUI {
             if (control is IControlContainer container) {
                 var _validTarget = validTarget && control.Enabled && 
                     // FIXME: IsValidFocusTarget already computes this
-                    !Control.IsRecursivelyTransparent(control, true);
+                    !Control.IsRecursivelyTransparent(control, true, ignoreFadeIn: true);
                 var cc = container.Children;
                 var depth = currentDepth + 1;
                 for (int i = 0, c = cc.Count; i < c; i++)

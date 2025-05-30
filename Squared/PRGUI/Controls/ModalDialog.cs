@@ -175,6 +175,7 @@ namespace Squared.PRGUI.Controls {
             // Appearance.Opacity = 0f;
             _OnAcceptClick = OnAcceptClick;
             _OnCancelClick = OnCancelClick;
+            ElevateOnFocus = true;
         }
 
         private void RegisterWeakHandler (Control target, EventSubscriber handler, ref EventSubscription subscription) {

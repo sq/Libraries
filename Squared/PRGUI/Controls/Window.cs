@@ -231,7 +231,8 @@ namespace Squared.PRGUI.Controls {
 
         protected override bool OnEvent<T> (string name, T args) {
             if (name == UIEvents.GotTopLevelFocus) {
-                if (ElevateOnFocus)
+                // HACK: Only elevate when focus is moving from something else
+                if (ElevateOnFocus && (args != null))
                     Elevate();
             } else if ((name == UIEvents.KeyPress) && KeyEventArgs.From(ref args, out var ka)) {
                 if (AllowClose && (ka.Key == Keys.F4) && ka.Modifiers.Control) {

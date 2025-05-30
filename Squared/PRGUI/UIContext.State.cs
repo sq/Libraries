@@ -58,7 +58,7 @@ namespace Squared.PRGUI {
                 for (int i = ModalStack.Count - 1; i >= 0; i--) {
                     var m = ModalStack[i] as Control;
                     var wasRecentlyPushed = MostRecentlyPushedModal == m;
-                    var isTransparent = Control.IsRecursivelyTransparent(m, includeOpacityAsOfTime: now);
+                    var isTransparent = Control.IsRecursivelyTransparent(m, includeOpacityAsOfTime: now, ignoreFadeIn: true);
                     // HACK: Invisible/intangible modals may remain on the stack but shouldn't be 'active' since
                     //  that would mean an invisible control is occluding input and the user never really wants that
                     if (isTransparent && !wasRecentlyPushed)

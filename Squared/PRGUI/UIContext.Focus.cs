@@ -102,7 +102,7 @@ namespace Squared.PRGUI {
             int iterations = 10;
             while (
                 (Focused != null) && 
-                (!Focused.IsValidFocusTarget || InvalidFocusTargets.TryGetValue(Focused, out idealNewTarget))
+                InvalidFocusTargets.TryGetValue(Focused, out idealNewTarget)
             ) {
                 InvalidFocusTargets.Remove(Focused);
                 var current = Focused;
@@ -135,7 +135,7 @@ namespace Squared.PRGUI {
 
             // Attempt to auto-shift focus as long as our parent chain is focusable
             if (
-                !Control.IsRecursivelyTransparent(control, includeSelf: false) && 
+                !Control.IsRecursivelyTransparent(control, includeSelf: false, ignoreFadeIn: true) && 
                 // We shouldn't auto-shift focus for modals since it's somewhat expensive and we don't
                 //  want to focus a random top level control after they close
                 (control is not IModal) &&
@@ -226,7 +226,7 @@ namespace Squared.PRGUI {
                 var inTabOrder = Controls.InTabOrder(FrameIndex, false)
                     .ToDenseList(where: c => 
                         (((c as IControlContainer)?.ChildrenAcceptFocus ?? false) || c.AcceptsFocus) &&
-                        (c.Enabled || c.AcceptsFocusWhenDisabled) && !Control.IsRecursivelyTransparent(c, true, NowL) &&
+                        (c.Enabled || c.AcceptsFocusWhenDisabled) && !Control.IsRecursivelyTransparent(c, true, NowL, ignoreFadeIn: true) &&
                         (c is not FocusProxy)
                     );
                 var currentIndex = inTabOrder.IndexOf(currentTopLevel);
@@ -352,7 +352,7 @@ namespace Squared.PRGUI {
                 if (
                     (childTarget == null) ||
                     (FindTopLevelAncestor(childTarget) == null) ||
-                    Control.IsRecursivelyTransparent(childTarget)
+                    Control.IsRecursivelyTransparent(childTarget, ignoreFadeIn: true)
                 ) {
                     var container = value as IControlContainer;
                     if (IsValidContainerToSearchForFocusableControls(container))
@@ -424,7 +424,7 @@ namespace Squared.PRGUI {
                 (activeModal?.RetainFocus == true) && 
                 (newTopLevelAncestor != activeModal) && 
                 ((Control)ActiveModal).Enabled &&
-                !Control.IsRecursivelyTransparent(((Control)ActiveModal)) &&
+                !Control.IsRecursivelyTransparent(((Control)ActiveModal), ignoreFadeIn: true) &&
                 (TopLevelFocused == activeModal)
             ) {
                 var tup = (activeModal, newFocusTarget);
@@ -495,7 +495,7 @@ namespace Squared.PRGUI {
             else if (!ic.ChildrenAcceptFocus)
                 return false;
             return (control.Enabled || control.AcceptsFocusWhenDisabled)
-                && control.Visible && !Control.IsRecursivelyTransparent(control);
+                && control.Visible && !Control.IsRecursivelyTransparent(control, ignoreFadeIn: true);
         }
 
         public bool TryMoveFocusDirectionally (int x, int y, bool isUserInitiated = true, Control relativeTo = null) {

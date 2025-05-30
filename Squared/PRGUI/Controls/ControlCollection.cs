@@ -349,15 +349,23 @@ namespace Squared.PRGUI {
         }
 
         public int PickNewHighestDisplayOrder (Control ctl, bool topmost) {
+            Control highestItem = null;
             int result = int.MinValue;
             foreach (var item in Items) {
-                if (item == ctl)
-                    continue;
                 var itemIsTopmost = item.DisplayOrder >= (int.MaxValue - 16);
+
+                if (!itemIsTopmost && (item.DisplayOrder >= (highestItem ?? item)?.DisplayOrder))
+                    highestItem = item;
+
                 if (!topmost && itemIsTopmost)
+                    continue;
+                if (item == ctl)
                     continue;
                 result = Math.Max(result, item.DisplayOrder + 1);
             }
+            if (ctl == highestItem)
+                return ctl.DisplayOrder;
+
             if (result <= int.MinValue)
                 return Math.Max(ctl.DisplayOrder, 0);
             else

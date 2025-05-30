@@ -23,7 +23,9 @@ namespace Squared.Threading {
                 // Reduce the overhead of processing each item, but also make sure that
                 //  the queue won't block things like frame prepares
                 new WorkItemConfiguration {
-                    MaxConcurrency = 3,
+                    // High concurrency for jitting is potentially counterproductive since the process of
+                    //  jitting a method acquires various locks
+                    MaxConcurrency = 2,
                     ConcurrencyPadding = 2,
                     DefaultStepCount = 3
                 };

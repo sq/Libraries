@@ -253,7 +253,7 @@ namespace Squared.PRGUI {
         public bool IsValidFocusTarget => 
             (
                 AcceptsFocus || (FocusBeneficiary != null)
-            ) && (Enabled || AcceptsFocusWhenDisabled) && !Control.IsRecursivelyTransparent(this);
+            ) && (Enabled || AcceptsFocusWhenDisabled) && !Control.IsRecursivelyTransparent(this, ignoreFadeIn: true);
 
         public bool IsValidMouseInputTarget =>
             AcceptsMouseInput && Visible && Enabled;
@@ -449,13 +449,18 @@ namespace Squared.PRGUI {
             return null;
         }
 
-        public static bool IsRecursivelyTransparent (Control control, bool includeSelf = true, long? includeOpacityAsOfTime = null) {
+        public static bool IsRecursivelyTransparent (
+            Control control, bool includeSelf = true, 
+            long? includeOpacityAsOfTime = null, bool ignoreFadeIn = false
+        ) {
             if (includeSelf) {
                 if (!control.Visible)
                     return true;
 
-                if (includeOpacityAsOfTime.HasValue && (control.Appearance.Opacity.Get(includeOpacityAsOfTime.Value) <= 0))
-                    return true;
+                if (includeOpacityAsOfTime.HasValue && (control.Appearance.Opacity.Get(includeOpacityAsOfTime.Value) <= 0)) {
+                    if (!ignoreFadeIn || (control.Appearance.Opacity.To <= control.Appearance.Opacity.From))
+                        return true;
+                }
             }
 
             var current = control;
@@ -471,8 +476,10 @@ namespace Squared.PRGUI {
                 if (!current.Visible)
                     return true;
 
-                if (includeOpacityAsOfTime.HasValue && (current.Appearance.Opacity.Get(includeOpacityAsOfTime.Value) <= 0))
-                    return true;
+                if (includeOpacityAsOfTime.HasValue && (current.Appearance.Opacity.Get(includeOpacityAsOfTime.Value) <= 0)) {
+                    if (!ignoreFadeIn || (current.Appearance.Opacity.To <= current.Appearance.Opacity.From))
+                        return true;
+                }
             }
         }
 

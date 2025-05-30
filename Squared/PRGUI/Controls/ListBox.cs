@@ -363,7 +363,7 @@ namespace Squared.PRGUI.Controls {
 
             bool hadKeyboardSelection = false;
             var oldKeyboardSelection = Context.KeyboardSelection;
-            var generatingEnabled = GenerateControlsWhenHidden || hadKeyboardSelection || !IsRecursivelyTransparent(this, true);
+            var generatingEnabled = GenerateControlsWhenHidden || hadKeyboardSelection || !IsRecursivelyTransparent(this, true, ignoreFadeIn: true);
             if (NeedsUpdate && !existingKey.HasValue) {
                 hadKeyboardSelection = Children.Contains(Context.KeyboardSelection);
                 var priorControl = Manager.SelectedControl;
