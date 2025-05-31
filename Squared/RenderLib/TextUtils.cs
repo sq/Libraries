@@ -1598,9 +1598,9 @@ namespace Squared.Render.Text {
         public object UniqueKey { get; set; }
 
         private bool NeedIncrementVersion = true;
-        private readonly Dictionary<uint, AtlasGlyph> Registry = 
-            new Dictionary<uint, AtlasGlyph>(UintComparer.Instance);
+        private readonly Dictionary<uint, AtlasGlyph> Registry = new (UintComparer.Instance);
         private DenseList<WeakReference<IGlyphSourceChangeListener>> ChangeListeners;
+        private readonly Dictionary<string, uint> ByName = new (StringComparer.OrdinalIgnoreCase);
 
         void IGlyphSource.RegisterForChangeNotification (WeakReference<IGlyphSourceChangeListener> listener) {
             if (!ChangeListeners.Contains(listener))
@@ -1620,6 +1620,16 @@ namespace Squared.Render.Text {
 
             // HACK
             var result = (uint)(glyph.Index ?? (glyph.X + (Atlas.WidthInCells * glyph.Y)) + 1);
+            return result;
+        }
+
+        public uint GetCodepointByName (string name) {
+            if (name == null)
+                return 0;
+
+            if (!ByName.TryGetValue(name, out var result))
+                return 0;
+
             return result;
         }
 
@@ -1672,6 +1682,8 @@ namespace Squared.Render.Text {
                 throw new ArgumentOutOfRangeException("glyph.Y");
 
             Registry.Add(glyph.Character, glyph);
+            if (glyph.Name != null)
+                ByName.Add(glyph.Name, glyph.Character);
             if (NeedIncrementVersion) {
                 NeedIncrementVersion = false;
                 Version++;
