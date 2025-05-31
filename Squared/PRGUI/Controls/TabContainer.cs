@@ -255,9 +255,12 @@ namespace Squared.PRGUI.Controls {
 
             result.Tag = LayoutTags.TabContainer;
             var constrainSize = (Container.ConstrainSize || ContainerFlags.IsFlagged(ControlFlags.Container_Constrain_Size));
+            var noExpansion = (Container.NoExpansion || ContainerFlags.IsFlagged(ControlFlags.Container_No_Expansion));
             var containerFlags = ContainerFlags | ExtraContainerFlags;
             if (constrainSize)
                 containerFlags |= ControlFlags.Container_Constrain_Size;
+            if (noExpansion)
+                containerFlags |= ControlFlags.Container_No_Expansion;
             result.OldContainerFlags = containerFlags;
 
             {

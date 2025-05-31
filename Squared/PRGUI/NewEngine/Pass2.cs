@@ -350,7 +350,11 @@ namespace Squared.PRGUI.NewEngine {
                                 newXSpace -= expanded;
                                 childResult.Rect.Width = newChildW - margins.X;
                                 run.TotalWidth += newChildW;
-                                run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, newChildW);
+                                // HACK: Do our best to correct completely corrupted outer size data
+                                if (run.First.IndexPlusOne == run.Last.IndexPlusOne)
+                                    run.MaxOuterWidth = newChildW;
+                                else
+                                    run.MaxOuterWidth = Math.Max(run.MaxOuterWidth, newChildW);
                             }
 
                             if (expandChildY) {
@@ -366,7 +370,11 @@ namespace Squared.PRGUI.NewEngine {
                                 newYSpace -= expanded;
                                 childResult.Rect.Height = newChildH - margins.Y;
                                 run.TotalHeight += newChildH;
-                                run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, newChildH);
+                                // HACK: Do our best to correct completely corrupted outer size data
+                                if (run.First.IndexPlusOne == run.Last.IndexPlusOne)
+                                    run.MaxOuterHeight = newChildH;
+                                else
+                                    run.MaxOuterHeight = Math.Max(run.MaxOuterHeight, newChildH);
                             }
 
                             if (isVertical)
