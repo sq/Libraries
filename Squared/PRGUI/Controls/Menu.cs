@@ -156,15 +156,15 @@ namespace Squared.PRGUI.Controls {
             set => SetSelectedItem(value, true);
         }
 
-        private void SetSelectedItem (Control value, bool fireEvents, bool snap = false) {
+        private void SetSelectedItem (Control value, bool forUserInput, bool snap = false) {
             if (value?.Enabled == false)
                 value = null;
             if (_SelectedItem == value)
                 return;
             var oldSelection = _SelectedItem;
             _SelectedItem = value;
-            if (fireEvents)
-                OnSelectionChange(oldSelection, value);
+            OnSelectionChange(oldSelection, value, forUserInput);
+
             if (snap && SnapMouseToNewSelection)
                 _PendingSnap = value;
             else
@@ -408,7 +408,7 @@ namespace Squared.PRGUI.Controls {
             return ok;
         }
 
-        private void OnSelectionChange (Control previous, Control newControl) {
+        private void OnSelectionChange (Control previous, Control newControl, bool forUserInput) {
             Listener?.ItemSelected(this, newControl);
             FireEvent(UIEvents.SelectionChanged, newControl);
         }
@@ -956,6 +956,7 @@ namespace Squared.PRGUI.Controls {
             Listener?.Closed(this);
             if (Closed != null)
                 Closed(this, reason);
+            FireEvent(UIEvents.Closed, reason);
             Context.NotifyModalClosed(this);
             if (NextResultFuture?.Completed == false)
                 NextResultFuture?.SetResult2(null, null);

@@ -193,6 +193,7 @@ namespace Squared.PRGUI.Controls {
                 return;
             }
 
+            // FIXME: This stops event listeners from responding to click events for the accept control
             e.Consume();
             Close(AcceptResult, ModalCloseReason.UserConfirmed);
         }
@@ -208,6 +209,7 @@ namespace Squared.PRGUI.Controls {
                 return;
             }
 
+            // FIXME: This stops event listeners from responding to click events for the cancel control
             e.Consume();
             Close(CancelResult, ModalCloseReason.UserCancelled);
         }
@@ -322,6 +324,7 @@ namespace Squared.PRGUI.Controls {
             Intangible = true;
             IsFadingOut = (Context.TopLevelFocused == this);
             var f = StartAnimation(HideAnimation);
+            FireEvent(UIEvents.Closed, reason);
             Context.NotifyModalClosed(this);
             if ((reason == ModalCloseReason.UserConfirmed) && (Accepted != null))
                 Accepted(this, result);

@@ -156,10 +156,11 @@ namespace Squared.PRGUI {
             if (eventWasHandled)
                 return;
 
-            UnhandledEvents.Add(new UnhandledEvent {
-                Source = eventSource as Control,
-                Name = eventName
-            });
+            lock (UnhandledEvents)
+                UnhandledEvents.Add(new UnhandledEvent {
+                    Source = eventSource as Control,
+                    Name = eventName
+                });
         }
 
         private Tooltip GetTooltipInstance () {
@@ -392,7 +393,6 @@ namespace Squared.PRGUI {
             if (!ModalStack.Contains(modal))
                 return;
             ModalStack.Remove(modal);
-            FireEvent(UIEvents.Closed, ctl);
 
             // The focus donor might be an invalid target, but try it first
             if (newFocusTarget != null) {
@@ -474,8 +474,10 @@ namespace Squared.PRGUI {
             UsedMouseEventArgs.Clear();
 
             PreviousUnhandledEvents.Clear();
-            foreach (var evt in UnhandledEvents)
-                PreviousUnhandledEvents.Add(evt);
+            // HACK: This really shouldn't be necessary...
+            lock (UnhandledEvents)
+                foreach (var evt in UnhandledEvents)
+                    PreviousUnhandledEvents.Add(evt);
             UnhandledEvents.Clear();
 
             // We need to make sure we only exit after clearing lists like UnhandledEvents, otherwise we can leak memory.

@@ -222,7 +222,7 @@ namespace Squared.Render.Resources {
                     Exception err = null;
                     instance?.GetResult(out value, out err);
                     if (instance == null)
-                        err = new NullReferenceException();
+                        err = new NullReferenceException($"{this} got null instance when loading {LoadInfo.Name}");
 
                     if (err == null)
                         LoadInfo.SetStatus(ResourceLoadStatus.Created, Provider.Now);

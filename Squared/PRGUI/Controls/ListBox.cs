@@ -194,11 +194,7 @@ namespace Squared.PRGUI.Controls {
             Container.Arrangement = Flags.ChildArrangement.Column;
         }
 
-        private void Manager_SelectionChanged () {
-            OnSelectionChanged(false);
-        }
-
-        private void OnSelectionChanged (bool forUserInput) {
+        private void Manager_SelectionChanged (bool forUserInput) {
             DesiredScrollOffset = null;
             SelectedItemHasChangedSinceLastUpdate = true;
             // FIXME: Should we defer this?
@@ -208,6 +204,10 @@ namespace Squared.PRGUI.Controls {
                 FireEvent(UIEvents.ValueChangedByUser, SelectedItem);
         }
 
+        private void OnSelectionChanged (bool forUserInput) {
+            // FIXME: Remove this? It's redundant with Manager_SelectionChanged and less reliable
+        }
+
         public bool TryGrowSelectedItems (int delta, bool forUserInput) {
             if (!Manager.TryResizeSelection(delta, out T temp, true))
                 return false;
@@ -215,33 +215,36 @@ namespace Squared.PRGUI.Controls {
             return true;
         }
 
-        public bool TryExpandOrShrinkSelectionToItem (ref T value, bool fireEvent) {
-            if (!Manager.TryExpandOrShrinkSelectionToItem(ref value, fireEvent))
+        public bool TryExpandOrShrinkSelectionToItem (ref T value, bool forUserInput) {
+            if (!Manager.TryExpandOrShrinkSelectionToItem(ref value, forUserInput))
                 return false;
-            OnSelectionChanged(fireEvent);
+
+            OnSelectionChanged(forUserInput);
             return true;
         }
 
-        public bool TryToggleItemSelected (ref T value, bool fireEvent) {
-            if (!Manager.TryToggleItemSelected(ref value, fireEvent))
+        public bool TryToggleItemSelected (ref T value, bool forUserInput) {
+            if (!Manager.TryToggleItemSelected(ref value, forUserInput))
                 return false;
-            OnSelectionChanged(fireEvent);
+
+            OnSelectionChanged(forUserInput);
             return true;
         }
 
-        public bool SetSelectedIndex (int index, bool fireEvent) {
-            if (!Manager.TrySetSelectedIndex(index, fireEvent))
+        public bool SetSelectedIndex (int index, bool forUserInput) {
+            if (!Manager.TrySetSelectedIndex(index, forUserInput))
                 return false;
-            OnSelectionChanged(fireEvent);
+
+            OnSelectionChanged(forUserInput);
             return true;
         }
 
-        public bool SetSelectedItem (T value, bool fireEvent) {
+        public bool SetSelectedItem (T value, bool forUserInput) {
             // NOTE: If value was already selected, this will return false, which skips firing events.
-            if (!Manager.TrySetSelectedItem(ref value, fireEvent))
+            if (!Manager.TrySetSelectedItem(ref value, forUserInput))
                 return false;
 
-            OnSelectionChanged(fireEvent);
+            OnSelectionChanged(forUserInput);
             return true;
         }
 
