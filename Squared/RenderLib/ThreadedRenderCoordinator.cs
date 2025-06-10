@@ -207,8 +207,7 @@ namespace Squared.Render {
         public bool GraphicsBackendIsThreadingSafe => GraphicsBackendName switch {
             "D3D9" => true,
             "D3D11" => true,
-            "Vulkan" => true,
-            "SDL_GPU" => true,
+            "SDL_GPU" => false,
             _ => false,
         };
 
