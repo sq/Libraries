@@ -554,6 +554,7 @@ namespace Squared.PRGUI.Controls {
             var width = Width;
             var height = Height;
             // HACK
+            // FIXME: Doing this an additional time is expensive
             ComputeSizeConstraints(ref context, ref width, ref height, sizeScale);
             var hasWidthConstraint = (width.Fixed ?? width.Maximum).HasValue;
             var maxPx = (width.Fixed ?? width.Maximum) - computedPadding.X;

@@ -663,6 +663,7 @@ namespace Squared.PRGUI {
         public float? Minimum {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             readonly get => HasMinimum ? _Minimum : (float?)null;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 if (value == null) {
                     Flags &= ~Flag.Minimum;
@@ -682,6 +683,7 @@ namespace Squared.PRGUI {
         public float? Maximum {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             readonly get => HasMaximum ? _Maximum : (float?)null;
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             set {
                 if (value == null) {
                     Flags &= ~Flag.Maximum;

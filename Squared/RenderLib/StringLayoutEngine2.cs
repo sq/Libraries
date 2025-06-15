@@ -90,7 +90,7 @@ namespace Squared.Render.TextLayout2 {
 
     public interface IStringLayoutListener {
         void Initializing (ref StringLayoutEngine2 engine);
-        void RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture);
+        void RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture, bool isGlyph);
         void Finishing (ref StringLayoutEngine2 engine);
         void Finished (ref StringLayoutEngine2 engine, ref StringLayout result);
         void Error (ref StringLayoutEngine2 engine, string message);
@@ -827,7 +827,7 @@ recalc:
                         };
 
                         if (glyph.Texture != MostRecentTexture) {
-                            Listener?.RecordTexture(ref this, glyph.Texture);
+                            Listener?.RecordTexture(ref this, glyph.Texture, true);
                             MostRecentTexture = glyph.Texture;
                         }
 
@@ -1336,7 +1336,7 @@ recalc:
         }
 
         public void AppendImage (ref RichImage image) {
-            Listener?.RecordTexture(ref this, image.Texture);
+            Listener?.RecordTexture(ref this, image.Texture, false);
 
             ref var fragment = ref FinishFragment(true);
             var boxIndex = BoxIndex++;

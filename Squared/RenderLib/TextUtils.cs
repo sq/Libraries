@@ -1244,14 +1244,17 @@ namespace Squared.Render.Text {
             _Listener?.Error(ref engine, message);
         }
 
-        void IStringLayoutListener.RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture) {
-            if (RecordUsedTextures) {
+        void IStringLayoutListener.RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture, bool isGlyph) {
+            // HACK: Reduce overhead dramatically by not recording glyph textures as used, since their textures are just atlases
+            //  that aren't going to realistically get GCed ever.
+            // FIXME: If we ever start GCing font atlases (really????) we'll need to fix this
+            if (RecordUsedTextures && !isGlyph) {
                 var satellite = AutoAllocateSatellite();
                 if (satellite.UsedTextures.IndexOf(texture, AbstractTextureReference.Comparer.Instance) < 0)
                     satellite.UsedTextures.Add(texture);
             }
 
-            _Listener?.RecordTexture(ref engine, texture);
+            _Listener?.RecordTexture(ref engine, texture, isGlyph);
         }
 
         void IStringLayoutListener.Finishing (ref StringLayoutEngine2 engine) {
