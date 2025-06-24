@@ -350,23 +350,34 @@ namespace Squared.PRGUI {
 
         public int PickNewHighestDisplayOrder (Control ctl, bool topmost) {
             Control highestItem = null;
-            int result = int.MinValue;
+            int result = topmost 
+                ? Control.FirstTopmostDisplayOrder 
+                : int.MinValue;
+
             foreach (var item in Items) {
-                var itemIsTopmost = item.DisplayOrder >= (int.MaxValue - 16);
-
-                if (!itemIsTopmost && (item.DisplayOrder >= (highestItem ?? item)?.DisplayOrder))
-                    highestItem = item;
-
-                if (!topmost && itemIsTopmost)
+                // If picking a topmost display order, only consider controls that are topmost as well
+                // Otherwise, only consider controls that *aren't* topmost.
+                var itemIsTopmost = item.DisplayOrder >= Control.FirstTopmostDisplayOrder;
+                if (itemIsTopmost != topmost)
                     continue;
+
+                // HACK: Ignore controls at the very top of the display order hierarchy, like tooltips
+                //  otherwise we can end up picking int.MaxValue
+                if (item.DisplayOrder >= (int.MaxValue - 128))
+                    continue;
+
+                if (item.DisplayOrder >= (highestItem ?? item)?.DisplayOrder)
+                    highestItem = item;
                 if (item == ctl)
                     continue;
+
                 result = Math.Max(result, item.DisplayOrder + 1);
             }
+
             if (ctl == highestItem)
                 return ctl.DisplayOrder;
 
-            if (result <= int.MinValue)
+            if (result <= 0)
                 return Math.Max(ctl.DisplayOrder, 0);
             else
                 return result;

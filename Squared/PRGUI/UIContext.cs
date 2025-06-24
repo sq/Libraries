@@ -1023,7 +1023,7 @@ namespace Squared.PRGUI {
             );
 
             instance.Visible = true;
-            instance.DisplayOrder = int.MaxValue;
+            instance.DisplayOrder = int.MaxValue - 1;
 
             // HACK: TextLayoutIsIncomplete == true indicates that an image embedded in the tooltip content is
             //  still loading. We need to keep recalculating our size until all the images have loaded, since

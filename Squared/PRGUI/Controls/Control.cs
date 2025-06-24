@@ -27,6 +27,8 @@ namespace Squared.PRGUI {
     }
     
     public abstract partial class Control {
+        public const int FirstTopmostDisplayOrder = 0xFFFFFF;
+
         public sealed class Comparer : IEqualityComparer<Control>, IComparer<Control> {
             public static readonly Comparer Instance = new Comparer();
 
