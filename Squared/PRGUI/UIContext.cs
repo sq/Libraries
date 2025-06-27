@@ -257,13 +257,19 @@ namespace Squared.PRGUI {
             _TopLevelControls.Clear();
             Controls.CopyTo(_TopLevelControls);
 
-            foreach (var control in _TopLevelControls)
-                control.GenerateLayoutTree(
-                    ref context, Engine.Root().Key, 
-                    (secondTime && !control.LayoutKey.IsInvalid) 
-                        ? control.LayoutKey 
-                        : (ControlKey?)null
-                );
+            foreach (var control in _TopLevelControls) {
+                try {
+                    control.GenerateLayoutTree(
+                        ref context, Engine.Root().Key, 
+                        (secondTime && !control.LayoutKey.IsInvalid) 
+                            ? control.LayoutKey 
+                            : (ControlKey?)null
+                    );
+                } catch (Exception exc) {
+                    if ((OnUnhandledException == null) || !OnUnhandledException(control, exc))
+                        throw;
+                }
+            }
         }
 
         private bool NotifyLayoutListeners (ref UIOperationContext context) {

@@ -266,84 +266,16 @@ namespace Squared.PRGUI {
                 var topLevelFocusIndex = seq.IndexOf(TopLevelFocused);
                 for (int i = 0; i < seq.Count; i++) {
                     var control = seq[i];
-                    if (i == fadeBackgroundAtIndex) {
-                        var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity;
-                        var isSubtractive = (ModalFadeBlendState.ColorBlendFunction == BlendFunction.Subtract) ||
-                            (ModalFadeBlendState.ColorBlendFunction == BlendFunction.ReverseSubtract);
-                        // HACK: Push the post-fade controls and their its overlay plane above the previous one
-                        renderer.Layer = 1000;
-                        if (fadeCutout != null) {
-                            var rect = fadeCutout.GetRect(displayRect: true, context: this);
-                            var r = renderer.MakeSubgroup();
-                            BackgroundFadeCompositesList.Clear();
-                            BackgroundFadeCompositesList.Add(new Render.RasterShape.RasterShapeComposite {
-                                Type = Render.RasterShape.RasterShapeCompositeType.Rectangle,
-                                Center = rect.Center,
-                                Size = rect.Size * 0.5f,
-                                Mode = Render.RasterShape.RasterShapeCompositeMode.Subtract,
-                            });
-                            r.SetRasterComposites(BackgroundFadeCompositesList);
-                            r.RasterizeRectangle(
-                                Vector2.One * -9999,
-                                new Vector2(9999999, 9999),
-                                0f,
-                                isSubtractive
-                                    ? new Color(opacity, opacity, opacity, 1.0f)
-                                    : Color.Black * opacity,
-                                blendState: ModalFadeBlendState
-                            );
-                        } else {
-                            renderer.FillRectangle(
-                                // Unbalanced vertices so only one triangle is visible
-                                Game.Bounds.FromPositionAndSize(Vector2.One * -99, new Vector2(99999, 9999)), 
-                                isSubtractive
-                                    ? new Color(opacity, opacity, opacity, 0f)
-                                    : Color.Black * opacity, 
-                                blendState: ModalFadeBlendState
-                            );
-                        }
-                        renderer.Layer += 1;
-                        renderer.MakeSubgroup(out OverlayRenderer, layer: 9999);
+
+                    try {
+                        RasterizeOneControl(
+                            ref context, fadeCutout, fadeBackgroundAtIndex, topLevelHovering, 
+                            ref renderer, topLevelFocusIndex, i, control
+                        );
+                    } catch (Exception exc) {
+                        if ((OnUnhandledException == null) || !OnUnhandledException(control, exc))
+                            throw;
                     }
-
-                    var m = control as IModal;
-
-                    // When the accelerator overlay is visible, fade out any top-level controls
-                    //  that cover the currently focused top-level control so that the user can see
-                    //  any controls that might be active
-                    var fadeForKeyboardFocusVisibility = AcceleratorOverlayVisible ||
-                    // HACK: Also do this if gamepad input is active so that it's easier to tell what's going on
-                    //  when the dpad is used to move focus around
-                        ((InputSources[0] is GamepadVirtualKeyboardAndCursor gvkac) && (KeyboardSelection != null) && gvkac.EnableFading);
-
-                    var opacityModifier = (fadeForKeyboardFocusVisibility && (topLevelFocusIndex >= 0))
-                        ? (
-                            (i == topLevelFocusIndex) || (i < topLevelFocusIndex)
-                                ? 1.0f
-                                // Mousing over an inactive control that's being faded will make it more opaque
-                                //  so that you can see what it is
-                                : (
-                                    (topLevelHovering == control)
-                                        // FIXME: oh my god
-                                        // HACK: When the accelerator overlay is visible we want to make any top-level control
-                                        //  that the mouse is currently over more opaque, so you can see what you're about to
-                                        //  focus by clicking on it
-                                        // If it's not visible and we're using a virtual cursor, we want to make top-level controls
-                                        //  that are currently covering the keyboard selection *less visible* since the user is
-                                        //  currently interacting with something underneath it
-                                        // he;lp
-                                        ? (AcceleratorOverlayVisible ? 0.9f : 0.33f)
-                                        : (AcceleratorOverlayVisible ? 0.65f : 0.95f)
-                                )
-                        )
-                        : 1.0f;
-                    // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
-                    //  overlap each other, at the cost of more draw calls.
-                    var passSet = new RasterizePassSet(ref renderer, control, 0);
-                    passSet.Below.DepthStencilState =
-                        passSet.Content.DepthStencilState =
-                        passSet.Above.DepthStencilState = DepthStencilState.None;
-                    control.Rasterize(ref context, ref passSet, opacityModifier);
                 }
 
                 LastPassCount = prepassContainer.Count + 1;
@@ -395,6 +327,87 @@ namespace Squared.PRGUI {
             } finally {
                 context.Shared.InUse = false;
                 OverlayRenderer = default;
+            }
+
+            void RasterizeOneControl (ref UIOperationContext context, Control fadeCutout, int fadeBackgroundAtIndex, Control topLevelHovering, ref ImperativeRenderer renderer, int topLevelFocusIndex, int i, Control control) {
+                if (i == fadeBackgroundAtIndex) {
+                    var opacity = BackgroundFadeTween.Get(NowL) * BackgroundFadeOpacity;
+                    var isSubtractive = (ModalFadeBlendState.ColorBlendFunction == BlendFunction.Subtract) ||
+                        (ModalFadeBlendState.ColorBlendFunction == BlendFunction.ReverseSubtract);
+                    // HACK: Push the post-fade controls and their its overlay plane above the previous one
+                    renderer.Layer = 1000;
+                    if (fadeCutout != null) {
+                        var rect = fadeCutout.GetRect(displayRect: true, context: this);
+                        var r = renderer.MakeSubgroup();
+                        BackgroundFadeCompositesList.Clear();
+                        BackgroundFadeCompositesList.Add(new Render.RasterShape.RasterShapeComposite {
+                            Type = Render.RasterShape.RasterShapeCompositeType.Rectangle,
+                            Center = rect.Center,
+                            Size = rect.Size * 0.5f,
+                            Mode = Render.RasterShape.RasterShapeCompositeMode.Subtract,
+                        });
+                        r.SetRasterComposites(BackgroundFadeCompositesList);
+                        r.RasterizeRectangle(
+                            Vector2.One * -9999,
+                            new Vector2(9999999, 9999),
+                            0f,
+                            isSubtractive
+                                ? new Color(opacity, opacity, opacity, 1.0f)
+                                : Color.Black * opacity,
+                            blendState: ModalFadeBlendState
+                        );
+                    } else {
+                        renderer.FillRectangle(
+                            // Unbalanced vertices so only one triangle is visible
+                            Game.Bounds.FromPositionAndSize(Vector2.One * -99, new Vector2(99999, 9999)),
+                            isSubtractive
+                                ? new Color(opacity, opacity, opacity, 0f)
+                                : Color.Black * opacity,
+                            blendState: ModalFadeBlendState
+                        );
+                    }
+                    renderer.Layer += 1;
+                    renderer.MakeSubgroup(out OverlayRenderer, layer: 9999);
+                }
+
+                var m = control as IModal;
+
+                // When the accelerator overlay is visible, fade out any top-level controls
+                //  that cover the currently focused top-level control so that the user can see
+                //  any controls that might be active
+                var fadeForKeyboardFocusVisibility = AcceleratorOverlayVisible ||
+                    // HACK: Also do this if gamepad input is active so that it's easier to tell what's going on
+                    //  when the dpad is used to move focus around
+                    ((InputSources[0] is GamepadVirtualKeyboardAndCursor gvkac) && (KeyboardSelection != null) && gvkac.EnableFading);
+
+                var opacityModifier = (fadeForKeyboardFocusVisibility && (topLevelFocusIndex >= 0))
+                    ? (
+                        (i == topLevelFocusIndex) || (i < topLevelFocusIndex)
+                            ? 1.0f
+                            // Mousing over an inactive control that's being faded will make it more opaque
+                            //  so that you can see what it is
+                            : (
+                                (topLevelHovering == control)
+                                    // FIXME: oh my god
+                                    // HACK: When the accelerator overlay is visible we want to make any top-level control
+                                    //  that the mouse is currently over more opaque, so you can see what you're about to
+                                    //  focus by clicking on it
+                                    // If it's not visible and we're using a virtual cursor, we want to make top-level controls
+                                    //  that are currently covering the keyboard selection *less visible* since the user is
+                                    //  currently interacting with something underneath it
+                                    // he;lp
+                                    ? (AcceleratorOverlayVisible ? 0.9f : 0.33f)
+                                    : (AcceleratorOverlayVisible ? 0.65f : 0.95f)
+                            )
+                    )
+                    : 1.0f;
+                // HACK: Each top-level control is its own group of passes. This ensures that they cleanly
+                //  overlap each other, at the cost of more draw calls.
+                var passSet = new RasterizePassSet(ref renderer, control, 0);
+                passSet.Below.DepthStencilState =
+                    passSet.Content.DepthStencilState =
+                    passSet.Above.DepthStencilState = DepthStencilState.None;
+                control.Rasterize(ref context, ref passSet, opacityModifier);
             }
         }
 

@@ -180,6 +180,11 @@ namespace Squared.PRGUI {
         public RichTextConfiguration RichTextConfiguration = new RichTextConfiguration();
 
         public event Action<string> OnLogMessage;
+        /// <summary>
+        /// Invoked if an unhandled exception occurs while updating or rasterizing a top-level control.
+        /// Return true to suppress the exception.
+        /// </summary>
+        public event Func<Control, Exception, bool> OnUnhandledException;
 
         private UnorderedList<MouseEventArgs> SpareMouseEventArgs = new UnorderedList<MouseEventArgs>(),
             PurgatoryMouseEventArgs = new UnorderedList<MouseEventArgs>(),
