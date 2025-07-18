@@ -95,7 +95,7 @@ namespace Squared.Render.DistanceField {
         ) {
             var coordinator = renderer.Container.Coordinator;
             scratchSurfaces = scratchSurfaces ?? new GPUScratchSurfaces(coordinator);
-            // HACK: Pad the surfaces with an extra pixel around the outside
+            // HACK: Pad the surfaces with extra pixels around the outside
             int width = ((output.Width + SizeRoundingMinusOne) / SizeRounding) * SizeRounding,
                 height = ((output.Height + SizeRoundingMinusOne) / SizeRounding) * SizeRounding;
             scratchSurfaces.Resize(width + 2, height + 2);
@@ -106,7 +106,8 @@ namespace Squared.Render.DistanceField {
 
             var initGroup = group.ForRenderTarget(scratchSurfaces.InBuffer, viewTransform: vt);
             RenderTrace.Marker(initGroup.Container, initGroup.Layer, "JumpFlood {0} -> {1} init", input, output);
-            initGroup.Clear(layer: -1, value: new Vector4(MaxDistance, MaxDistance, MaxDistance, 0f));
+            var clearColor = new Vector4(MaxDistance, MaxDistance, MaxDistance, 0f);
+            initGroup.Clear(layer: -1, value: clearColor);
             var initMaterial = renderer.Materials.JumpFloodInit;
             initGroup.Parameters.Add("Smoothing", smoothingLevel > 0.01f);
             initGroup.Parameters.Add("ChromaKey1", ConvertChromaKey(chromaKey1));
@@ -121,6 +122,9 @@ namespace Squared.Render.DistanceField {
             );
 
             RenderTarget2D result = null;
+            // The scratch surface may be bigger than the output distance field - in that case, we don't want to waste
+            //  valuable GPU cycles generating distance field data we're going to immediately discard
+            var sourceRectangle = new Rectangle(0, 0, width + 2, height + 2);
 
             for (int i = 0, stepCount = GetStepCount(output.Width, output.Height); i < stepCount; i++) {
                 result = scratchSurfaces.OutBuffer;
@@ -128,9 +132,10 @@ namespace Squared.Render.DistanceField {
                 RenderTrace.Marker(jumpGroup.Container, jumpGroup.Layer, "JumpFlood {0} -> {1} jump #{2}", input, output, i);
 
                 int step = GetStepSize(output.Width, output.Height, i);
-                jumpGroup.Clear(layer: -1, color: new Color(step / 32f, 0, 0, 1f));
+                jumpGroup.Clear(layer: -1, value: clearColor);
                 jumpGroup.Draw(
                     scratchSurfaces.InBuffer, Vector2.Zero,
+                    sourceRectangle: sourceRectangle,
                     userData: new Vector4(step / (float)scratchSurfaces.InBuffer.Width, step / (float)scratchSurfaces.InBuffer.Height, step, 0), 
                     samplerState: SamplerState.PointClamp,
                     material: renderer.Materials.JumpFloodJump,

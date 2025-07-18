@@ -275,11 +275,10 @@ namespace Squared.Render {
         }
 
         public void SetDistanceField (Texture2D texture, Texture2D distanceField) {
+            texture.Disposing -= OnTextureWithDistanceFieldDisposed;
             texture.Disposing += OnTextureWithDistanceFieldDisposed;
-            if (distanceField == null)
-                DistanceFields.Remove(texture);
-            else
-                DistanceFields.Add(texture, distanceField);
+            DistanceFields.Remove(texture);
+            DistanceFields.Add(texture, distanceField);
         }
 
         private void _OnTextureWithDistanceFieldDisposed (object sender, EventArgs e) {
