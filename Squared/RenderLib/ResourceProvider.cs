@@ -119,7 +119,8 @@ namespace Squared.Render.Resources {
                 FirstLevel.Dispose();
             }
 
-            public IEnumerator<CacheEntry> GetEnumerator () => this;
+            public EntryEnumerator GetEnumerator () => this;
+            IEnumerator<CacheEntry> IEnumerable<CacheEntry>.GetEnumerator () => this;
             IEnumerator IEnumerable.GetEnumerator () => this;
 
             public bool MoveNext () {

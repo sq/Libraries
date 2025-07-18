@@ -288,16 +288,16 @@ namespace Squared.Render {
 
         public override void AddAllInstancesTo (ICollection<Texture2D> result) {
             lock (FirstLevelCache)
-            foreach (var entry in Entries()) {
-                if (!entry.Future.GetResult(out var tex))
-                    continue;
-                if (tex?.IsDisposed == false)
-                    result.Add(tex);
+                foreach (var entry in Entries()) {
+                    if (!entry.Future.GetResult(out var tex))
+                        continue;
+                    if (tex?.IsDisposed == false)
+                        result.Add(tex);
 
-                var df = GetDistanceField(tex);
-                if (df?.IsDisposed == false)
-                    result.Add(df);
-            }
+                    var df = GetDistanceField(tex);
+                    if (df?.IsDisposed == false)
+                        result.Add(df);
+                }
         }
     }
 }
