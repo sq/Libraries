@@ -140,7 +140,7 @@ namespace Squared.PRGUI.Controls {
             }
         }
 
-        public Matrix GetContentTransform () {
+        public virtual Matrix GetContentTransform () {
             return Matrix.CreateTranslation(-MostRecentRect.Left, -MostRecentRect.Top, 0) * 
                 Matrix.CreateScale(Zoom) * 
                 Matrix.CreateTranslation(MostRecentRect.Left, MostRecentRect.Top, 0) *

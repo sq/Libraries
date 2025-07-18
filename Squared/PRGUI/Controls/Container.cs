@@ -31,6 +31,14 @@ namespace Squared.PRGUI.Controls {
             get => base.ClipChildren;
             set => base.ClipChildren = value;
         }
+        new public bool DisableSelfHitTests {
+            get => base.DisableSelfHitTests;
+            set => base.DisableSelfHitTests = value;
+        }
+        new public bool DisableChildHitTests {
+            get => base.DisableChildHitTests;
+            set => base.DisableChildHitTests = value;
+        }
         public bool Scrollable { get; set; } = false;
         public bool? ShowVerticalScrollbar = null, 
             ShowHorizontalScrollbar = null;
