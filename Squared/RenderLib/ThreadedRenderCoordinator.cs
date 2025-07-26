@@ -29,8 +29,7 @@ namespace Squared.Render {
             if (sc != null)
                 rc.AfterPresent(() => {
                     sc.Post((_) => {
-                        lock (rc.UseResourceLock)
-                            gdm.ApplyChanges();
+                        gdm.ApplyChanges();
                     }, null);
                 });
             else
@@ -43,8 +42,6 @@ namespace Squared.Render {
     public delegate void PendingDrawHandler (IBatchContainer container, DefaultMaterialSet materials, object userData);
 
     public sealed class RenderCoordinator : IDisposable {
-        private static ThreadLocal<bool> IsDrawingOnThisThread = new ThreadLocal<bool>(false);
-
         struct CompletedPendingDraw {
             public object UserData;
             public ExceptionDispatchInfo Exception;
@@ -61,54 +58,17 @@ namespace Squared.Render {
             public ViewTransform? ViewTransform;
         }
 
-        struct DrawTask : IWorkItem {
-            public static WorkItemConfiguration Configuration =>
-                new WorkItemConfiguration {
-                    Priority = 1
-                };
-
-            public readonly Action<Frame> Callback;
-            public readonly Frame Frame;
-
-            public DrawTask (Action<Frame> callback, Frame frame) {
-                Callback = callback;
-                Frame = frame;
-            }
-
-            public void Execute (ThreadGroup group) {
-                try {
-                    IsDrawingOnThisThread.Value = true;
-                    Monitor.Enter(Frame);
-                    Callback(Frame);
-                } finally {
-                    IsDrawingOnThisThread.Value = false;
-                    Monitor.Exit(Frame);
-                }
-            }
-        }
-
         public readonly RenderManager Manager;
 
         /// <summary>
         /// If set to false, threads will not be used for rendering.
         /// </summary>
         public bool EnableThreading = true;
-        /// <summary>
-        /// If set to true, threads will not be used for rendering.
-        /// </summary>
-        public bool SuppressThreadingTemporarily = false;
-        /// <summary>
-        /// You must acquire this lock before rendering, changing the device, resetting the device, creating objects, loading content, or destroying objects.
-        /// </summary>
-        public readonly object UseResourceLock;
-
-        [Obsolete("Use UseResourceLock")]
-        public object CreateResourceLock => UseResourceLock;
 
         /// <summary>
         /// This lock is held during frame preparation.
         /// </summary>
-        public readonly object PrepareLock = new object();
+        public readonly object PrepareLock = new ();
         /// <summary>
         /// Specifies an amount of artificial lag (in milliseconds) to add to GPU rendering operations
         /// </summary>
@@ -122,7 +82,6 @@ namespace Squared.Render {
         private bool _Running = true;
         private bool _ActualEnableThreading = true;
         private bool _EnableThreadedPrepare = true;
-        private bool _EnableThreadedIssue = false;
         private object _FrameLock = new object();
         private volatile Frame _FrameBeingPrepared = null;
 
@@ -139,10 +98,9 @@ namespace Squared.Render {
         private readonly Func<GameWindow> GetWindow;
         private readonly Func<bool> _SyncBeginDraw;
         private readonly Action _SyncEndDraw;
-        private readonly Action<Frame> _ThreadedDraw;
+        private readonly Action<Frame> Issue;
         private readonly EventHandler<EventArgs> _OnAutoAllocatedTextureDisposed;
         private readonly DisposalQueue PendingDisposes = new DisposalQueue();
-        private readonly ManualResetEvent _SynchronousDrawFinishedSignal = new ManualResetEvent(true);
 
         internal enum WorkPhases : int {
             NONE,
@@ -187,7 +145,6 @@ namespace Squared.Render {
         private long PresentBegunWhen = 0, PresentEndedWhen = 0;
 
         public readonly ThreadGroup ThreadGroup;
-        private readonly WorkQueue<DrawTask> DrawQueue;
 
         public event EventHandler DeviceReset, DeviceChanged;
 
@@ -284,15 +241,11 @@ namespace Squared.Render {
         ) {
             Manager = manager;
             ThreadGroup = manager.ThreadGroup;
-            UseResourceLock = manager.UseResourceLock;
 
             GetWindow = getWindow;
             _SyncBeginDraw = synchronousBeginDraw;
             _SyncEndDraw = synchronousEndDraw;
-            _ThreadedDraw = ThreadedDraw;
             _OnAutoAllocatedTextureDisposed = OnAutoAllocatedTextureDisposed;
-
-            DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
             RegisterForDeviceEvents();
             for (int i = 0; i < Stopwatches.Length; i++)
@@ -310,15 +263,12 @@ namespace Squared.Render {
             DeviceService = deviceService;
             ThreadGroup = threadGroup;
             Manager = new RenderManager(deviceService.GraphicsDevice, mainThread, ThreadGroup);
-            UseResourceLock = Manager.UseResourceLock;
  
             GetWindow = getWindow;
             _SyncBeginDraw = synchronousBeginDraw ?? DefaultBeginDraw;
             _SyncEndDraw = synchronousEndDraw ?? DefaultEndDraw;
-            _ThreadedDraw = ThreadedDraw;
+            Issue = IssueFrame;
             _OnAutoAllocatedTextureDisposed = OnAutoAllocatedTextureDisposed;
-
-            DrawQueue = ThreadGroup.GetQueueForType<DrawTask>();
 
             RegisterForDeviceEvents();
 
@@ -508,7 +458,6 @@ namespace Squared.Render {
 
         // We must acquire both locks before resetting the device to avoid letting the reset happen during a paint or content load operation.
         private void OnDeviceResetting (object sender, EventArgs args) {
-
             TimeOfLastResetOrDeviceChange = Time.Ticks;
             FirstFrameSinceReset = true;
 
@@ -516,23 +465,18 @@ namespace Squared.Render {
                 IsResetting = true;
 
                 Monitor.Enter(DrawLock);
-                Monitor.Enter(UseResourceLock);
             }
 
             UniformBinding.HandleDeviceReset();
         }
 
         private void EndReset () {
-            if (Device == null) {
-            }
-
             if (Device.IsDisposed) {
                 _DeviceIsDisposed = true;
                 return;
             }
 
             if (IsResetting) {
-                Monitor.Exit(UseResourceLock);
                 Monitor.Exit(DrawLock);
 
                 IsResetting = false;
@@ -553,54 +497,6 @@ namespace Squared.Render {
         internal void NotifyWindowIsMoving () {
             // Suspend rendering operations until we have stopped moving for a bit
             TimeOfLastResetOrDeviceChange = Time.Ticks;
-        }
-                
-        private void WaitForPendingWork () {
-            if (IsDisposed)
-                return;
-
-            StartWorkPhase(WorkPhases.Wait);
-            try {
-                DrawQueue.WaitUntilDrained();
-            } catch (DeviceLostException) {
-                _DeviceLost = true;
-            } catch (ObjectDisposedException) {
-                if (Device.IsDisposed)
-                    _Running = false;
-                else
-                    throw;
-            }
-            NextFrameTiming.Wait += EndWorkPhase(WorkPhases.Wait);
-        }
-
-        private bool WaitForActiveSynchronousDraw () {
-            if (IsDisposed)
-                return false;
-
-            _SynchronousDrawFinishedSignal.WaitOne();
-            return true;
-        }
-
-        public bool WaitForActiveDraws () {
-            Threading.Profiling.Superluminal.BeginEvent("RenderCoordinator.WaitForActiveDraws");
-            try {
-                return WaitForActiveDraw() &&
-                    WaitForActiveSynchronousDraw();
-            } finally {
-                Threading.Profiling.Superluminal.EndEvent();
-            }
-        }
-
-        internal bool WaitForActiveDraw () {
-            if (_ActualEnableThreading) {
-                if (IsDrawingOnThisThread.Value)
-                    throw new Exception("This thread is currently performing a draw");
-
-                DrawQueue.WaitUntilDrained();
-            } else
-                return false;
-
-            return true;
         }
 
         internal Frame BeginFrame (bool flushPendingDraws) {
@@ -632,9 +528,6 @@ namespace Squared.Render {
             lock (PendingDrawQueue)
                 if (PendingDrawQueue.Count == 0)
                     return;
-
-            int i = 0;
-            BatchGroup bg = null;
 
             while (true) {
                 PendingDraw pd;
@@ -743,8 +636,6 @@ namespace Squared.Render {
 
             try {
                 var suspended = SuspendWorkPhase(WorkPhases.BeginDraw);
-                WaitForActiveSynchronousDraw();
-                WaitForActiveDraw();
                 if (suspended)
                     ResumeWorkPhase(WorkPhases.BeginDraw);
             } catch (Exception exc) {
@@ -762,7 +653,7 @@ namespace Squared.Render {
 
             Interlocked.Increment(ref _InsideDrawOperation);
             try {
-                _ActualEnableThreading = EnableThreading && !SuppressThreadingTemporarily;
+                _ActualEnableThreading = EnableThreading;
 
                 // HACK: Fix problem where if the game is minimized, explorer.exe cannot dispatch a restore event successfully
                 //  because we tend to be blocked waiting on a signal when windows expects us to be pumping messages instead.
@@ -780,10 +671,7 @@ namespace Squared.Render {
 
                 bool result;
                 if (_Running) {
-                    if (DoThreadedIssue)
-                        result = true;
-                    else
-                        result = _SyncBeginDraw();
+                    result = _SyncBeginDraw();
                 } else {
                     result = false;
                 }
@@ -843,15 +731,6 @@ namespace Squared.Render {
                 _EnableThreadedPrepare = value;
             }
         }
-        
-        public bool DoThreadedIssue { 
-            get {
-                return _ActualEnableThreading && _EnableThreadedIssue && GraphicsBackendIsThreadingSafe;
-            }
-            set {
-                _EnableThreadedIssue = value;
-            }
-        }
 
         public void EndDraw () {
             if (IsDisposed)
@@ -880,21 +759,10 @@ namespace Squared.Render {
                 NextFrameTiming.Prepare = EndWorkPhase(WorkPhases.Prepare);
             
                 if (_Running) {
-                    if (DoThreadedIssue) {
-                        lock (UseResourceLock)
-                        if (!_SyncBeginDraw())
-                            return;
+                    Issue(newFrame);
 
-                        DrawQueue.Enqueue(new DrawTask(_ThreadedDraw, newFrame));
-                    } else {
-                        _ThreadedDraw(newFrame);
-                    }
-
-                    if (_DeviceLost) {
-                        WaitForActiveDraw();
-
+                    if (_DeviceLost)
                         _DeviceLost = IsDeviceLost;
-                    }
                 }
             } finally {
                 NextFrameTiming.SyncEndDraw = EndWorkPhase(WorkPhases.SyncEndDraw);
@@ -902,7 +770,7 @@ namespace Squared.Render {
             }
         }
 
-        private void RenderFrame (Frame frame, bool acquireLock) {
+        private void RenderFrame (Frame frame) {
             try {
                 // In D3D builds, this checks to see whether PIX is attached right now
                 //  so that if it's not, we don't waste cpu time/gc pressure on trace messages
@@ -917,9 +785,6 @@ namespace Squared.Render {
                 RunBeforeIssueHandlers();
                 NextFrameTiming.BeforeIssue = EndWorkPhase(WorkPhases.BeforeIssue);
 
-                if (acquireLock)
-                    Monitor.Enter(UseResourceLock);
-
                 if (frame != null) {
                     _DeviceLost |= IsDeviceLost;
 
@@ -930,8 +795,6 @@ namespace Squared.Render {
                 }
             } finally {
                 NextFrameTiming.Issue = EndWorkPhase(WorkPhases.Issue);
-                if (acquireLock)
-                    Monitor.Exit(UseResourceLock);
             }
 
             _DeviceLost |= IsDeviceLost;
@@ -982,7 +845,7 @@ namespace Squared.Render {
 
             lock (ThreadGroupAfterPresentQueue) {
                 foreach (var action in ThreadGroupAfterPresentQueue)
-                    ThreadGroup.Invoke(action, !_EnableThreadedIssue);
+                    ThreadGroup.Invoke(action, true);
                 ThreadGroupAfterPresentQueue.Clear();
             }
         }
@@ -1042,10 +905,9 @@ namespace Squared.Render {
                 if (frameToDraw != null) {
                     Manager.PrepareManager.AssertEmpty();
 
-                    lock (UseResourceLock)
-                        Manager.FlushBufferGenerators(frameToDraw.Index);
+                    Manager.FlushBufferGenerators(frameToDraw.Index);
 
-                    RenderFrame(frameToDraw, true);
+                    RenderFrame(frameToDraw);
                 }
                 
                 if (endDraw) {
@@ -1070,7 +932,7 @@ namespace Squared.Render {
             }
         }
 
-        private void ThreadedDraw (Frame frame) {
+        private void IssueFrame (Frame frame) {
             var list = PendingDisposes.FreezeCurrentList();
             var rmList = Manager.PendingDisposes.FreezeCurrentList();
 
@@ -1078,10 +940,9 @@ namespace Squared.Render {
                 if (!_Running)
                     return;
 
-                CheckMainThread(DoThreadedIssue);
+                CheckMainThread(false);
 
-                lock (DrawLock)
-                    RenderFrameToDraw(frame, true);
+                RenderFrameToDraw(frame, true);
 
                 _DeviceLost |= IsDeviceLost;
             } catch (InvalidOperationException ioe) {
@@ -1099,10 +960,8 @@ namespace Squared.Render {
             } catch (DeviceLostException) {
                 _DeviceLost = true;
             } finally {
-                lock (UseResourceLock) {
-                    PendingDisposes.DisposeListContents(list);
-                    Manager.PendingDisposes.DisposeListContents(rmList);
-                }
+                PendingDisposes.DisposeListContents(list);
+                Manager.PendingDisposes.DisposeListContents(rmList);
             }
         }
 
@@ -1239,21 +1098,14 @@ namespace Squared.Render {
             if (!SynchronousDrawsEnabled)
                 throw new InvalidOperationException("Synchronous draws not available inside of Game.Draw");
 
-            WaitForActiveDraw();
-
             var oldDrawIsActive = Interlocked.Exchange(ref _SynchronousDrawIsActive, 1);
             if (oldDrawIsActive != 0)
                 throw new InvalidOperationException("A synchronous draw is already in progress");
-
-            _SynchronousDrawFinishedSignal.Reset();
-
-            WaitForActiveDraw();
 
             try {
                 ViewTransform? vt = null;
                 return DoSynchronousDrawToRenderTarget(renderTarget, materials, drawBehavior, userData, ref vt, "Synchronous Draw");
             } finally {
-                _SynchronousDrawFinishedSignal.Set();
                 Interlocked.Exchange(ref _SynchronousDrawIsActive, 0);
             }
         }
@@ -1304,8 +1156,6 @@ namespace Squared.Render {
             IsDisposed = true;
 
             try {
-                WaitForActiveDraws();
-
                 Manager.PendingDisposes.DisposeListContents(Manager.PendingDisposes.FreezeCurrentList());
                 PendingDisposes.DisposeListContents(PendingDisposes.FreezeCurrentList());
                 Manager.Dispose();
@@ -1331,7 +1181,7 @@ namespace Squared.Render {
                 return;
 
             if (resource is Texture2D tex)
-                lock (UseResourceLock)
+                lock (AutoAllocatedTextureResources)
                     AutoAllocatedTextureResources.Remove(tex);
 
             var tcd = resource as ITraceCapturingDisposable;

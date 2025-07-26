@@ -127,11 +127,9 @@ namespace Squared.Render.AV1 {
             AdvanceOrRestartSync = _AdvanceOrRestartSync;
             AdvanceOrStopSync = _AdvanceOrStopSync;
 
-            lock (coordinator.UseResourceLock) {
-                YTexture = CreateInternalTexture(coordinator, Width, Height, "AV1Video.YTexture");
-                UTexture = CreateInternalTexture(coordinator, uvWidth, uvHeight, "AV1Video.UTexture");
-                VTexture = CreateInternalTexture(coordinator, uvWidth, uvHeight, "AV1Video.VTexture");
-            }
+            YTexture = CreateInternalTexture(coordinator, Width, Height, "AV1Video.YTexture");
+            UTexture = CreateInternalTexture(coordinator, uvWidth, uvHeight, "AV1Video.UTexture");
+            VTexture = CreateInternalTexture(coordinator, uvWidth, uvHeight, "AV1Video.VTexture");
         }
 
         private Texture2D CreateInternalTexture (RenderCoordinator coordinator, int width, int height, string name) {
@@ -178,11 +176,9 @@ namespace Squared.Render.AV1 {
         }
 
         public void UploadFrame () {
-            lock (Coordinator.UseResourceLock) {
-                UploadDataToTexture(YTexture, YData, YLength, YStride, ref YScratchBuffer);
-                UploadDataToTexture(UTexture, UData, UVLength, UVStride, ref UVScratchBuffer);
-                UploadDataToTexture(VTexture, VData, UVLength, UVStride, ref UVScratchBuffer);
-            }
+            UploadDataToTexture(YTexture, YData, YLength, YStride, ref YScratchBuffer);
+            UploadDataToTexture(UTexture, UData, UVLength, UVStride, ref UVScratchBuffer);
+            UploadDataToTexture(VTexture, VData, UVLength, UVStride, ref UVScratchBuffer);
         }
 
         public void AdvanceAsync (bool loop) {

@@ -267,14 +267,7 @@ namespace Squared.Render {
             }
         }
 
-        internal struct ReadbackWorkItem : IWorkItem {
-            public static WorkItemConfiguration Configuration =>
-                new WorkItemConfiguration {
-                    MaxConcurrency = 1,
-                    DefaultStepCount = 4
-                };
-
-            public object Lock;
+        internal struct ReadbackWorkItem : IMainThreadWorkItem {
             public Texture2D Source;
             public Array Destination;
 
@@ -402,7 +395,6 @@ namespace Squared.Render {
             if (source.IsDisposed)
                 throw new ObjectDisposedException(nameof(source));
             ReadbackQueue.Add(new ReadbackWorkItem {
-                Lock = Coordinator.UseResourceLock,
                 Source = source,
                 Destination = destination
             });
@@ -484,8 +476,7 @@ namespace Squared.Render {
 
             var started = Time.Ticks;
             foreach (var rb in ReadbackQueue)
-                lock (rb.Lock)
-                    rb.Execute(null);
+                rb.Execute(null);
             var ended = Time.Ticks;
             // Debug.WriteLine($"Readback took {Time.SecondsFromTicks(ended - started)}sec");
 

@@ -176,7 +176,7 @@ namespace Squared.Render {
             var height = (int)resolution;
 
             Texture2D tex;
-            lock (coordinator.UseResourceLock) {
+            {
                 if (renderable)
                     tex = new RenderTarget2D(coordinator.Device, width, height, false, surfaceFormat, DepthFormat.None, 0, RenderTargetUsage.PreserveContents);
                 else
@@ -238,8 +238,7 @@ namespace Squared.Render {
                 } 
             }
 
-            lock (coordinator.UseResourceLock)
-                Texture.SetData(buf);
+            Texture.SetData(buf);
         }
 
         public unsafe void SetToIdentity16 (RenderCoordinator coordinator, bool useMatrix, ref Matrix colorMatrix) {
@@ -260,8 +259,7 @@ namespace Squared.Render {
                 } 
             }
 
-            lock (coordinator.UseResourceLock)
-                Texture.SetData(buf);
+            Texture.SetData(buf);
         }
 
         public unsafe void SetToIdentityF (RenderCoordinator coordinator, bool useMatrix, ref Matrix colorMatrix) {
@@ -280,8 +278,7 @@ namespace Squared.Render {
                 } 
             }
 
-            lock (coordinator.UseResourceLock)
-                Texture.SetData(buf);
+            Texture.SetData(buf);
         }
 
         public void Dispose () {

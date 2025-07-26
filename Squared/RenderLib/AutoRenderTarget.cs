@@ -80,17 +80,15 @@ namespace Squared.Render {
         protected RenderTarget2D CreateInstance (string overrideName) {
             WasRecreated = true;
 
-            lock (Coordinator.UseResourceLock) {
-                var result = new RenderTarget2D(
-                    Coordinator.Device, Width, Height, MipMap,
-                    PreferredFormat, PreferredDepthFormat,
-                    PreferredMultiSampleCount, RenderTargetUsage.PreserveContents
-                ) {
-                    Name = overrideName ?? $"AutoRenderTarget {GetHashCode().ToString("X8")}"
-                };
-                Coordinator.RegisterAutoAllocatedTextureResource(result);
-                return result;
-            }
+            var result = new RenderTarget2D(
+                Coordinator.Device, Width, Height, MipMap,
+                PreferredFormat, PreferredDepthFormat,
+                PreferredMultiSampleCount, RenderTargetUsage.PreserveContents
+            ) {
+                Name = overrideName ?? $"AutoRenderTarget {GetHashCode().ToString("X8")}"
+            };
+            Coordinator.RegisterAutoAllocatedTextureResource(result);
+            return result;
         }
 
         protected abstract void OnDispose ();
@@ -205,8 +203,7 @@ namespace Squared.Render {
                     if (!forceCreate) {
                         return CurrentInstance;
                     } else {
-                        lock (Coordinator.UseResourceLock)
-                            CurrentInstance.Dispose();
+                        Coordinator.DisposeResource(CurrentInstance);
                         CurrentInstance = null;
                     }
                 }

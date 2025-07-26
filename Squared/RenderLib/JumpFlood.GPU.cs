@@ -42,14 +42,12 @@ namespace Squared.Render.DistanceField {
                 if (InBuffer != null)
                     return;
 
-                lock (Coordinator.UseResourceLock) {
-                    InBuffer = new RenderTarget2D(Coordinator.Device, width, height, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents) {
-                        Name = "JumpFlood.InBuffer",
-                    };
-                    OutBuffer = new RenderTarget2D(Coordinator.Device, width, height, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents) {
-                        Name = "JumpFlood.OutBuffer",
-                    };
-                }
+                InBuffer = new RenderTarget2D(Coordinator.Device, width, height, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents) {
+                    Name = "JumpFlood.InBuffer",
+                };
+                OutBuffer = new RenderTarget2D(Coordinator.Device, width, height, false, SurfaceFormat.HalfVector4, DepthFormat.None, 0, RenderTargetUsage.DiscardContents) {
+                    Name = "JumpFlood.OutBuffer",
+                };
             }
 
             public void Dispose () {

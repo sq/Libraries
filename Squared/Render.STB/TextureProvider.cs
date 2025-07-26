@@ -241,14 +241,10 @@ namespace Squared.Render {
                     throw new Exception($"Pixel format {format} not supported by distance field generator");
             }
 
-            Texture2D df;
-            lock (Coordinator.UseResourceLock)
-                df = new Texture2D(Coordinator.Device, img.Width, img.Height, false, SurfaceFormat.Single) {
-                    Name = closure.Name,
-                };
-
-            lock (Coordinator.UseResourceLock)
-                df.SetData(buf);
+            var df = new Texture2D(Coordinator.Device, img.Width, img.Height, false, SurfaceFormat.Single) {
+                Name = closure.Name,
+            };
+            df.SetData(buf);
 
             DistanceFields.Remove((Texture2D)f.Result);
             DistanceFields.Add((Texture2D)f.Result, df);

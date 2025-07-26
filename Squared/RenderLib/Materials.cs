@@ -479,7 +479,7 @@ namespace Squared.Render {
             return hint;
         }
 
-        public MaterialHotReloadResult TryHotReload (RenderCoordinator coordinator) {
+        public MaterialHotReloadResult TryHotReload (RenderCoordinator coordinator, Effect newEffect = null) {
             if (InheritEffectFrom != null)
                 return MaterialHotReloadResult.NotConfigured;
 
@@ -487,7 +487,8 @@ namespace Squared.Render {
             if (gefr == null)
                 return MaterialHotReloadResult.NotConfigured;
 
-            var newEffect = gefr(InheritDefaultParametersFrom ?? this, HotReloadRequiresClone);
+            if (newEffect == null)
+                newEffect = gefr(InheritDefaultParametersFrom ?? this, HotReloadRequiresClone);
             if (newEffect == null)
                 return MaterialHotReloadResult.Failed;
 
@@ -532,10 +533,8 @@ namespace Squared.Render {
 
                     Texture2D tempTexture = null;
                     if (((int)vtf) < 32) {
-                        lock (coordinator.UseResourceLock) {
-                            tempTexture = new Texture2D(deviceManager.Device, 1, 1, false, vtf);
-                            coordinator.RegisterAutoAllocatedTextureResource(tempTexture);
-                        }
+                        tempTexture = new Texture2D(deviceManager.Device, 1, 1, false, vtf);
+                        coordinator.RegisterAutoAllocatedTextureResource(tempTexture);
                         // NOTE: Sampler states aren't part of pipeline definitions so this is probably unnecessary
                         deviceManager.Device.VertexSamplerStates[i] = SamplerState.PointClamp;
                     } else {
@@ -588,8 +587,7 @@ namespace Squared.Render {
                 return false;
 
             coordinator.BeforeIssue(() => {
-                lock (coordinator.UseResourceLock)
-                    Preload(coordinator, dm, tempIb);
+                Preload(coordinator, dm, tempIb);
                 if (onComplete != null)
                     onComplete();
             });

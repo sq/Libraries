@@ -112,8 +112,6 @@ namespace Squared.Render {
                 );
             }
 
-            // FIXME: Preloading shaders crashes when done from a worker thread
-            RenderCoordinator.DoThreadedIssue = false;
             RenderCoordinator.DoThreadedPrepare = true;
 
             RenderCoordinator.DeviceReset += (s, e) => OnDeviceReset();
@@ -126,8 +124,6 @@ namespace Squared.Render {
         }
 
         private void Gds_DeviceResetting (object sender, EventArgs e) {
-            if (!RenderCoordinator.WaitForActiveDraws())
-                ;
         }
 
         public abstract void Draw (GameTime gameTime, Frame frame);
@@ -159,7 +155,6 @@ namespace Squared.Render {
         sealed protected override void LoadContent () {
             if (IsLoadingContent)
                 return;
-            RenderCoordinator.WaitForActiveDraws();
 
             IsLoadingContent = true;
             try {
@@ -175,7 +170,6 @@ namespace Squared.Render {
         sealed protected override void UnloadContent () {
             if (IsUnloadingContent)
                 return;
-            RenderCoordinator.WaitForActiveDraws();
 
             IsUnloadingContent = true;
             try {
@@ -226,7 +220,6 @@ namespace Squared.Render {
 
             // ????
             RenderCoordinator.StartWorkPhase(RenderCoordinator.WorkPhases.Wait);
-            RenderCoordinator.WaitForActiveDraws();
             RenderCoordinator.NextFrameTiming.Wait += RenderCoordinator.EndWorkPhase(RenderCoordinator.WorkPhases.Wait);
 
             try {

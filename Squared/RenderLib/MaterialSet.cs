@@ -384,8 +384,7 @@ namespace Squared.Render {
             var count = 0;
 
             foreach (var m in GetShadersToPreload()) {
-                lock (coordinator.UseResourceLock)
-                    m.Preload(coordinator, dm, tempIb);
+                m.Preload(coordinator, dm, tempIb);
                 count++;
             }
 

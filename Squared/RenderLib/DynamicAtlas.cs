@@ -165,7 +165,6 @@ namespace Squared.Render {
             if (DebugColors) {
                 var p = (Color*)(void*)Data;
                 if (p != null) {
-                    var w = 4096 * 4;
                     for (int i = 0, l = PixelBuffer.Size / 4; i < l; i++)
                         p[i] = new Color(i % 255, (Id * 64) % 255, (Id * 192) % 255, 255);
                 }
@@ -200,13 +199,11 @@ namespace Squared.Render {
             if (Texture != null)
                 return;
 
-            lock (Coordinator.UseResourceLock) {
-                Texture = new Texture2D(Coordinator.Device, Width, Height, GenerateMip != null, Format) {
-                    Name = $"Atlas<{typeof(T).Name}> {Tag ?? GetHashCode().ToString("X8")}",
-                    Tag = Tag,
-                };
-                Coordinator.RegisterAutoAllocatedTextureResource(Texture);
-            }
+            Texture = new Texture2D(Coordinator.Device, Width, Height, GenerateMip != null, Format) {
+                Name = $"Atlas<{typeof(T).Name}> {Tag ?? GetHashCode().ToString("X8")}",
+                Tag = Tag,
+            };
+            Coordinator.RegisterAutoAllocatedTextureResource(Texture);
         }
 
         public void Invalidate (Rectangle rect) {
@@ -295,7 +292,7 @@ namespace Squared.Render {
                 DirtyUploadRegion = default;
                 UploadRect((IntPtr)PixelBuffer.Data, Width, Height, 0, dr);
                 UploadMipsLocked(PixelBuffer, dr);
-            } catch (ObjectDisposedException ode) {
+            } catch (ObjectDisposedException) {
                 if (isRetrying)
                     throw;
 
@@ -317,11 +314,10 @@ namespace Squared.Render {
             // TODO: Partial uploads on x axis as well
             var pSrc = (src + (y * rowPitch)).ToPointer();
 
-            lock (Coordinator.UseResourceLock)
-                Evil.TextureUtils.SetDataFast(
-                    Texture, (uint)destLevel, pSrc, 
-                    new Rectangle(0, y, srcWidth, h), (uint)rowPitch
-                );
+            Evil.TextureUtils.SetDataFast(
+                Texture, (uint)destLevel, pSrc, 
+                new Rectangle(0, y, srcWidth, h), (uint)rowPitch
+            );
         }
 
         private unsafe void UploadMipsLocked (NativeAllocation src, Rectangle region) {

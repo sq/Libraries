@@ -333,7 +333,7 @@ namespace Squared.Render.STB {
 
         private Texture2D CreateTextureLocked (RenderCoordinator coordinator, bool sRGB, string name, Texture2D existingInstance, int width, int height) {
             Texture2D result;
-            lock (coordinator.UseResourceLock) {
+            {
                 if (
                     (existingInstance != null) && (existingInstance.Width == width) && (existingInstance.Height == height) &&
                     (existingInstance.Format == GetFormat(sRGB, ChannelCount)) && ((existingInstance.LevelCount > 1) == (MipChain != null))
@@ -399,8 +399,7 @@ namespace Squared.Render.STB {
             // FIXME: async?
             // FIXME: Make sure this happens before the next issue
             UploadTimer.Restart();
-            lock (coordinator.UseResourceLock)
-                Evil.TextureUtils.SetDataFast(result, 0, Data, new Rectangle(0, 0, Width, Height), (uint)(Width * SizeofPixel));
+            Evil.TextureUtils.SetDataFast(result, 0, Data, new Rectangle(0, 0, Width, Height), (uint)(Width * SizeofPixel));
             if (UploadTimer.Elapsed.TotalMilliseconds > 1)
                 Debug.Print($"Uploading non-mipped texture took {UploadTimer.Elapsed.TotalMilliseconds}ms");
             return new Future<Texture2D>(result);
@@ -614,8 +613,7 @@ namespace Squared.Render.STB {
                         throw new Exception("Image has no data");
                 }
 
-                lock (Coordinator.UseResourceLock)
-                    Evil.TextureUtils.SetDataFast(Texture, Level, pData, new Rectangle(0, 0, LevelWidth, LevelHeight), MipPitch);
+                Evil.TextureUtils.SetDataFast(Texture, Level, pData, new Rectangle(0, 0, LevelWidth, LevelHeight), MipPitch);
 
                 if (pin.IsAllocated)
                     pin.Free();
