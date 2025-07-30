@@ -584,13 +584,7 @@ namespace Squared.Render.STB {
                 Native.API.stbi_image_free(data);
         }
 
-        private unsafe struct UploadMipWorkItem : IWorkItem {
-            public static WorkItemConfiguration Configuration =>
-                new WorkItemConfiguration {
-                    MaxConcurrency = 1,
-                    DefaultStepCount = 4
-                };
-
+        private unsafe struct UploadMipWorkItem : IMainThreadWorkItem {
             internal uint MipPitch;
             internal Image Image;
             internal Texture2D Texture;

@@ -186,6 +186,7 @@ namespace Squared.Render.AV1 {
             Coordinator.BeforeIssue(d);
         }
 
+        // FIXME: Perform the decode on threadpool and then do the upload on issue thread
         private void _AdvanceOrRestartSync () {
             lock (this) {
                 if (!DecodeFrames(1)) {

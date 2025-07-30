@@ -172,28 +172,7 @@ namespace Squared.Render {
 
         private bool _IsDisposed;
 
-        private bool? _NeedsYFlip;
-
         public string GraphicsBackendName { get; private set; }
-
-        public bool NeedsYFlip {
-            get {
-                if (!_NeedsYFlip.HasValue) {
-                    var asm = typeof(GraphicsDevice).Assembly;
-                    if (!asm.FullName.Contains("FNA")) {
-                        _NeedsYFlip = false;
-                    } else {
-                        var v = asm.GetName().Version;
-                        if ((v.Major >= 20) || ((v.Major == 19) && (v.Minor >= 08)))
-                            _NeedsYFlip = false;
-                        else
-                            _NeedsYFlip = true;
-                    }
-                }
-
-                return _NeedsYFlip.Value;
-            }
-        }
 
         public bool IsDisposed {
             get {
@@ -255,10 +234,6 @@ namespace Squared.Render {
 
             if (!setParams)
                 return;
-
-            if (NeedsYFlip)
-                if (target1 == null)
-                    targetHeight *= -1;
 
             var format = target1?.Format ?? Device.PresentationParameters.BackBufferFormat;
             var sRGBFlag = Evil.TextureUtils.FormatIsLinearSpace(this, format);
@@ -503,7 +478,8 @@ namespace Squared.Render {
         /// </summary>
         public readonly Texture2D DummyTexture;
 
-        private readonly Dictionary<int, Texture2D> NoiseTextures = new ();
+        // HACK: Preallocate high capacity so lookups are faster
+        private readonly Dictionary<int, Texture2D> NoiseTextures = new (512);
 
         // When issuing batches we add them to this, then at the end of issue we release their resources
         internal readonly Queue<Batch> ReleaseQueue = new Queue<Batch>();

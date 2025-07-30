@@ -28,11 +28,7 @@ float4 readPalette (float4 index4, float4 paletteSelector4) {
     float2 paletteSize = PaletteSize > 0 ? PaletteSize : float2(256, 1);
     float paletteSelector = paletteSelector4.r;
     // HACK
-#if FNA
     float index = index4.r;
-#else
-    float index = index4.a;
-#endif
     float2 selector = float2(floor(index * paletteSize.x) / paletteSize.x, paletteSelector - (0.5f / paletteSize.y));
     return tex2Dlod(PaletteSampler, float4(selector, 0, 0));
 }
