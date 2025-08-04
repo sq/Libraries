@@ -1545,7 +1545,6 @@ namespace PRGUI.Demo {
 
         private void Window_ClientSizeChanged (object sender, EventArgs e) {
             var pp = GraphicsDevice.PresentationParameters;
-            RenderCoordinator.WaitForActiveDraws();
             Materials.SetViewTransform(ViewTransform.CreateOrthographic(pp.BackBufferWidth, pp.BackBufferHeight));
             Context.CanvasSize = new Vector2(pp.BackBufferWidth, pp.BackBufferHeight);
             if (!UseSavedTree)
@@ -1559,7 +1558,6 @@ namespace PRGUI.Demo {
         }
 
         private void SetActiveScene (int index) {
-            RenderCoordinator.WaitForActiveDraws();
         }
 
         private readonly List<double> DrawHistory = new List<double>(),

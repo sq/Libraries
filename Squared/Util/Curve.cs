@@ -92,6 +92,9 @@ namespace Squared.Util.Containers {
         protected Interpolator<TValue> _DefaultInterpolator;
 
         private PointPositionComparer _PositionComparer = new PointPositionComparer();
+        protected int _Version;
+
+        public int Version => _Version;
 
         Type ICurve.ValueType => typeof(TValue);
         Type ICurve.DataType => typeof(TData);
@@ -430,6 +433,7 @@ namespace Squared.Util.Containers {
         public void Clear () {
             _Items.Clear();
 
+            _Version++;
             OnChanged();
         }
 
@@ -449,6 +453,7 @@ namespace Squared.Util.Containers {
             foreach (var item in _Items)
                 destination.SetValueAtPositionInternal(item.Position, item.Value, item.Data, false);
 
+            destination._Version++;
             destination.OnChanged();
         }
 
@@ -481,6 +486,7 @@ namespace Squared.Util.Containers {
             if (_Items.Count == 0)
                 _Items.Add(default(Point));
 
+            _Version++;
             OnChanged();
             return true;
         }
@@ -496,6 +502,7 @@ namespace Squared.Util.Containers {
             if (_Items.Count == 0)
                 _Items.Add(default(Point));
 
+            _Version++;
             OnChanged();
             return true;
         }
@@ -517,6 +524,7 @@ namespace Squared.Util.Containers {
                 _Items.Sort(_PositionComparer);
             }
 
+            _Version++;
             if (dispatchEvent)
                 OnChanged();
         }

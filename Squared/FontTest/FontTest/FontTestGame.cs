@@ -387,7 +387,7 @@ namespace FontTest {
         void IStringLayoutListener.Initializing (ref StringLayoutEngine2 engine) {
         }
 
-        void IStringLayoutListener.RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture) {
+        void IStringLayoutListener.RecordTexture (ref StringLayoutEngine2 engine, AbstractTextureReference texture, bool b) {
         }
 
         void IStringLayoutListener.Finishing (ref StringLayoutEngine2 engine) {
