@@ -10,6 +10,7 @@
     <AssemblyName>Squared.PRGUI</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
     <OutputPath>bin\$(Platform)\$(Configuration)</OutputPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)' == 'x86'">

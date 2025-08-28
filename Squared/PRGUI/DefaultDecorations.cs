@@ -551,13 +551,22 @@ namespace Squared.PRGUI {
 
         private int GetWin32CursorSize () {
             if (!CachedWin32CursorSize.HasValue) {
+                CachedWin32CursorSize = 1;
                 switch (Environment.OSVersion.Platform) {
                     case PlatformID.Win32NT:
                     case PlatformID.Win32S:
                     case PlatformID.Win32Windows:
-                        using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Accessibility")) {
-                            var value = key.GetValue("CursorSize", 1);
-                            CachedWin32CursorSize = Convert.ToInt32(value);
+                        try {
+                            // Shouldn't be missing but may be missing on Proton
+                            var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Accessibility");
+                            if (key != null) {
+                                using (key) {
+                                    var value = key.GetValue("CursorSize", 1);
+                                    CachedWin32CursorSize = Convert.ToInt32(value);
+                                }
+                            }
+                        } catch {
+                            // Handle garbage or missing value
                         }
                         break;
                     default:

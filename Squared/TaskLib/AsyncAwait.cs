@@ -10,7 +10,6 @@ using Squared.Util.Event;
 // FIXME: This whole file needs unit tests
 
 using tTask = System.Threading.Tasks.Task;
-using CallContext = System.Runtime.Remoting.Messaging.CallContext;
 using IEventInfo = Squared.Util.Event.IEventInfo;
 using Squared.Threading;
 using System.Runtime.ExceptionServices;

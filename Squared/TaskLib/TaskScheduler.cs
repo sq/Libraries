@@ -5,7 +5,6 @@ using Squared.Util;
 using System.Collections.Concurrent;
 using Squared.Threading;
 
-using CallContext = System.Runtime.Remoting.Messaging.CallContext;
 using System.Diagnostics;
 using System.Reflection;
 using Squared.Util.Containers;
@@ -270,6 +269,8 @@ namespace Squared.Task {
         const long MinimumSleepLength = 10000;
         const long MaximumSleepLength = Time.SecondInTicks * 60;
 
+        private static readonly AsyncLocal<TaskScheduler> CallContextCurrent = new AsyncLocal<TaskScheduler>();
+
         private static readonly ThreadLocal<TaskScheduler> _Default = new ThreadLocal<TaskScheduler>();
         private OnFutureResolved BackgroundTaskOnComplete;
         private OnFutureResolvedWithData OnResolvedDispatcher, OnResolvedDispatcher_SkipQueue;
@@ -317,7 +318,7 @@ namespace Squared.Task {
 
         public static TaskScheduler Current {
             get {
-                var result = (TaskScheduler)CallContext.LogicalGetData("TaskScheduler");
+                var result = CallContextCurrent.Value;
                 if (result == null)
                     result = _Default.Value;
 
@@ -325,8 +326,7 @@ namespace Squared.Task {
             }
 
             internal set {
-                CallContext.LogicalSetData("TaskScheduler", value);
-                WorkItemQueueTarget.Current = value;
+                CallContextCurrent.Value = value;
             }
         }
 

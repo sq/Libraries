@@ -111,11 +111,8 @@ namespace Squared.Threading {
 
         public static IWorkItemQueueTarget Current {
             get {
-                var result = (IWorkItemQueueTarget)CallContext.LogicalGetData("TaskScheduler");
+                var result = (IWorkItemQueueTarget)TaskScheduler.Current;
                 return result ?? Default;
-            }
-            set {
-                CallContext.LogicalSetData("WorkItemQueueTarget", value);
             }
         }
 
