@@ -482,6 +482,12 @@ namespace Squared.PRGUI {
 
             if (overrideKeyboardSelection)
                 OverrideKeyboardSelection(_Focused, isUserInitiated);
+
+            if (_Focused != null) {
+                if (InvalidFocusTargets.Remove(_Focused))
+                    ;
+            }
+
             return true;
         }
 

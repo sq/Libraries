@@ -191,31 +191,15 @@ namespace Squared.PRGUI.Input {
             for (int i = 0; i < 255; i++) {
                 var key = (Keys)i;
 
-                bool shouldFilterKeyPress = false;
                 var wasPressed = PreviousState.IsKeyDown(key);
                 var isPressed = ks.IsKeyDown(key);
                 if (isPressed)
                     current.HeldKeys.Add(key);
 
-                if (isPressed || wasPressed) {
-                    // Clumsily filter out keys that would generate textinput events
-                    if (!lctrl && !rctrl && !lalt && !ralt) {
-                        if ((key >= Keys.D0) && (key <= Keys.Z))
-                            shouldFilterKeyPress = true;
-                        else if ((key >= Keys.NumPad0) && (key <= Keys.Divide))
-                            shouldFilterKeyPress = true;
-                        else if ((key >= Keys.OemSemicolon) && (key <= Keys.OemBackslash))
-                            shouldFilterKeyPress = true;
-                    }
-                }
-
-                // FIXME: This was probably important, but I'm not sure why exactly
-                shouldFilterKeyPress = false;
-
                 if (isPressed != wasPressed) {
                     Context.HandleKeyEvent(isPressed ? UIEvents.KeyDown : UIEvents.KeyUp, key, null);
 
-                    if (isPressed && !shouldFilterKeyPress) {
+                    if (isPressed) {
                         // Modifier keys shouldn't break an active key repeat (i.e. you should be able to press/release shift)
                         if (!ks.IsKeyDown(LastKeyEvent) || !UIContext.ModifierKeys.Contains(key))
                             LastKeyEvent = key;
@@ -227,7 +211,6 @@ namespace Squared.PRGUI.Input {
                     if (
                         !UIContext.SuppressRepeatKeys.Contains(key) && 
                         !UIContext.ModifierKeys.Contains(key) &&
-                        !shouldFilterKeyPress &&
                         Context.UpdateRepeat(now, LastKeyEventFirstTime, ref LastKeyEventTime)
                     ) {
                         Context.HandleKeyEvent(UIEvents.KeyPress, key, null, isRepeat: true);
