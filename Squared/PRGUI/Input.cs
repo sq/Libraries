@@ -333,29 +333,33 @@ namespace Squared.PRGUI.Input {
     public sealed class GamepadVirtualKeyboardAndCursor : IInputSource {
         public const float DpadNavigationSpeedMultiplier = 0.66f;
 
-        public struct InputBindings {
-            public static readonly InputBindings Default = new InputBindings {
-                FocusBack = new [] { Buttons.LeftShoulder },
-                FocusForward = new [] { Buttons.RightShoulder },
-                Shift = new Buttons[] { },
-                Control = new [] { Buttons.Back },
-                Activate = new [] { Buttons.A },
-                Spacebar = new [] { Buttons.A },
-                Enter = new[] { Buttons.X },
-                Escape = new [] { Buttons.B },
-                Menu = new [] { Buttons.Y },
-                UpArrow = new[] { Buttons.DPadUp },
-                LeftArrow = new[] { Buttons.DPadLeft },
-                RightArrow = new[] { Buttons.DPadRight },
-                DownArrow = new[] { Buttons.DPadDown },
-                Alt = new[] { Buttons.RightStick }
-            };
+        public class InputBindings {
+            public static InputBindings Default() {
+                return new InputBindings {
+                    FocusBack = new [] { Buttons.LeftShoulder },
+                    FocusForward = new [] { Buttons.RightShoulder },
+                    Shift = new Buttons[] { },
+                    Control = new [] { Buttons.Back },
+                    Activate = new [] { Buttons.A },
+                    Spacebar = new [] { Buttons.A },
+                    Enter = new[] { Buttons.X },
+                    Escape = new [] { Buttons.B },
+                    Menu = new [] { Buttons.Y },
+                    UpArrow = new[] { Buttons.DPadUp },
+                    LeftArrow = new[] { Buttons.DPadLeft },
+                    RightArrow = new[] { Buttons.DPadRight },
+                    DownArrow = new[] { Buttons.DPadDown },
+                    Alt = new[] { Buttons.RightStick }
+                };
+            }
 
             public Buttons[] FocusBack, FocusForward,
                 WindowFocusBack, WindowFocusForward,
                 Alt, Control, Shift,
                 Activate, Spacebar, Enter, Escape, Menu,
                 UpArrow, LeftArrow, RightArrow, DownArrow;
+
+            public List<(Keys key, Buttons[] buttons, KeyboardModifiers? modifiers)> CustomBindings = new ();
         }
 
         public bool ShowFuzzyRects = false, EnableFading = false;
@@ -370,7 +374,7 @@ namespace Squared.PRGUI.Input {
         // Force feedback
         public Tween<float> LeftMotor, RightMotor;
 
-        private InputBindings _Bindings = InputBindings.Default;
+        private InputBindings _Bindings = InputBindings.Default();
         public InputBindings Bindings {
             get => _Bindings;
             set {
@@ -438,6 +442,13 @@ namespace Squared.PRGUI.Input {
             UpdateBinding(Bindings.LeftArrow, Keys.Left);
             UpdateBinding(Bindings.RightArrow, Keys.Right);
             UpdateBinding(Bindings.DownArrow, Keys.Down);
+            foreach (var binding in Bindings.CustomBindings)
+                UpdateBinding(
+                    binding.buttons, binding.key, 
+                    binding.modifiers?.Control ?? false, 
+                    binding.modifiers?.Alt ?? false, 
+                    binding.modifiers?.Shift ?? false
+                );
         }
 
         public void SetContext (UIContext context) {
@@ -608,6 +619,9 @@ namespace Squared.PRGUI.Input {
                 if (!wasArrowPressed && EnableDpadFocusNavigation)
                     focusChanged |= PerformDpadFocusNavigation(ref current, mods);
                 DispatchKeyEventsForButton(ref current, Keys.Apps, mods, Bindings.Menu);
+
+                foreach (var cb in Bindings.CustomBindings)
+                    DispatchKeyEventsForButton(ref current, cb.key, cb.modifiers, cb.buttons);
 
                 if (focusChanged || wasArrowPressed) {
                     var newSelectedControl = (Context.FixatedControl as ISelectionBearer)?.SelectedControl;
