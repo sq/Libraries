@@ -2020,6 +2020,9 @@ namespace Squared.PRGUI {
                 case "inside":
                     radius = new Vector4(0, 0, 5, 0);
                     break;
+                case "inside-right":
+                    radius = new Vector4(0, 0, 0, 5);
+                    break;
                 case "below":
                     radius = new Vector4(0, 0, 5, 5);
                     break;

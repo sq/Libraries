@@ -528,20 +528,25 @@ namespace Squared.PRGUI {
                 labelPosition, 
                 scaledSize + decorator.Padding.Size
             );
-            if (IsObstructedByAnyPreviousBox(ref labelBox, forControl))
+            if (IsObstructedByAnyPreviousBox(ref labelBox, forControl)) {
                 labelBox.Left = box.Extent.X - labelBox.Width;
+                if (labelTraits[0] == "inside")
+                    labelTraits[0] = "inside-right";
+            }
             if (IsObstructedByAnyPreviousBox(ref labelBox, forControl)) {
                 labelTraits[0] = "below";
                 labelBox.Left = labelPosition.X;
                 labelBox.Top = box.Extent.Y + 1; // FIXME: Why the +1?
             }
 
+            /*
             while (IsObstructedByAnyPreviousBox(ref labelBox, forControl)) {
                 labelTraits[0] = "stacked";
                 labelBox.Left = box.Left;
                 labelBox.Width = box.Width;
                 labelBox.Top = labelBox.Extent.Y + 0.5f;
             }
+            */
             // HACK
 
             var labelContentBox = new RectF(
