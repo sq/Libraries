@@ -129,7 +129,7 @@ namespace Squared.Render {
         public abstract void Draw (GameTime gameTime, Frame frame);
 
         protected override bool BeginDraw() {
-            ThreadGroup.TryStepMainThreadUntilDrained();
+            ThreadGroup.TryStepMainThreadGentlyUntilDrained();
 
             var settling = RenderCoordinator.IsWaitingForDeviceToSettle;
 
@@ -254,7 +254,7 @@ namespace Squared.Render {
                 RenderCoordinator.NextFrameTiming = default;
             }
 
-            ThreadGroup.TryStepMainThreadUntilDrained();
+            ThreadGroup.TryStepMainThreadGentlyUntilDrained();
         }
 
         protected virtual void OnDeviceReset () {

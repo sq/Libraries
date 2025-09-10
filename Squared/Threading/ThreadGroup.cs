@@ -223,62 +223,106 @@ namespace Squared.Threading {
         /// This is necessary to ensure main-thread-only jobs advance.
         /// </summary>
         /// <returns>Whether all queues have been exhausted.</returns>
-        public bool StepMainThread (float? currentElapsedMs = null) {
-            bool allExhausted = true;
-            int totalSteps = 0;
-            bool hasLimit = MainThreadStepLengthLimitMs.HasValue;
-            float stepLengthLimitMs = (MainThreadStepLengthLimitMs ?? 999999) - (currentElapsedMs ?? 0);
-            long stepLengthLimitTicks = (long)(stepLengthLimitMs * Time.MillisecondInTicks);
-
+        public bool StepMainThread () {
             var sc = SynchronizationContext.Current;
             var msc = SynchronizationContext;
-            var started = hasLimit ? GetTime() : 0;
             var mtql = MainThreadQueueList;
+
+            bool hasLimit = MainThreadStepLengthLimitMs.HasValue;
+            float stepLengthLimitMs = (MainThreadStepLengthLimitMs ?? 999999);
+            long stepLengthLimitTicks = (long)(stepLengthLimitMs * Time.MillisecondInTicks);
+
+            bool result;
             try {
                 if (msc != null)
                     SynchronizationContext.SetSynchronizationContext(msc);
-                // FIXME: This will deadlock if you create a new queue while it's stepping the main thread
-                lock (mtql) {
-                    for (int i = 0; i < mtql.Count; i++) {
-                        var q = mtql.DangerousGetItem(i);
-                        bool exhausted;
-                        // We want to run one queue item at a time to try and drain all the main thread queues evenly
-                        totalSteps += q.Step(out exhausted, 1);
-                        if (!exhausted)
-                            allExhausted = false;
-
-                        if (hasLimit) {
-                            var elapsedTicks = (GetTime() - started);
-                            if (elapsedTicks > stepLengthLimitTicks)
-                                return false;
-                        }
-                    }
-                }
+                long endWhenTicks = stepLengthLimitTicks + Time.Ticks;
+                result = StepMainThreadIteration(mtql, null, endWhenTicks) ?? false;
             } finally {
                 if (msc != null)
                     SynchronizationContext.SetSynchronizationContext(sc);
             }
 
-            return allExhausted;
+            return result;
         }
 
-        public bool TryStepMainThreadUntilDrained () {
-            float stepLengthLimitMs = MainThreadStepLengthLimitMs ?? 999999;
-            var started = GetTime();
+        private bool? StepMainThreadIteration (UnorderedList<IWorkQueue> mtql, Func<bool> terminationCondition = null, long endWhenTicks = -1) {
+            bool allExhausted = true;
 
-            while (true) {
-                var elapsedMs = (GetTime() - started) / Time.MillisecondInTicks;
-                if (elapsedMs >= stepLengthLimitMs)
-                    return false;
+            // FIXME: This will deadlock if you create a new queue while it's stepping the main thread
+            // FIXME: This lock has a lot of overhead/contention for some reason
+            lock (mtql) {
+                for (int i = 0; i < mtql.Count; i++) {
+                    var q = mtql.DangerousGetItem(i);
+                    bool exhausted;
+                    // We want to run one queue item at a time to try and drain all the main thread queues evenly
+                    q.Step(out exhausted, 1);
+                    if (!exhausted)
+                        allExhausted = false;
 
-                bool ok = !StepMainThread(elapsedMs);
-                if (!ok)
-                    break;
+                    if (terminationCondition != null)
+                        if (terminationCondition())
+                            return true;
 
-                Thread.Yield();
+                    if (endWhenTicks >= 0) {
+                        if (Time.Ticks >= endWhenTicks)
+                            return false;
+                    }
+                }
             }
 
-            return true;
+            if (allExhausted)
+                return true;
+
+            return null;
+        }
+
+        public bool TryStepMainThreadGentlyUntilDrained () {
+            var sc = SynchronizationContext.Current;
+            var msc = SynchronizationContext;
+            var mtql = MainThreadQueueList;
+
+            bool hasLimit = MainThreadStepLengthLimitMs.HasValue;
+            float stepLengthLimitMs = (MainThreadStepLengthLimitMs ?? 999999);
+            long stepLengthLimitTicks = (long)(stepLengthLimitMs * Time.MillisecondInTicks);
+
+            try {
+                if (msc != null)
+                    SynchronizationContext.SetSynchronizationContext(msc);
+                long endWhenTicks = stepLengthLimitTicks + Time.Ticks;
+                while (true) {
+                    var result = StepMainThreadIteration(mtql, null, endWhenTicks);
+                    if (result.HasValue)
+                        return result.Value;
+
+                    Thread.Yield();
+                }
+            } finally {
+                if (msc != null)
+                    SynchronizationContext.SetSynchronizationContext(sc);
+            }
+        }
+
+        public bool StepMainThreadUntil (Func<bool> terminationCondition, long endWhenTicks = -1) {
+            var sc = SynchronizationContext.Current;
+            var msc = SynchronizationContext;
+            var mtql = MainThreadQueueList;
+
+            try {
+                if (msc != null)
+                    SynchronizationContext.SetSynchronizationContext(msc);
+
+                while (true) {
+                    var result = StepMainThreadIteration(mtql, terminationCondition, endWhenTicks);
+                    if (terminationCondition())
+                        return true;
+                    else if (result == false)
+                        return false;
+                }
+            } finally {
+                if (msc != null)
+                    SynchronizationContext.SetSynchronizationContext(sc);
+            }
         }
 
         public int Count {
