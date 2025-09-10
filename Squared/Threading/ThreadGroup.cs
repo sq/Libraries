@@ -105,8 +105,8 @@ namespace Squared.Threading {
             new Dictionary<Type, IWorkQueue>(ReferenceComparer<Type>.Instance);
         private readonly Dictionary<Type, IWorkQueue> MainThreadQueues = 
             new Dictionary<Type, IWorkQueue>(ReferenceComparer<Type>.Instance);
-        private readonly UnorderedList<IWorkQueue> MainThreadQueueList = 
-            new UnorderedList<IWorkQueue>();
+        private volatile IWorkQueue[] CurrentMainThreadQueues = new IWorkQueue[0];
+        private UnorderedList<IWorkQueue> SafeMainThreadQueueList = new ();
 
         internal Thread OrchestratorThread;
         internal AutoResetEvent WakeAllThreadsEvent = new AutoResetEvent(false);
@@ -226,7 +226,6 @@ namespace Squared.Threading {
         public bool StepMainThread () {
             var sc = SynchronizationContext.Current;
             var msc = SynchronizationContext;
-            var mtql = MainThreadQueueList;
 
             bool hasLimit = MainThreadStepLengthLimitMs.HasValue;
             float stepLengthLimitMs = (MainThreadStepLengthLimitMs ?? 999999);
@@ -237,7 +236,7 @@ namespace Squared.Threading {
                 if (msc != null)
                     SynchronizationContext.SetSynchronizationContext(msc);
                 long endWhenTicks = stepLengthLimitTicks + Time.Ticks;
-                result = StepMainThreadIteration(mtql, null, endWhenTicks) ?? false;
+                result = StepMainThreadIteration(CurrentMainThreadQueues, null, endWhenTicks) ?? false;
             } finally {
                 if (msc != null)
                     SynchronizationContext.SetSynchronizationContext(sc);
@@ -246,28 +245,25 @@ namespace Squared.Threading {
             return result;
         }
 
-        private bool? StepMainThreadIteration (UnorderedList<IWorkQueue> mtql, Func<bool> terminationCondition = null, long endWhenTicks = -1) {
+        private bool? StepMainThreadIteration (IWorkQueue[] mtql, Func<bool> terminationCondition = null, long endWhenTicks = -1) {
             bool allExhausted = true;
 
             // FIXME: This will deadlock if you create a new queue while it's stepping the main thread
             // FIXME: This lock has a lot of overhead/contention for some reason
-            lock (mtql) {
-                for (int i = 0; i < mtql.Count; i++) {
-                    var q = mtql.DangerousGetItem(i);
-                    bool exhausted;
-                    // We want to run one queue item at a time to try and drain all the main thread queues evenly
-                    q.Step(out exhausted, 1);
-                    if (!exhausted)
-                        allExhausted = false;
+            foreach (var q in mtql) {
+                bool exhausted;
+                // We want to run one queue item at a time to try and drain all the main thread queues evenly
+                q.Step(out exhausted, 1);
+                if (!exhausted)
+                    allExhausted = false;
 
-                    if (terminationCondition != null)
-                        if (terminationCondition())
-                            return true;
+                if (terminationCondition != null)
+                    if (terminationCondition())
+                        return true;
 
-                    if (endWhenTicks >= 0) {
-                        if (Time.Ticks >= endWhenTicks)
-                            return false;
-                    }
+                if (endWhenTicks >= 0) {
+                    if (Time.Ticks >= endWhenTicks)
+                        return false;
                 }
             }
 
@@ -280,7 +276,6 @@ namespace Squared.Threading {
         public bool TryStepMainThreadGentlyUntilDrained () {
             var sc = SynchronizationContext.Current;
             var msc = SynchronizationContext;
-            var mtql = MainThreadQueueList;
 
             bool hasLimit = MainThreadStepLengthLimitMs.HasValue;
             float stepLengthLimitMs = (MainThreadStepLengthLimitMs ?? 999999);
@@ -291,7 +286,7 @@ namespace Squared.Threading {
                     SynchronizationContext.SetSynchronizationContext(msc);
                 long endWhenTicks = stepLengthLimitTicks + Time.Ticks;
                 while (true) {
-                    var result = StepMainThreadIteration(mtql, null, endWhenTicks);
+                    var result = StepMainThreadIteration(CurrentMainThreadQueues, null, endWhenTicks);
                     if (result.HasValue)
                         return result.Value;
 
@@ -306,14 +301,13 @@ namespace Squared.Threading {
         public bool StepMainThreadUntil (Func<bool> terminationCondition, long endWhenTicks = -1) {
             var sc = SynchronizationContext.Current;
             var msc = SynchronizationContext;
-            var mtql = MainThreadQueueList;
 
             try {
                 if (msc != null)
                     SynchronizationContext.SetSynchronizationContext(msc);
 
                 while (true) {
-                    var result = StepMainThreadIteration(mtql, terminationCondition, endWhenTicks);
+                    var result = StepMainThreadIteration(CurrentMainThreadQueues, terminationCondition, endWhenTicks);
                     if (terminationCondition())
                         return true;
                     else if (result == false)
@@ -390,8 +384,10 @@ namespace Squared.Threading {
             }
 
             if (isMainThreadOnly && resultIsNew) {
-                lock (MainThreadQueueList)
-                    MainThreadQueueList.Add(result);
+                lock (SafeMainThreadQueueList) {
+                    SafeMainThreadQueueList.Add(result);
+                    CurrentMainThreadQueues = SafeMainThreadQueueList.ToArray();
+                }
             }
 
             if (resultIsNew) {
