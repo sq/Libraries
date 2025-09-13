@@ -425,7 +425,7 @@ namespace Squared.Util {
         public DenseQuery<T, DenseDistinct<T, TEnumerator, TEqualityComparer>, T> Where (DenseList<T>.Predicate<object> predicate, object userData) {
             var source = GetEnumerator();
             var result = new DenseQuery<T, DenseDistinct<T, TEnumerator, TEqualityComparer>, T>(
-                in source, DenseList<T>.NullSelector, true
+                in source, DenseList<T>.Statics.NullSelector, true
             );
             result.PrePredicates.Add(new DenseList<T>.PredicateBox { RefUserDataPredicate = predicate, UserData = userData });
             return result;
@@ -434,7 +434,7 @@ namespace Squared.Util {
         public DenseQuery<T, DenseDistinct<T, TEnumerator, TEqualityComparer>, T> Where (Func<T, bool> predicate) {
             var source = GetEnumerator();
             var result = new DenseQuery<T, DenseDistinct<T, TEnumerator, TEqualityComparer>, T>(
-                in source, DenseList<T>.NullSelector, true
+                in source, DenseList<T>.Statics.NullSelector, true
             );
             result.PrePredicates.Add(new DenseList<T>.PredicateBox { Predicate = predicate });
             return result;

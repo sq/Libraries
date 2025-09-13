@@ -265,10 +265,11 @@ namespace Squared.Util {
         public delegate bool Predicate<TUserData> (in T item, in TUserData userData);
         public delegate bool Predicate (in T item);
 
-        private static Lazy<T[]> EmptyArray = 
-            new Lazy<T[]>(() => new T[0], LazyThreadSafetyMode.PublicationOnly);
+        internal static class Statics {
+            public static readonly T[] EmptyArray = new T[0];
+            public static readonly Func<T, T> NullSelector = _NullSelector;
+        }
 
-        internal static readonly Func<T, T> NullSelector = _NullSelector;
         private static T _NullSelector (T value) => value;
 
 
@@ -552,7 +553,7 @@ namespace Squared.Util {
                 return default;
 
             var e = GetEnumerator();
-            var result = new DenseQuery<T, Enumerator, T>(in e, NullSelector, true);
+            var result = new DenseQuery<T, Enumerator, T>(in e, Statics.NullSelector, true);
             result.PrePredicates.Add(new PredicateBox { RefUserDataPredicate = predicate, UserData = userData });
             return result;
         }
@@ -562,7 +563,7 @@ namespace Squared.Util {
                 return default;
 
             var e = GetEnumerator();
-            var result = new DenseQuery<T, Enumerator, T>(in e, NullSelector, true);
+            var result = new DenseQuery<T, Enumerator, T>(in e, Statics.NullSelector, true);
             result.PrePredicates.Add(new PredicateBox { Predicate = predicate });
             return result;
         }

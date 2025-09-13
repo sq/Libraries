@@ -279,6 +279,9 @@ namespace Squared.Util {
             return result;
         }
 
+        // TODO: This actually can take a while to JIT and produce a lot of code, and if you hit it
+        //  you're already on a slow path and allocating garbage. So it might be worthwhile to make it JIT faster.
+        // [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         private UnorderedList<T> CreateList (int? capacity = null) {
             const int absoluteMinimum = 16;
 
@@ -1064,16 +1067,24 @@ namespace Squared.Util {
 
         public T[] ToArray () {
             if (Count == 0)
-                return EmptyArray.Value;
-
+                return Statics.EmptyArray;
             else if (HasList)
                 return _Items.ToArray();
-            else {
-                var result = new T[_Count];
-                for (int i = 0; i < result.Length; i++)
-                    GetInlineItemAtIndex(i, out result[i]);
-                return result;
-            }
+            else
+                return ToArray_Small();
+        }
+
+        private T[] ToArray_Small () {
+            var result = new T[_Count];
+            if (result.Length > 0)
+                result[0] = Item1;
+            if (result.Length > 1)
+                result[1] = Item2;
+            if (result.Length > 2)
+                result[2] = Item3;
+            if (result.Length > 3)
+                result[3] = Item4;
+            return result;
         }
 
         private int IndexOf_Small<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
