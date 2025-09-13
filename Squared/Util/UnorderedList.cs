@@ -11,22 +11,6 @@ namespace Squared.Util {
     public class UnorderedList<T> : IEnumerable<T> {
         public const int DefaultSize = 16;
 
-        public static class Allocator {
-            public static ArraySegment<T> Allocate (int minimumSize) {
-                return new ArraySegment<T>(new T[minimumSize]);
-            }
-
-            public static ArraySegment<T> Resize (ArraySegment<T> buffer, int minimumSize) {
-                if (minimumSize < buffer.Count)
-                    return buffer;
-
-                var array = buffer.Array;
-                var newBuffer = Allocate(minimumSize);
-                Array.Copy(array, buffer.Offset, newBuffer.Array, newBuffer.Offset, buffer.Count);
-                return newBuffer;
-            }
-        }
-
         /// <summary>
         /// This value will be incremented every time the underlying buffer is re-allocated
         /// </summary>
@@ -158,9 +142,8 @@ namespace Squared.Util {
         }
 
         private void AllocateNewBuffer (int size) {
-            var buffer = Allocator.Allocate(size);
             BufferVersion++;
-            _Items = buffer.Array;
+            _Items = new T[size];
         }
 
         public UnorderedList () {
@@ -210,12 +193,9 @@ namespace Squared.Util {
         }
 
         protected virtual void Grow (int targetCapacity) {
-            ArraySegment<T> newBuffer, oldBuffer = new ArraySegment<T>(_Items, 0, _Items.Length);
             var newCapacity = PickGrowthSize(_Items.Length, targetCapacity);
-            newBuffer = Allocator.Resize(oldBuffer, newCapacity);
-
             BufferVersion++;
-            _Items = newBuffer.Array;
+            Array.Resize(ref _Items, newCapacity);
         }
 
         protected void BoundsCheckFailed () {

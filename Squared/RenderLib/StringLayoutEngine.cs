@@ -631,7 +631,11 @@ namespace Squared.Render.Text {
             } else if (buffer.Count < count) {
                 if (allowBufferGrowth) {
                     var newSize = UnorderedList<BitmapDrawCall>.PickGrowthSize(buffer.Count, paddedCount);
-                    buffer = UnorderedList<BitmapDrawCall>.Allocator.Resize(buffer, newSize);
+                    if (newSize > buffer.Count) {
+                        var newBuffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[newSize]);
+                        Array.Copy(buffer.Array, buffer.Offset, newBuffer.Array, newBuffer.Offset, buffer.Count);
+                        buffer = newBuffer;
+                    }
                 } else if (buffer.Count >= count) {
                     // This is OK, there should be enough room...
                     ;
