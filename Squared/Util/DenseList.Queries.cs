@@ -124,8 +124,9 @@ namespace Squared.Util {
                 if (predicateRejected)
                     continue;
 
-                if (Selector != null)
-                    _Current = Selector(input);
+                var s = Selector;
+                if (s != null)
+                    _Current = s(input);
                 else
                     _Current = Selector2(input, SelectorUserData);
 

@@ -279,9 +279,8 @@ namespace Squared.Util {
             return result;
         }
 
-        // TODO: This actually can take a while to JIT and produce a lot of code, and if you hit it
+        // NOTE: This actually can take a while to JIT and produce a lot of code, and if you hit it
         //  you're already on a slow path and allocating garbage. So it might be worthwhile to make it JIT faster.
-        // [MethodImpl(MethodImplOptions.NoInlining | MethodImplOptions.NoOptimization)]
         private UnorderedList<T> CreateList (int? capacity = null) {
             const int absoluteMinimum = 16;
 
@@ -293,6 +292,8 @@ namespace Squared.Util {
             else
                 ;
 
+            int count = _Count;
+
             UnorderedList<T> items;
             var lp = ListPool;
             if (lp != null)
@@ -300,28 +301,16 @@ namespace Squared.Util {
             else if (capacity.HasValue)
                 items = new UnorderedList<T>(capacity.Value);
             else
-                items = new UnorderedList<T>();
+                items = new UnorderedList<T>(count);
 
-            int count = _Count;
             _Count = 0;
             _Items = items;
 
-            if (count > 0) {
-                items.Add(ref Item1);
-                Item1 = default;
-            }
-            if (count > 1) {
-                items.Add(ref Item2);
-                Item2 = default;
-            }
-            if (count > 2) {
-                items.Add(ref Item3);
-                Item3 = default;
-            }
-            if (count > 3) {
-                items.Add(ref Item4);
-                Item4 = default;
-            }
+            items.Accept(ref this, count);
+            Item1 = default;
+            Item2 = default;
+            Item3 = default;
+            Item4 = default;
 
             return items;
         }
@@ -662,25 +651,16 @@ namespace Squared.Util {
             if (preserveContents) {
                 if (oldItems != null)
                     oldItems.CopyTo(storage);
-                else if (_Count >= 4) {
-                    storage.Add(Item1);
-                    storage.Add(Item2);
-                    storage.Add(Item3);
-                    storage.Add(Item4);
-                } else if (_Count >= 3) {
-                    storage.Add(Item1);
-                    storage.Add(Item2);
-                    storage.Add(Item3);
-                } else if (_Count >= 2) {
-                    storage.Add(Item1);
-                    storage.Add(Item2);
-                } else if (_Count >= 1) {
-                    storage.Add(Item1);
-                }
+                else
+                    storage.Accept(ref this, _Count);
             }
 
             // Just in case
             _Count = 0;
+            Item1 = default;
+            Item2 = default;
+            Item3 = default;
+            Item4 = default;
 
             if (oldItems != null) {
                 oldItems.Clear();
@@ -1208,7 +1188,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void SortPair<TComparer> (TComparer comparer, ref T item1, ref T item2)
+        private static void SortPair<TComparer> (TComparer comparer, ref T item1, ref T item2)
             where TComparer : IRefComparer<T>
         {
             if (comparer.Compare(ref item2, ref item1) >= 0)
@@ -1239,36 +1219,41 @@ namespace Squared.Util {
             if ((indices != null) && (indices.Length < count))
                 throw new ArgumentOutOfRangeException("indices", "index array length must must match or exceed number of elements");
 
+            if (indices != null)
+                Sort_Small_Indexed(comparer, indices, count);
+            else
+                Sort_Small_Unindexed(comparer, count);
+        }
+
+        private void Sort_Small_Unindexed<TComparer> (TComparer comparer, int count) where TComparer : IRefComparer<T> {
             // Use a sorting network to sort either the values or indices in-place
-            if (count == 2) {
-                if (indices != null)
-                    SortPair_Indexed(comparer, ref indices[0], ref indices[1]);
-                else
-                    SortPair(comparer, ref Item1, ref Item2);
-            } else if (count == 3) {
-                if (indices != null) {
-                    SortPair_Indexed(comparer, ref indices[0], ref indices[1]);
-                    SortPair_Indexed(comparer, ref indices[0], ref indices[2]);
-                    SortPair_Indexed(comparer, ref indices[1], ref indices[2]);
-                } else {
-                    SortPair(comparer, ref Item1, ref Item2);
-                    SortPair(comparer, ref Item1, ref Item3);
-                    SortPair(comparer, ref Item2, ref Item3);
-                }
-            } else {
-                if (indices != null) {
-                    SortPair_Indexed(comparer, ref indices[0], ref indices[1]);
-                    SortPair_Indexed(comparer, ref indices[2], ref indices[3]);
-                    SortPair_Indexed(comparer, ref indices[0], ref indices[2]);
-                    SortPair_Indexed(comparer, ref indices[1], ref indices[3]);
-                    SortPair_Indexed(comparer, ref indices[1], ref indices[2]);
-                } else {
-                    SortPair(comparer, ref Item1, ref Item2);
-                    SortPair(comparer, ref Item3, ref Item4);
-                    SortPair(comparer, ref Item1, ref Item3);
-                    SortPair(comparer, ref Item2, ref Item4);
-                    SortPair(comparer, ref Item2, ref Item3);
-                }
+            if (count >= 2)
+                SortPair(comparer, ref Item1, ref Item2);
+
+            if (count == 3) {
+                SortPair(comparer, ref Item1, ref Item3);
+                SortPair(comparer, ref Item2, ref Item3);
+            } else if (count == 4) {
+                SortPair(comparer, ref Item3, ref Item4);
+                SortPair(comparer, ref Item1, ref Item3);
+                SortPair(comparer, ref Item2, ref Item4);
+                SortPair(comparer, ref Item2, ref Item3);
+            }
+        }
+
+        private void Sort_Small_Indexed<TComparer> (TComparer comparer, int[] indices, int count) where TComparer : IRefComparer<T> {
+            // Use a sorting network to sort either the values or indices in-place
+            if (count >= 2)
+                SortPair_Indexed(comparer, ref indices[0], ref indices[1]);
+
+            if (count == 3) {
+                SortPair_Indexed(comparer, ref indices[0], ref indices[2]);
+                SortPair_Indexed(comparer, ref indices[1], ref indices[2]);
+            } else if (count == 4) {
+                SortPair_Indexed(comparer, ref indices[2], ref indices[3]);
+                SortPair_Indexed(comparer, ref indices[0], ref indices[2]);
+                SortPair_Indexed(comparer, ref indices[1], ref indices[3]);
+                SortPair_Indexed(comparer, ref indices[1], ref indices[2]);
             }
         }
 

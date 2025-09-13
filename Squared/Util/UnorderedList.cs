@@ -678,5 +678,22 @@ namespace Squared.Util {
             if (clearEmptySpace && (newCount < oldCount))
                 Array.Clear(_Items, newCount, oldCount - newCount);
         }
+
+        internal void Accept (ref DenseList<T> source, int count) {
+            int i = _Count;
+            int newCount = i + count;
+            EnsureCapacity(newCount);
+            _Count = newCount;
+            var items = _Items;
+
+            if (count > 0)
+                items[i++] = source.Item1;
+            if (count > 1)
+                items[i++] = source.Item2;
+            if (count > 2)
+                items[i++] = source.Item3;
+            if (count > 3)
+                items[i++] = source.Item4;
+        }
     }
 }
