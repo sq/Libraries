@@ -9,6 +9,8 @@ using System.Runtime;
 
 namespace Squared.Util {
     public class UnorderedList<T> : IEnumerable<T> {
+        public const int DefaultSize = 16;
+
         public static class Allocator {
             public static ArraySegment<T> Allocate (int minimumSize) {
                 return new ArraySegment<T>(new T[minimumSize]);
@@ -24,8 +26,6 @@ namespace Squared.Util {
                 return newBuffer;
             }
         }
-
-        public static int DefaultSize = 16;
 
         /// <summary>
         /// This value will be incremented every time the underlying buffer is re-allocated
