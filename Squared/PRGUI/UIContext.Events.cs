@@ -226,7 +226,7 @@ namespace Squared.PRGUI {
                     }
                 }
 
-                TTS.FocusedControlChanged(newTopLevel, target);
+                TTS?.FocusedControlChanged(newTopLevel, target);
             }
         }
 
@@ -268,7 +268,7 @@ namespace Squared.PRGUI {
             if (target == null)
                 return;
 
-            TTS.ControlClicked(target, MouseOver);
+            TTS?.ControlClicked(target, MouseOver);
             Log($"Click on {target} failed because of {cause}");
         }
 
@@ -302,7 +302,7 @@ namespace Squared.PRGUI {
             LastClickTime = LastMouseDownTime;
             FireEvent(UIEvents.Click, target, MakeMouseEventArgs(target, mousePosition, mouseDownPosition, true));
 
-            TTS.ControlClicked(target, MouseOver);
+            TTS?.ControlClicked(target, MouseOver);
         }
 
         private void HandleDrag (Control originalTarget, Control finalTarget) {
@@ -908,7 +908,7 @@ namespace Squared.PRGUI {
 
         private void HandleFixationChange (Control previous, Control current) {
             FireEvent(UIEvents.ControlFixated, current, previous);
-            TTS.FixatedControlChanged(current);
+            TTS?.FixatedControlChanged(current);
         }
 
         public void TerminateComposition () {

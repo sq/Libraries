@@ -36,7 +36,10 @@ namespace Squared.Util {
                 CompileNativeExpressions();
             } catch {
             }
-            CompileFallbackExpressions();
+            try {
+                CompileFallbackExpressions();
+            } catch {
+            }
         }
 
         private static bool FindPrecompiledExpression<TDelegate> (out TDelegate result, Type type, string name, Type[] signature)

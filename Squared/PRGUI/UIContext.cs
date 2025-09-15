@@ -133,7 +133,10 @@ namespace Squared.PRGUI {
             Animations = animations ?? (decorations as IAnimationProvider);
             TimeProvider = TimeProvider ?? new DotNetTimeProvider();
             Materials = materials;
-            TTS = new Accessibility.TTS(this);
+            try {
+                TTS = new Accessibility.TTS(this);
+            } catch {
+            }
             _LastInput = _CurrentInput = new InputState {
                 CursorPosition = new Vector2(-99999)
             };
