@@ -115,6 +115,10 @@ namespace Squared.PRGUI {
         // FIXME
         private InternalStateFlags InternalState = InternalStateFlags.Visible | InternalStateFlags.Enabled | InternalStateFlags.LayoutKeyIsInvalid;
 
+        public virtual IFocusNavigator FocusNavigator { 
+            get => null;
+        }
+
         public bool IsLayoutInvalid {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (InternalState & (InternalStateFlags.LayoutInvalid | InternalStateFlags.LayoutKeyIsInvalid)) != default;

@@ -12,8 +12,8 @@ using Squared.Util;
 
 namespace Squared.PRGUI {
     public sealed partial class UIContext : IDisposable {
-        private readonly Dictionary<Control, Control> InvalidFocusTargets = 
-            new Dictionary<Control, Control>(Control.Comparer.Instance);
+        private readonly Dictionary<Control, (Control newTarget, Control invalidBecauseOf)> InvalidFocusTargets = 
+            new (Control.Comparer.Instance);
 
         private HashSet<Control> FocusSearchHistory = new HashSet<Control>();
         private (Control value, bool force, bool isUserInitiated, bool? suppressAnimations, bool overrideKeyboardSelection) QueuedFocus;
@@ -96,15 +96,19 @@ namespace Squared.PRGUI {
         }
 
         private void DefocusInvalidFocusTargets () {
-            Control idealNewTarget = null;
-
             // HACK: Not sure why this is necessary
             int iterations = 10;
             while (
                 (Focused != null) && 
-                InvalidFocusTargets.TryGetValue(Focused, out idealNewTarget)
+                InvalidFocusTargets.TryGetValue(Focused, out var tup)
             ) {
                 InvalidFocusTargets.Remove(Focused);
+                // HACK: The invalid focus target may have become valid since it was recorded as invalid
+                if (tup.invalidBecauseOf?.IsValidFocusTarget == true)
+                    break;
+
+                var idealNewTarget = tup.newTarget;
+
                 var current = Focused;
                 var ok = (idealNewTarget != null) && TrySetFocus(idealNewTarget);
 
@@ -183,11 +187,11 @@ namespace Squared.PRGUI {
             if (control.AcceptsFocus) {
                 if ((_Focused != control) && Control.IsEqualOrAncestor(_Focused, control))
                     InvalidFocusTargets[_Focused] =
-                        PickIdealNewFocusTargetForInvalidFocusTarget(control);
+                        (PickIdealNewFocusTargetForInvalidFocusTarget(control), control);
 
                 if (_Focused == control)
                     InvalidFocusTargets[control] =
-                        PickIdealNewFocusTargetForInvalidFocusTarget(control);
+                        (PickIdealNewFocusTargetForInvalidFocusTarget(control), control);
             }
 
             if (Control.IsEqualOrAncestor(KeyboardSelection, control))
@@ -216,32 +220,11 @@ namespace Squared.PRGUI {
             if (delta == 0)
                 throw new ArgumentOutOfRangeException("delta");
 
-            // FIXME: Introduce new system where we build a flattened 'focus target list' of the whole tree of focusable controls
-            //  at a specified depth. I.e. for top-level we build the list of all top level focus targets only, and for non top-level
-            //  we walk the whole tree recursively pushing controls into the list based on the traversal criteria.
-            // This would also allow getting rid of TraverseChildren
-            if (topLevel) {
-                var currentTopLevel = FindTopLevelAncestor(Focused);
-                // HACK
-                var inTabOrder = Controls.InTabOrder(FrameIndex, false)
-                    .ToDenseList(where: c => 
-                        (((c as IControlContainer)?.ChildrenAcceptFocus ?? false) || c.AcceptsFocus) &&
-                        (c.Enabled || c.AcceptsFocusWhenDisabled) && !Control.IsRecursivelyTransparent(c, true, NowL, ignoreFadeIn: true) &&
-                        (c is not FocusProxy)
-                    );
-                var currentIndex = inTabOrder.IndexOf(currentTopLevel);
-                var newIndex = Arithmetic.Wrap(currentIndex + delta, 0, inTabOrder.Count - 1);
-                var target = inTabOrder[newIndex];
-                return target;
+            var current = topLevel ? TopLevelFocused : Focused;
+            if (GetFocusNavigator().TryPickRotateFocusTarget(this, current, delta, out var result)) {
+                return result;
             } else {
-                var currentTopLevel = FindTopLevelAncestor(Focused);
-                var newTarget = PickFocusableSiblingForRotation(Focused, delta, null, out bool didFollowProxy);
-                var newTopLevel = FindTopLevelAncestor(newTarget);
-                // HACK: We don't want to change top-level controls during a regular tab
-                if ((newTopLevel != currentTopLevel) && (currentTopLevel != null) && Focused.IsValidFocusTarget && !didFollowProxy)
-                    return Focused;
-                else
-                    return newTarget;
+                return current;
             }
         }
 
@@ -491,11 +474,11 @@ namespace Squared.PRGUI {
             return true;
         }
 
-        private static bool IsValidContainerToSearchForFocusableControls (IControlContainer icc) {
+        internal static bool IsValidContainerToSearchForFocusableControls (IControlContainer icc) {
             return IsValidContainerToSearchForFocusableControls(icc as Control);
         }
 
-        private static bool IsValidContainerToSearchForFocusableControls (Control control) {
+        internal static bool IsValidContainerToSearchForFocusableControls (Control control) {
             if (control is not IControlContainer ic)
                 return false;
             else if (!ic.ChildrenAcceptFocus)
@@ -504,73 +487,19 @@ namespace Squared.PRGUI {
                 && control.Visible && !Control.IsRecursivelyTransparent(control, ignoreFadeIn: true);
         }
 
+        internal IFocusNavigator GetFocusNavigator (Control forControl = null) =>
+            (forControl ?? Focused)?.FocusNavigator ?? TopLevelFocused?.FocusNavigator ?? DefaultFocusNavigator.Instance;
+
         public bool TryMoveFocusDirectionally (int x, int y, bool isUserInitiated = true, Control relativeTo = null) {
             // FIXME: It seems like when the gamepad controller invokes this it can ignore modals' focus retention
             // Modals' block hit test should probably apply to this too.
             relativeTo = relativeTo ?? Focused;
 
-            var focusRect = relativeTo.GetRect(displayRect: true, context: this);
-            (Control control, float distance) result = (null, 999999f);
-
             var context = FindTopLevelAncestor(relativeTo);
-            Scan(context, ref result);
-            
-            void Scan (Control control, ref (Control control, float distance) closest) {
-                if ((control is IControlContainer container) && IsValidContainerToSearchForFocusableControls(control)) {
-                    foreach (var candidate in container.Children) {
-                        if (candidate == relativeTo)
-                            continue;
-
-                        Scan(candidate, ref closest);
-
-                        if (!candidate.IsValidFocusTarget || !candidate.AcceptsFocus)
-                            continue;
-
-                        var currentRect = candidate.GetRect(displayRect: true, context: this);
-                        var displacement = currentRect.Center - focusRect.Center;
-                        /*
-                        var displacement = new Vector2(
-                            currentRect.Left > focusRect.Right
-                                ? currentRect.Left - focusRect.Right
-                                : (currentRect.Right < focusRect.Left
-                                    ? -(focusRect.Left - currentRect.Right)
-                                    : 0),
-                            currentRect.Top > focusRect.Bottom
-                                ? currentRect.Top - focusRect.Bottom
-                                : (currentRect.Bottom < focusRect.Top
-                                    ? -(focusRect.Top - currentRect.Bottom)
-                                    : 0)
-                        );
-
-                        // HACK: If controls are exactly neighbors, fake a small distance
-                        if (currentRect.Left == focusRect.Right)
-                            displacement.X = 0.1f;
-                        else if (focusRect.Left == currentRect.Right)
-                            displacement.X = -0.1f;
-                        if (currentRect.Top == focusRect.Bottom)
-                            displacement.Y = 0.1f;
-                        else if (focusRect.Top == currentRect.Bottom)
-                            displacement.Y = -0.1f;
-                        */
-
-                        if ((x != 0) && Math.Sign(displacement.X) != x)
-                            continue;
-                        if ((y != 0) && Math.Sign(displacement.Y) != y)
-                            continue;
-                        // We want to prefer controls that are close to aligned with the current one on the desired axis.
-                        // We do this by amplifying the distance on the other axis  
-                        float modifiedDistance = (displacement * new Vector2(x != 0 ? 1 : 2, y != 0 ? 1 : 2)).Length();
-                        (Control control, float distance) current = (candidate, modifiedDistance);
-                        if (current.distance < closest.distance)
-                            closest = current;
-                    }
-                }
-            }
-
-            if (result.control != null) {
-                if (TrySetFocus(result.control, isUserInitiated: isUserInitiated)) {
+            if (GetFocusNavigator(relativeTo).TryMoveFocusDirectionally(this, context, relativeTo, x, y, out var result)) {
+                if (TrySetFocus(result, isUserInitiated: isUserInitiated)) {
                     // HACK: Fixes tooltips from previous controls getting stuck during keyboard navigation
-                    SetKeyboardSelection(result.control, isUserInitiated);
+                    SetKeyboardSelection(result, isUserInitiated);
                     return true;
                 }
             }

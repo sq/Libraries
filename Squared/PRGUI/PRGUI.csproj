@@ -91,6 +91,7 @@
     <Compile Include="Events.cs" />
     <Compile Include="Extensions.cs" />
     <Compile Include="Flags.cs" />
+    <Compile Include="FocusNavigator.cs" />
     <Compile Include="Imperative.cs" />
     <Compile Include="Input.cs" />
     <Compile Include="Enums.cs" />

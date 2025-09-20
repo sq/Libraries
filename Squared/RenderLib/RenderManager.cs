@@ -496,13 +496,6 @@ namespace Squared.Render {
             // Create most batch allocators up front and put them in an array instead of a dictionary.
             // This reduces overhead significantly
             _BatchAllocators = new IBatchPool[Batch.Types.All.Length + 128];
-            var mCreate = GetType().GetMethod("CreateBatchAllocator", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            foreach (var batchType in Batch.Types.All) {
-                var mSpecific = mCreate.MakeGenericMethod(batchType);
-                var id = Batch.Types.IdForType[batchType];
-                mSpecific.Invoke(this, new object[] { id });
-            }
-
             CreateNewBufferGenerators();
 
             _Frame = null;

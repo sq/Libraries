@@ -330,10 +330,7 @@ namespace Squared.PRGUI {
         bool AcceleratorOverlayVisible = false;
         ArraySegment<BitmapDrawCall> AcceleratorOverlayBuffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[256]);
 
-        struct RasterizedOverlayBox {
-            public Control Control;
-            public RectF ControlBox, LabelBox;
-        }
+        record struct RasterizedOverlayBox (Control control, RectF controlBox, RectF labelBox, Control otherControl = null);
 
         // HACK
         List<RasterizedOverlayBox> RasterizedOverlayBoxes = new List<RasterizedOverlayBox>();
@@ -394,10 +391,7 @@ namespace Squared.PRGUI {
 
             RasterizedOverlayBoxes.Clear();
             if (Focused != null)
-                RasterizedOverlayBoxes.Add(new RasterizedOverlayBox {
-                    Control = Focused,
-                    ControlBox = Focused.GetRect(displayRect: true)
-                });
+                RasterizedOverlayBoxes.Add(new RasterizedOverlayBox(Focused, Focused.GetRect(displayRect: true), default));
 
             // FIXME: This looks confusing
             // RasterizeAcceleratorOverlay(context, ref labelGroup, ref targetGroup, Focused, null);
@@ -405,21 +399,45 @@ namespace Squared.PRGUI {
             var sources = new DenseList<IAcceleratorSource>();
             GatherAcceleratorSources(ref sources);
 
-            RasterizeAcceleratorOverlay(context, ref passSet, tab, FocusForward);
-            if (shiftTab != tab)
-                RasterizeAcceleratorOverlay(context, ref passSet, shiftTab, FocusBackward);
-
-            if ((ctrlTab != TopLevelFocused) || (ctrlShiftTab != TopLevelFocused)) {
-                if (ctrlTab != tab)
-                    RasterizeAcceleratorOverlay(context, ref passSet, ctrlTab, WindowFocusForward);
-                if (ctrlTab != ctrlShiftTab)
-                    RasterizeAcceleratorOverlay(context, ref passSet, ctrlShiftTab, WindowFocusBackward);
-            }
-
             foreach (var uniqueSource in sources) {
                 foreach (var accel in uniqueSource.Accelerators)
                     RasterizeAcceleratorOverlay(context, ref passSet, accel, true);
             }
+
+            if (Focused is ICustomDirectionalNavigation icdn) {
+                for (int i = 0; i < 4; i++) {
+                    var dir = (NavigationDirection)i;
+                    var target = icdn.GetDirectionalNavigationTarget(dir);
+                    if (target == null)
+                        continue;
+                    // HACK: Suppress directional labels if the target has a custom accelerator we rendered already
+                    if (HasRasterizedOverlayBox(target))
+                        continue;
+                    RasterizeAcceleratorOverlay(context, ref passSet, target, dir.ToString());
+                }
+            }
+
+            // Rasterize tab and ctrl tab overlays last, and suppress them if we already rasterized a custom
+            //  accelerator for their targets
+            if (!HasRasterizedOverlayBox(tab))
+                RasterizeAcceleratorOverlay(context, ref passSet, tab, FocusForward);
+            if (!HasRasterizedOverlayBox(shiftTab) && (shiftTab != tab))
+                RasterizeAcceleratorOverlay(context, ref passSet, shiftTab, FocusBackward);
+
+            if ((ctrlTab != TopLevelFocused) || (ctrlShiftTab != TopLevelFocused)) {
+                if (!HasRasterizedOverlayBox(ctrlTab) && (ctrlTab != tab))
+                    RasterizeAcceleratorOverlay(context, ref passSet, ctrlTab, WindowFocusForward);
+                if (!HasRasterizedOverlayBox(ctrlShiftTab) && (ctrlTab != ctrlShiftTab))
+                    RasterizeAcceleratorOverlay(context, ref passSet, ctrlShiftTab, WindowFocusBackward);
+            }
+        }
+
+        private bool HasRasterizedOverlayBox (Control control) {
+            foreach (var rob in RasterizedOverlayBoxes)
+                if ((rob.control == control) || (rob.otherControl == control))
+                    return true;
+
+            return false;
         }
 
         private bool IsObstructedByAnyPreviousBox (ref RectF box, Control forControl) {
@@ -433,9 +451,9 @@ namespace Squared.PRGUI {
             foreach (var previousRect in RasterizedOverlayBoxes) {
                 // Accelerators may point at children of the focused control, in which case
                 //  we want to allow their labels to appear as normal
-                var controlBox = previousRect.ControlBox;
-                var label = previousRect.LabelBox;
-                if (previousRect.Control != forControl) {
+                var controlBox = previousRect.controlBox;
+                var label = previousRect.labelBox;
+                if (previousRect.control != forControl) {
                     if (controlBox.Contains(in box))
                         continue;
                 }
@@ -561,11 +579,7 @@ namespace Squared.PRGUI {
             decorator.Rasterize(ref context, ref passSet, ref settings);
             passSet.Above.DrawMultiple(layout.DrawCalls, offset: labelContentBox.Position.Floor(), scale: new Vector2(textScale), layer: 1);
 
-            RasterizedOverlayBoxes.Add(new RasterizedOverlayBox {
-                Control = forControl,
-                ControlBox = box,
-                LabelBox = labelBox
-            });
+            RasterizedOverlayBoxes.Add(new RasterizedOverlayBox(forControl, box, labelBox, control));
         }
     }
 }
