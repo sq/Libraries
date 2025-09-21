@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 
@@ -33,12 +34,20 @@ namespace Squared.Util {
             FindPrecompiledExpressions(typeof(T));
             FindPrecompiledExpressions(typeof(DefaultInterpolators));
             try {
-                CompileNativeExpressions();
+                if ((_Linear == null) || (_Cosine == null) || (_Cubic == null) || (_Hermite == null))
+                    CompileNativeLinearInterpolator();
             } catch {
             }
             try {
-                CompileFallbackExpressions();
+                CompileFallbackInterpolators();
             } catch {
+            }
+
+            if (_Cosine == null) {
+                _Cosine = (a, b, x) => {
+                    var temp = (1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f;
+                    return _Linear(a, b, temp);
+                };
             }
         }
 
@@ -70,7 +79,8 @@ namespace Squared.Util {
                 FindPrecompiledExpression(out _Cubic, type, "Cubic", typeof(CubicFn).GetMethod("Invoke").GetParameters().Select(p => p.ParameterType).ToArray());
         }
 
-        private static void CompileFallbackExpressions () {
+        [MethodImpl(MethodImplOptions.NoOptimization | MethodImplOptions.NoInlining)]
+        private static void CompileFallbackInterpolators () {
             var m_sub = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Subtract, optional: _Linear != null);
             var m_add = Arithmetic.GetOperator<T, T>(Arithmetic.Operators.Add, optional: _Linear != null);
             var m_mul_float = Arithmetic.GetOperator<T, float>(Arithmetic.Operators.Multiply, optional: _Linear != null);
@@ -79,19 +89,6 @@ namespace Squared.Util {
                 _Linear = (a, b, x) => {
                     return m_add(a, m_mul_float(m_sub(b, a), x));
                 };
-
-            if (_Cosine == null) {
-                if (_Linear != null)
-                    _Cosine = (a, b, x) => {
-                        var temp = (1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f;
-                        return _Linear(a, b, temp);
-                    };
-                else
-                    _Cosine = (a, b, x) => {
-                        var temp = (1.0f - (float)Math.Cos(x * Math.PI)) * 0.5f;
-                        return m_add(a, m_mul_float(m_sub(b, a), temp));
-                    };
-            }
 
             if ((_Cubic == null) && (m_add != null) &&
                 (m_mul_float != null) && (m_sub != null)
@@ -144,8 +141,12 @@ namespace Squared.Util {
             result = (TDelegate)(object)lambda.Compile();
         }
 
-        private static void CompileNativeExpressions () {
+        [MethodImpl(MethodImplOptions.NoOptimization | MethodImplOptions.NoInlining)]
+        private static void CompileNativeLinearInterpolator () {
 #if !NODYNAMICMETHOD
+            if (_Linear != null)
+                return;
+
             var t = typeof(T);
 
             ParameterExpression a = Expression.Parameter(t, "a"),
@@ -175,74 +176,6 @@ namespace Squared.Util {
                     Expression.Add(a, Expression.Multiply(Expression.Subtract(b, a), x)),
                     out _Linear
                 );
-
-            // FIXME: This is the best we can do
-            if (_Cosine == null)
-                CompileExpressionTree(
-                    /* a + (
-                        (b - a) * 
-                        (1.0f - (float)Math.Cos(x * Math.PI)) *
-                        0.5f
-                    ) */
-                    new[] { a, b, x },
-                    Expression.Add(a,
-                        Expression.Multiply(
-                            Expression.Subtract(b, a),
-                            Expression.Multiply(
-                                Expression.Constant(0.5f),
-                                Expression.Subtract(
-                                    Expression.Constant(1.0f), 
-                                    Expression.Convert(
-                                        Expression.Call(
-                                            ((Func<double, double>)Math.Cos).Method, 
-                                            Expression.Multiply(Expression.Convert(x, typeof(double)), Expression.Constant(Math.PI))
-                                        ),
-                                        typeof(float)
-                                    )
-                                )
-                            )
-                        )
-                    ),
-                    out _Cosine
-                );
-
-            if (_Cubic == null) {
-                var x3 = Expression.Multiply(x2, x);
-                CompileExpressionTree(
-                    new[] { a, b, c, d, x },
-                    Expression.Block(
-                        new [] { p, x2 },
-                        Expression.Assign(
-                            x2, Expression.Multiply(x, x)
-                        ),
-                        // (d - c) - (a - b)
-                        Expression.Assign(
-                            p, 
-                            Expression.Subtract(
-                                Expression.Subtract(d, c),
-                                Expression.Subtract(a, b)
-                            )
-                        ),
-                        /*
-                            (p * x3) +
-                            ((a - b - p) * x2) + 
-                            ((c - a) * x) + 
-                            b
-                        */
-                        Expression.Add(
-                            Expression.Add(
-                                Expression.Add(
-                                    Expression.Multiply(p, x3),
-                                    Expression.Multiply(Expression.Subtract(Expression.Subtract(a, b), p), x2)
-                                ),
-                                Expression.Multiply(Expression.Subtract(c, a), x)
-                            ),
-                            b
-                        )
-                    ),
-                    out _Cubic
-                );
-            }
 #endif
         }
 
