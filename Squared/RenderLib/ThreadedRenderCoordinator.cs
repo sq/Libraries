@@ -61,6 +61,18 @@ namespace Squared.Render {
         public readonly RenderManager Manager;
 
         /// <summary>
+        /// The 'Time' uniform will have its value modulus'd by this many seconds,
+        ///  to compensate for precision loss during long gameplay sessions.
+        /// Default: Four hours.
+        /// </summary>
+        public double ShaderTimeModulusSeconds {
+            get => Time.SecondsFromTicks(ShaderTimeModulus);
+            set => ShaderTimeModulus = Time.TicksFromSeconds(Math.Max(1, value));
+        }
+
+        internal long ShaderTimeModulus = Time.SecondInTicks * 60 * 4;
+
+        /// <summary>
         /// If set to false, threads will not be used for rendering.
         /// </summary>
         public bool EnableThreading = true;

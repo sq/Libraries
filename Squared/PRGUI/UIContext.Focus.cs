@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -355,8 +356,6 @@ namespace Squared.PRGUI {
             }
 
             while (newFocusTarget != null) {
-                if (FocusSearchHistory.Contains(newFocusTarget))
-                    throw new Exception($"Cycle found when walking focus graph from {value}");
                 FocusSearchHistory.Add(newFocusTarget);
 
                 while (newFocusTarget.FocusBeneficiary != null) {
@@ -378,6 +377,14 @@ namespace Squared.PRGUI {
                             // The new focus target may currently not have any children that are eligible
                             //  to receive focus, in which case if it's top-level we want to focus it anyway
                             newFocusTarget = childTarget;
+
+                            if (FocusSearchHistory.Contains(newFocusTarget)) {
+                                if (Debugger.IsAttached)
+                                    throw new Exception($"Cycle found when walking focus graph from {value}");
+
+                                break;
+                            }
+
                             continue;
                         } else {
                             ;

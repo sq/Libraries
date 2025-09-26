@@ -489,7 +489,8 @@ namespace Squared.Render {
 
             var dm = RenderManager.DeviceManager;
             dm.FrameIndex = Index;
-            dm.RenderStartTimeSeconds = (float)Time.Seconds;
+            // FIXME: Optionally wrap this value every X seconds, so that shaders don't start breaking after long uptime
+            dm.RenderStartTimeSeconds = (float)Time.SecondsFromTicks(Time.Ticks % Coordinator.ShaderTimeModulus);
             var device = dm.Device;
 
             if (Tracing.RenderTrace.EnableTracing)
