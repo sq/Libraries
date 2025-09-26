@@ -70,7 +70,7 @@ namespace Squared.Render {
             set => ShaderTimeModulus = Time.TicksFromSeconds(Math.Max(1, value));
         }
 
-        internal long ShaderTimeModulus = Time.SecondInTicks * 60 * 4;
+        internal long ShaderTimeModulus = Time.SecondInTicks * 60 * 60 * 4;
 
         /// <summary>
         /// If set to false, threads will not be used for rendering.
