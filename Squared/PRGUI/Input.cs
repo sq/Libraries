@@ -376,10 +376,13 @@ namespace Squared.PRGUI.Input {
         public bool ShowFuzzyRects = false, EnableFading = false;
 
         public float FuzzyHitTestDistance = 16f;
-        public float SlowPxPerSecond = 48f,
-            FastPxPerSecond = 860f;
-        public float AccelerationExponent = 2f,
-            Deadzone = 0.12f;
+        public float SlowPxPerSecond = 24f,
+            FastPxPerSecond = 400f,
+            AcceleratedPxPerSecond = 1080f;
+        public float TiltExponent = 2f,
+            AccelerationRate = 1.0f / 120f,
+            DecelerationRate = 1.0f / 10f,
+            Deadzone = 0.1111f;
         public float? FixedTimeStep = null;
 
         // Force feedback
@@ -407,6 +410,7 @@ namespace Squared.PRGUI.Input {
 
         Keys LastKeyEvent;
         double LastKeyEventFirstTime, LastKeyEventTime, LastDpadEventFirstTime, LastDpadEventTime;
+        float AccelerationLevel;
 
         private FuzzyHitTest FuzzyHitTest;
 
@@ -475,10 +479,14 @@ namespace Squared.PRGUI.Input {
         private void ProcessStick (Vector2 stick, out float speed, out Vector2 direction) {
             var length = stick.Length();
             if ((length >= Deadzone) && EnableStick) {
-                var ramp = Arithmetic.Saturate((float)Math.Pow((length - Deadzone) / (1f - Deadzone), AccelerationExponent));
-                speed = Arithmetic.Lerp(
-                    SlowPxPerSecond, FastPxPerSecond, ramp
-                );
+                var ramp = Arithmetic.Saturate((float)Math.Pow((length - Deadzone) / (1f - Deadzone), TiltExponent));
+                if (ramp >= 0.9f)
+                    AccelerationLevel = Math.Min(1f, AccelerationLevel + AccelerationRate);
+                else if (ramp < 0.85f)
+                    AccelerationLevel = Math.Max(0f, AccelerationLevel - DecelerationRate);
+
+                var fastSpeed = Arithmetic.Lerp(FastPxPerSecond, AcceleratedPxPerSecond, AccelerationLevel);
+                speed = Arithmetic.Lerp(SlowPxPerSecond, fastSpeed, ramp);
                 direction = stick * new Vector2(1, -1);
                 direction.Normalize();
             } else {
