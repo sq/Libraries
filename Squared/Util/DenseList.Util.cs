@@ -187,12 +187,12 @@ namespace Squared.Util {
 
 #if !NOSPAN
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe ref readonly T ReadItem<T> (this in DenseList<T> list, int index) {
+        public static ref readonly T ReadItem<T> (this in DenseList<T> list, int index) {
             return ref Item(ref Unsafe.AsRef(in list), index);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static unsafe ref T Item<T> (this ref DenseList<T> list, int index) {
+        public static ref T Item<T> (this ref DenseList<T> list, int index) {
             var items = list._Items;
             if (items != null)
                 return ref items.DangerousItem(index);
@@ -200,7 +200,7 @@ namespace Squared.Util {
             if (list.IsIndexOutOfBounds(index))
                 BoundsCheckFailed();
 
-            return ref Unsafe.AddByteOffset(ref list.Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref list.Item2) - (byte*)Unsafe.AsPointer(ref list.Item1)) * index));
+            return ref Unsafe.AddByteOffset(ref list.Item1, (IntPtr)(list.ItemStrideInBytes() * index));
         }
 #else
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

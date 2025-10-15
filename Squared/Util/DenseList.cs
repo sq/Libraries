@@ -68,7 +68,7 @@ namespace Squared.Util {
             unchecked((uint)index >= _Count);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private readonly long ItemStrideInBytes () =>
+        internal readonly long ItemStrideInBytes () =>
             unchecked(Unsafe.ByteOffset(ref Unsafe.AsRef(in Item1), ref Unsafe.AsRef(in Item2)).ToInt64());
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
