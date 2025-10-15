@@ -1295,36 +1295,38 @@ namespace Squared.Render {
         }
 
         private void ApplyParamsToMaterial (Material m, ref FrameParams @params) {
-            if (m.Parameters == null)
+            var p = m.Parameters;
+            if (p == null)
                 return;
 
-            m.Parameters.Time?.SetValue(@params.Seconds);
+            p.Time?.SetValue(@params.Seconds);
             if (@params.FrameIndex.HasValue)
-                m.Parameters.FrameIndex?.SetValue((float)@params.FrameIndex.Value);
+                p.FrameIndex?.SetValue((float)@params.FrameIndex.Value);
 
-            if (!m.Parameters.DitheringInitialized) {
-                m.Parameters.DitheringInitialized = true;
-                m.Parameters.Dithering = GetUniformBinding(m, this.uDithering);
+            if (!p.DitheringInitialized) {
+                p.DitheringInitialized = true;
+                p.Dithering = GetUniformBinding(m, this.uDithering);
             }
-            if (m.Parameters.Dithering != null)
-                m.Parameters.Dithering.Value = @params.DitheringSettings;
+            if (p.Dithering != null)
+                p.Dithering.Value = @params.DitheringSettings;
         }
 
         internal void ApplyViewTransformToMaterial (Material m, ref ViewTransform viewTransform) {
-            if (m.Parameters == null)
+            var p = m.Parameters;
+            if (p == null)
                 return;
 
             uViewport.TrySet(m, ref viewTransform);
 
-            if (m.Parameters.InverseModelView != null) {
+            if (p.InverseModelView != null) {
                 Matrix.Invert(ref viewTransform.ModelView, out var temp);
-                m.Parameters.InverseModelView.SetValue(temp);
+                p.InverseModelView.SetValue(temp);
             }
 
-            if (m.Parameters.InverseProjection != null) {
+            if (p.InverseProjection != null) {
                 // FIXME: Cache these in the viewtransform
                 Matrix.Invert(ref viewTransform.Projection, out var temp);
-                m.Parameters.InverseProjection.SetValue(temp);
+                p.InverseProjection.SetValue(temp);
             }
         }
 

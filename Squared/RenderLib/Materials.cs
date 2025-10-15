@@ -92,8 +92,10 @@ namespace Squared.Render {
         // This was previously a List but the overhead of the enumerator is significant
         private SynthesizedParameter[] _SynthesizedParameters = Array.Empty<SynthesizedParameter>();
 
-        public MaterialEffectParameters Parameters =>
-            InheritEffectFrom?.Parameters ?? _Parameters;
+        public MaterialEffectParameters Parameters {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => InheritEffectFrom?.Parameters ?? _Parameters;
+        }
         public List<EffectParameter> TextureParameters =>
             InheritEffectFrom?.TextureParameters ?? _TextureParameters;
 
