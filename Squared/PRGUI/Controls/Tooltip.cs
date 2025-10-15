@@ -295,8 +295,9 @@ namespace Squared.PRGUI {
 
         public AbstractString GetPlainText (Control target) {
             var result = Get(target, out _);
+            // FIXME: Use RichTextConfiguration to parse marked strings
             if (Settings.RichText)
-                result = Squared.Render.Text.RichText.ToPlainText(result.ToString());
+                result = RichText.ToPlainText(result.ToString());
             return result;
         }
 

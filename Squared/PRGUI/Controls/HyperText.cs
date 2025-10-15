@@ -237,6 +237,7 @@ namespace Squared.PRGUI.Controls {
 
         AbstractString IReadingTarget.Text {
             get {
+                // FIXME: This should use StringLayoutEngine2's to-stringbuilder functionality
                 var result = new StringBuilder();
                 result.AppendLine(OriginalText.ToString());
                 var ictt = (this as ICustomTooltipTarget);

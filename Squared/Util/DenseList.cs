@@ -1052,7 +1052,7 @@ namespace Squared.Util {
             }
         }
 
-        public T[] ToArray () {
+        public readonly T[] ToArray () {
             if (Count == 0)
                 return Statics.EmptyArray;
             else if (HasList)
@@ -1061,7 +1061,7 @@ namespace Squared.Util {
                 return ToArray_Small();
         }
 
-        private T[] ToArray_Small () {
+        private readonly T[] ToArray_Small () {
             var result = new T[_Count];
             if (result.Length > 0)
                 result[0] = Item1;
@@ -1074,7 +1074,7 @@ namespace Squared.Util {
             return result;
         }
 
-        private int IndexOf_Small<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
+        private readonly int IndexOf_Small<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
             var count = _Count;
             if ((count > 0) && predicate(in Item1, in userData))
                 return 0;
@@ -1097,7 +1097,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int IndexOf<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
+        public readonly int IndexOf<TUserData> (Predicate<TUserData> predicate, in TUserData userData) {
             var items = _Items;
             if (items != null) {
                 return IndexOf_Large(items, predicate, in userData);
@@ -1106,7 +1106,7 @@ namespace Squared.Util {
             }
         }
 
-        private int IndexOf_Small (Predicate predicate) {
+        private readonly int IndexOf_Small (Predicate predicate) {
             var count = _Count;
             if ((count > 0) && predicate(in Item1))
                 return 0;
@@ -1129,7 +1129,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int IndexOf (Predicate predicate) {
+        public readonly int IndexOf (Predicate predicate) {
             var items = _Items;
             if (items != null) {
                 return IndexOf_Large(items, predicate);
@@ -1138,7 +1138,7 @@ namespace Squared.Util {
             }
         }
 
-        private int IndexOf_Small (Func<T, bool> predicate) {
+        private readonly int IndexOf_Small (Func<T, bool> predicate) {
             var count = _Count;
             if ((count > 0) && predicate(Item1))
                 return 0;
@@ -1151,7 +1151,7 @@ namespace Squared.Util {
             return -1;
         }
 
-        private int IndexOf_Large (Func<T, bool> predicate) {
+        private readonly int IndexOf_Large (Func<T, bool> predicate) {
             var buffer = _Items.GetBuffer();
             for (int i = 0, c = _Items.Count; i < c; i++) {
                 if (predicate(buffer.Array[i + buffer.Offset]))
@@ -1161,7 +1161,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int IndexOf (Func<T, bool> predicate) {
+        public readonly int IndexOf (Func<T, bool> predicate) {
             if (HasList) {
                 return IndexOf_Large(predicate);
             } else {
@@ -1350,7 +1350,7 @@ namespace Squared.Util {
             return new DenseQuery<T, Enumerator, U>(in e, DenseQuery<T, Enumerator, U>.CastSelector, false);
         }
 
-        public Enumerator GetEnumerator () {
+        public readonly Enumerator GetEnumerator () {
             var result = new Enumerator {
                 Index = -1,
                 Count = Count,
