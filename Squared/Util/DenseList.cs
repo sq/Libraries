@@ -57,20 +57,28 @@ namespace Squared.Util {
         // Finally put all the items at the end since they could be any size and pack weirdly
         internal T Item1, Item2, Item3, Item4;
         public short? ListCapacity {
-            get => _ListCapacity > 0 ? _ListCapacity : (short?)null;
+            readonly get => _ListCapacity > 0 ? _ListCapacity : (short?)null;
             set {
                 _ListCapacity = value ?? 0;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe T InlineItemAtIndexOrDefault (int index) {
+        internal readonly bool IsIndexOutOfBounds (int index) =>
+            unchecked((uint)index >= _Count);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private readonly long ItemStrideInBytes () =>
+            unchecked(Unsafe.ByteOffset(ref Unsafe.AsRef(in Item1), ref Unsafe.AsRef(in Item2)).ToInt64());
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private readonly T InlineItemAtIndexOrDefault (int index) {
 #if !NOSPAN
             // FIXME: This is a bit slower than the switch version for some reason?
-            if ((index < 0) || (index >= _Count))
+            if (IsIndexOutOfBounds(index))
                 return default;
 
-            return Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index));
+            return Unsafe.AddByteOffset(ref Unsafe.AsRef(in Item1), (IntPtr)(ItemStrideInBytes() * index));
 #else
             switch (index) {
                 case 0:
@@ -86,12 +94,13 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe void GetInlineItemAtIndex (int index, out T result) {
+        private readonly void GetInlineItemAtIndex (int index, out T result) {
 #if !NOSPAN
             // FIXME: This is a bit slower than the switch version for some reason?
-            if ((index < 0) || (index >= _Count))
+            if (IsIndexOutOfBounds(index))
                 EnumerableExtensions.BoundsCheckFailed();
-            result = Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index));
+
+            result = Unsafe.AddByteOffset(ref Unsafe.AsRef(in Item1), (IntPtr)(ItemStrideInBytes() * index));
 #else
             switch (index) {
                 case 0:
@@ -111,12 +120,13 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe void SetInlineItemAtIndex (int index, ref T value) {
+        private void SetInlineItemAtIndex (int index, ref T value) {
 #if !NOSPAN
             // FIXME: This is a bit slower than the switch version for some reason?
-            if ((index < 0) || (index >= _Count))
+            if (IsIndexOutOfBounds(index))
                 EnumerableExtensions.BoundsCheckFailed();
-            Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index)) = value;
+
+            Unsafe.AddByteOffset(ref Item1, (IntPtr)(ItemStrideInBytes() * index)) = value;
 #else
             switch (index) {
                 case 0:
@@ -149,7 +159,7 @@ namespace Squared.Util {
                 AddRange(items);
         }
 
-        public bool HasList {
+        public readonly bool HasList {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (_Items != null);
         }
@@ -160,15 +170,15 @@ namespace Squared.Util {
             return output;
         }
 
-        public void CopyTo (IList<T> destination) {
+        public readonly void CopyTo (IList<T> destination) {
             // FIXME: Optimize this
             for (int i = 0, c = Count; i < c; i++)
                 destination.Add(this[i]);
         }
 
-        public void CopyTo (T[] destination) => CopyTo(destination, 0, Count);
+        public readonly void CopyTo (T[] destination) => CopyTo(destination, 0, Count);
 
-        public void CopyTo (T[] destination, int destinationOffset, int count) {
+        public readonly void CopyTo (T[] destination, int destinationOffset, int count) {
             var items = _Items;
             if ((count > Count) || (count < 0))
                 throw new ArgumentOutOfRangeException(nameof(count));
@@ -189,7 +199,7 @@ namespace Squared.Util {
             }
         }
 
-        public void CopyTo (ref DenseList<T> output) {
+        public readonly void CopyTo (ref DenseList<T> output) {
             var items = _Items;
             if (items != null) {
                 if (output.HasList) {
@@ -203,24 +213,22 @@ namespace Squared.Util {
             } else if (output.HasList) {
                 var outItems = output._Items;
                 for (int i = 0, c = Count; i < c; i++) {
-                    ref var item = ref Ext.Item(ref this, i);
-                    outItems.Add(ref item);
+                    outItems.Add(Unsafe.AsRef(in Ext.ReadItem(in this, i)));
                 }
             } else {
                 for (int i = 0, c = Count; i < c; i++) {
-                    ref var item = ref Ext.Item(ref this, i);
-                    output.Add(ref item);
+                    output.Add(Unsafe.AsRef(in Ext.ReadItem(in this, i)));
                 }
             }
         }
 
-        public void Clone (out DenseList<T> output) {
+        public readonly void Clone (out DenseList<T> output) {
             output = default;
             output.EnsureCapacity(Count);
             CopyTo(ref output);
         }
 
-        public void Clone (ref DenseList<T> output, bool outputIsEmpty) {
+        public readonly void Clone (ref DenseList<T> output, bool outputIsEmpty) {
             if (HasList) {
                 if (!outputIsEmpty)
                     output = default(DenseList<T>);
@@ -315,7 +323,7 @@ namespace Squared.Util {
             return items;
         }
 
-        public int Count {
+        public readonly int Count {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 var items = _Items;
@@ -361,18 +369,18 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe void GetItem (int index, out T result) {
+        public readonly void GetItem (int index, out T result) {
             var items = _Items;
             if (items != null) {
                 items.DangerousGetItem(index, out result);
                 return;
             }
 
-            if ((index < 0) || (index >= _Count))
+            if (IsIndexOutOfBounds(index))
                 EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-            result = Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index));
+            result = Unsafe.AddByteOffset(ref Unsafe.AsRef(in Item1), (IntPtr)(ItemStrideInBytes() * index));
 #else
             switch (index) {
                 default:
@@ -393,12 +401,12 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool TryGetItem (int index, out T result) {
+        public readonly bool TryGetItem (int index, out T result) {
             var items = _Items;
             if (items != null)
                 return items.DangerousTryGetItem(index, out result);
 
-            if ((index < 0) || (index >= _Count)) {
+            if (IsIndexOutOfBounds(index)) {
                 result = default(T);
                 return false;
             }
@@ -408,7 +416,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T ItemOrDefault (int index) {
+        public readonly T ItemOrDefault (int index) {
             var items = _Items;
             if (items != null)
                 return items.DangerousItemOrDefault(index);
@@ -417,7 +425,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T FirstOrDefault (in T defaultValue = default) {
+        public readonly T FirstOrDefault (in T defaultValue = default) {
             if (Count <= 0)
                 return defaultValue;
 
@@ -429,7 +437,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T FirstOrDefault (Func<T, bool> predicate, in T defaultValue = default) {
+        public readonly T FirstOrDefault (Func<T, bool> predicate, in T defaultValue = default) {
             if (Count <= 0)
                 return defaultValue;
             var index = IndexOf(predicate);
@@ -440,7 +448,7 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T LastOrDefault (in T defaultValue = default) {
+        public readonly T LastOrDefault (in T defaultValue = default) {
             var count = Count;
             if (count <= 0)
                 return defaultValue;
@@ -453,37 +461,36 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Contains (T value) {
+        public readonly bool Contains (T value) {
             return IndexOf(in value) >= 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Contains (ref T value) {
+        public readonly bool Contains (ref T value) {
             return IndexOf(in value) >= 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Contains<TComparer> (in T value, TComparer comparer)
+        public readonly bool Contains<TComparer> (in T value, TComparer comparer)
             where TComparer : IEqualityComparer<T>
         {
             return IndexOf(in value, comparer) >= 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int IndexOf (in T value) {
+        public readonly int IndexOf (in T value) {
             return IndexOf(in value, EqualityComparer<T>.Default);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int IndexOf<TComparer> (in T value, TComparer comparer)
+        public readonly int IndexOf<TComparer> (in T value, TComparer comparer)
             where TComparer : IEqualityComparer<T>
         {
             var c = Count;
             if (c <= 0)
                 return -1;
             for (int i = 0; i < c; i++) {
-                ref var item = ref Ext.Item(ref this, i);
-                if (comparer.Equals(item, value))
+                if (comparer.Equals(Ext.ReadItem(in this, i), value))
                     return i;
             }
             return -1;
@@ -530,18 +537,18 @@ namespace Squared.Util {
             return ~low;
         }
 
-        public unsafe T this [int index] {
+        public T this [int index] {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get {
+            readonly get {
                 var items = _Items;
                 if (items != null)
                     return items.DangerousItem(index);
 
-                if ((index < 0) || (index >= _Count))
+                if (IsIndexOutOfBounds(index))
                     EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-                return Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index));
+                return Unsafe.AddByteOffset(ref Unsafe.AsRef(in Item1), (IntPtr)(ItemStrideInBytes() * index));
 #else
                 switch (index) {
                     default:
@@ -563,18 +570,18 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe void ClearItem (int index) {
+        public void ClearItem (int index) {
             var items = _Items;
             if (items != null) {
                 items.DangerousClearItem(index);
                 return;
             }
 
-            if ((index < 0) || (index >= _Count))
+            if (IsIndexOutOfBounds(index))
                 EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-            Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index)) = default;
+            Unsafe.AddByteOffset(ref Item1, (IntPtr)(ItemStrideInBytes() * index)) = default;
 #else
             switch (index) {
                 default:
@@ -600,18 +607,18 @@ namespace Squared.Util {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe void SetItem (int index, ref T value) {
+        public void SetItem (int index, ref T value) {
             var items = _Items;
             if (items != null) {
                 items.DangerousSetItem(index, ref value);
                 return;
             }
 
-            if ((index < 0) || (index >= _Count))
+            if (IsIndexOutOfBounds(index))
                 EnumerableExtensions.BoundsCheckFailed();
 
 #if !NOSPAN
-            Unsafe.AddByteOffset(ref Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref Item2) - (byte*)Unsafe.AsPointer(ref Item1)) * index)) = value;
+            Unsafe.AddByteOffset(ref Item1, (IntPtr)(ItemStrideInBytes() * index)) = value;
 #else
             switch (index) {
                 default:

@@ -197,7 +197,7 @@ namespace Squared.Util {
             if (items != null)
                 return ref items.DangerousItem(index);
 
-            if ((index < 0) || (index >= list._Count))
+            if (list.IsIndexOutOfBounds(index))
                 BoundsCheckFailed();
 
             return ref Unsafe.AddByteOffset(ref list.Item1, (IntPtr)(((byte*)Unsafe.AsPointer(ref list.Item2) - (byte*)Unsafe.AsPointer(ref list.Item1)) * index));
@@ -209,7 +209,7 @@ namespace Squared.Util {
             if (items != null)
                 return ref items.DangerousItem(index);
             
-            if ((index < 0) || (index >= list._Count))
+            if (list.IsIndexOutOfBounds(index))
                 BoundsCheckFailed();
 
             switch (index) {
@@ -231,7 +231,7 @@ namespace Squared.Util {
             if (items != null)
                 return ref items.DangerousItem(index);
             
-            if ((index < 0) || (index >= list._Count))
+            if (list.IsIndexOutOfBounds(index))
                 BoundsCheckFailed();
 
             switch (index) {
