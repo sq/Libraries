@@ -32,9 +32,8 @@ namespace Squared.PRGUI.NewEngine {
 
                 Pass2b_ExpandChildren(ref control, ref result, depth);
 
-                foreach (var ckey in Children(ref control)) {
-                    ref var child = ref this[ckey];
-                    ref var childResult = ref UnsafeResult(ckey);
+                foreach (ref var child in Children(ref control)) {
+                    ref var childResult = ref UnsafeResult(child.Key);
                     if (Pass2(ref child, ref childResult, depth + 1))
                         needRecalc = true;
                 }
@@ -69,9 +68,8 @@ namespace Squared.PRGUI.NewEngine {
 
             columnIndex = 0;
 
-            foreach (var ckey in Children(ref control)) {
-                ref var child = ref this[ckey];
-                ref var childResult = ref Result(ckey);
+            foreach (ref var child in Children(ref control)) {
+                ref var childResult = ref Result(child.Key);
 
                 ref readonly var childWidth = ref ControlDimension.ConvertPercentage(ref child.Width, cw, ref ScratchDimension1);
                 ref readonly var childHeight = ref ControlDimension.ConvertPercentage(ref child.Height, ch, ref ScratchDimension2);
@@ -96,9 +94,8 @@ namespace Squared.PRGUI.NewEngine {
             }                
 
             var needRecalc = false;
-            foreach (var ckey in Children(ref control)) {
-                ref var child = ref this[ckey];
-                ref var childResult = ref UnsafeResult(ckey);
+            foreach (ref var child in Children(ref control)) {
+                ref var childResult = ref UnsafeResult(child.Key);
                 if (Pass2(ref child, ref childResult, depth + 1))
                     needRecalc = true;
             }
@@ -130,9 +127,8 @@ namespace Squared.PRGUI.NewEngine {
             result.FloatingRunIndex = -1;
 
             // Scan through all our children and wrap them if necessary now that we know our size
-            foreach (var ckey in Children(ref control)) {
-                ref var child = ref this[ckey];
-                ref var childResult = ref UnsafeResult(ckey);
+            foreach (ref var child in Children(ref control)) {
+                ref var childResult = ref UnsafeResult(child.Key);
                 childResult.ParentRunIndex = -1;
                 ref readonly var childConfig = ref child.Config;
 

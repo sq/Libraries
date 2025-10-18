@@ -27,6 +27,8 @@ namespace Squared.PRGUI.NewEngine {
                 _Current = ControlKey.Corrupt;
             }
 
+            public SiblingEnumerator GetEnumerator () => this;
+
             public readonly ref BoxRecord Current {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => ref (_Current.IsInvalid 
@@ -66,24 +68,6 @@ namespace Squared.PRGUI.NewEngine {
             return RunBuffer.UnsafeItem(runIndex).NextRunIndex;
         }
 
-        internal readonly struct SiblingsEnumerable {
-            public readonly LayoutEngine Engine;
-            public readonly ControlKey FirstItem;
-            public readonly ControlKey? LastItem;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal SiblingsEnumerable (LayoutEngine engine, ControlKey firstItem, ControlKey? lastItem) {
-                Engine = engine;
-                FirstItem = firstItem;
-                LastItem = lastItem;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public SiblingEnumerator GetEnumerator () {
-                return new SiblingEnumerator(Engine, FirstItem, LastItem);
-            }
-        }
-
         internal readonly struct ChildrenEnumerable {
             public readonly LayoutEngine Engine;
             public readonly bool Reverse;
@@ -111,31 +95,28 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
-        internal unsafe struct RunEnumerator {
+        internal struct RunEnumerator {
             private readonly SegmentedArray<LayoutRun> _RunBuffer;
             private bool _Started;
             private int _Current;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public RunEnumerator (LayoutEngine engine, int floatingRunIndex, int firstRunIndex) {
+            public RunEnumerator (LayoutEngine engine, ref BoxLayoutResult parent) {
                 _RunBuffer = engine.RunBuffer;
                 // HACK: Ensure that we start with the floating run, and if we do, ensure
                 //  that its next run is the first non-floating run. This simplifies MoveNext
-                var current = floatingRunIndex;
+                var current = parent.FloatingRunIndex;
                 if (current < 0)
-                    current = firstRunIndex;
+                    current = parent.FirstRunIndex;
                 _Current = current;
                 _Started = false;
             }
 
+            public RunEnumerator GetEnumerator () => this;
+
             public ref LayoutRun Current {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
                 get => ref _RunBuffer.UnsafeItem(_Current);
-            }
-
-            public void Dispose () {
-                _Started = true;
-                _Current = -1;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -147,27 +128,6 @@ namespace Squared.PRGUI.NewEngine {
 
                 // TODO: Loop detection
                 return (_Current >= 0);
-            }
-
-            public void Reset () {
-                throw new NotImplementedException();
-            }
-        }
-
-        internal readonly struct RunEnumerable {
-            public readonly LayoutEngine Engine;
-            public readonly int FloatingRunIndex, FirstRunIndex;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal RunEnumerable (LayoutEngine engine, ref BoxLayoutResult parent) {
-                Engine = engine;
-                FloatingRunIndex = parent.FloatingRunIndex;
-                FirstRunIndex = parent.FirstRunIndex;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public RunEnumerator GetEnumerator () {
-                return new RunEnumerator(Engine, FloatingRunIndex, FirstRunIndex);
             }
         }
 

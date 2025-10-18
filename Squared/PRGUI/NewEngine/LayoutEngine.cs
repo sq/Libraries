@@ -151,8 +151,8 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private RunEnumerable Runs (ref BoxLayoutResult parent) {
-            return new RunEnumerable(this, ref parent);
+        private RunEnumerator Runs (ref BoxLayoutResult parent) {
+            return new RunEnumerator(this, ref parent);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -195,26 +195,14 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal SiblingsEnumerable Children (ref LayoutRun run) {
-            return new SiblingsEnumerable(this, run.First.Key, run.Last.Key);
+        internal SiblingEnumerator Children (ref LayoutRun run) {
+            return new SiblingEnumerator(this, run.First.Key, run.Last.Key);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal ChildrenEnumerable Children (ref BoxRecord parent, bool reverse = false) {
             Assert(!parent.IsInvalid);
             return new ChildrenEnumerable(this, ref parent, reverse);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal ChildrenEnumerable Children (ControlKey parent, bool reverse = false) {
-            Assert(!parent.IsInvalid);
-            return new ChildrenEnumerable(this, parent, reverse);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal SiblingsEnumerable Enumerate (ControlKey first, ControlKey? last = null) {
-            Assert(!first.IsInvalid);
-            return new SiblingsEnumerable(this, first, last);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -436,16 +424,16 @@ namespace Squared.PRGUI.NewEngine {
             result = default;
             // We perform the top level hit test in reverse order so that controls last in the Children list block hit tests
             //  to children at the front of the list. This matches how it normally works
-            return DebugHitTest(in Root(), position, ref record, ref result, exhaustive, true);
+            return DebugHitTest(ref Root(), position, ref record, ref result, exhaustive, true);
         }
 
-        private bool DebugHitTest (in BoxRecord control, Vector2 position, ref BoxRecord record, ref BoxLayoutResult result, bool exhaustive, bool reverse) {
+        private bool DebugHitTest (ref BoxRecord control, Vector2 position, ref BoxRecord record, ref BoxLayoutResult result, bool exhaustive, bool reverse) {
             ref var testResult = ref Result(control.Key);
             var inside = testResult.Rect.Contains(position);
 
             if (inside || exhaustive) {
-                foreach (var ckey in Children(control.Key, reverse)) {
-                    if (DebugHitTest(in this[ckey], position, ref record, ref result, exhaustive, false))
+                foreach (ref var child in Children(ref control, reverse)) {
+                    if (DebugHitTest(ref child, position, ref record, ref result, exhaustive, false))
                         return true;
                 }
             }
