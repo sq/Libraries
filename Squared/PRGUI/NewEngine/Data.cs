@@ -297,7 +297,7 @@ namespace Squared.PRGUI.NewEngine {
                 return false;
         }
 
-        public override int GetHashCode () {
+        public readonly override int GetHashCode () {
             return AllFlags.GetHashCode();
         }
 
@@ -365,7 +365,6 @@ namespace Squared.PRGUI.NewEngine {
                     return;
                 case ChildAlignment.Justify:
                     throw new NotImplementedException();
-                    return;
             }
         }
     }

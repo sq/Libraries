@@ -639,7 +639,7 @@ namespace Squared.PRGUI {
             Maximum             = 0b10,
             Fixed               = 0b100,
             FPercentage         = 0b1000,
-            PercentageIsFixed = 0b10000
+            PercentageIsFixed   = 0b10000
         }
 
         private float _Minimum, _Maximum, _Fixed;
@@ -745,7 +745,7 @@ namespace Squared.PRGUI {
         }
 
         private (float value, Flag flags)? FixedOrProportion {
-            get => (Flags & (Flag.Fixed | Flag.FPercentage)) != default
+            readonly get => (Flags & (Flag.Fixed | Flag.FPercentage)) != default
                 ? (_Fixed, Flags & (Flag.Fixed | Flag.FPercentage))
                 : ((float value, Flag flags)?)null;
             set {
@@ -758,7 +758,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        internal float EffectiveMinimum {
+        internal readonly float EffectiveMinimum {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get {
                 float a = (Flags & Flag.Maximum) != default ? _Maximum : float.MaxValue,
@@ -769,7 +769,7 @@ namespace Squared.PRGUI {
             }
         }
 
-        public ControlDimension AutoComputeFixed () {
+        public readonly ControlDimension AutoComputeFixed () {
             if (
                 (_Maximum == _Minimum) && 
                 ((Flags & Flag.Maximum) != default) &&
@@ -821,7 +821,7 @@ namespace Squared.PRGUI {
         /// <summary>
         /// Produces a new dimension with minimum/maximum values that encompass both inputs
         /// </summary>
-        public ControlDimension Union (ref ControlDimension rhs) {
+        public readonly ControlDimension Union (ref ControlDimension rhs) {
             return new ControlDimension {
                 Minimum = Min(Minimum, rhs.Minimum),
                 Maximum = Max(Maximum, rhs.Maximum),
@@ -834,7 +834,7 @@ namespace Squared.PRGUI {
         /// Produces a new dimension with minimum/maximum values that only encompass the place where
         ///  the two inputs overlap
         /// </summary>
-        public ControlDimension Intersection (ref ControlDimension rhs) {
+        public readonly ControlDimension Intersection (ref ControlDimension rhs) {
             return new ControlDimension {
                 Minimum = Max(Minimum, rhs.Minimum),
                 Maximum = Min(Maximum, rhs.Maximum),
@@ -843,16 +843,30 @@ namespace Squared.PRGUI {
             };
         }
 
-        public void Constrain (ref float? size, bool applyFixed, out float delta) {
+        public readonly void Constrain (ref float size, bool applyFixed) {
+            var flags = Flags;
+
+            if (applyFixed && (flags & Flag.Fixed) != default) {
+                size = _Fixed;
+            } else {
+                if ((flags & Flag.Minimum) != default)
+                    size = Math.Max(_Minimum, size);
+                if ((flags & Flag.Maximum) != default)
+                    size = Math.Min(_Maximum, size);
+            }
+        }
+
+        public readonly void Constrain (ref float? size, bool applyFixed, out float delta) {
             var previous = size;
-            if (size.HasValue) {
-                if ((Flags & Flag.Minimum) != default)
+            var flags = Flags;
+            if (applyFixed && (flags & Flag.Fixed) != default) {
+                size = _Fixed;
+            } else if (size.HasValue) {
+                if ((flags & Flag.Minimum) != default)
                     size = Math.Max(_Minimum, size.Value);
-                if ((Flags & Flag.Maximum) != default)
+                if ((flags & Flag.Maximum) != default)
                     size = Math.Min(_Maximum, size.Value);
             }
-            if (applyFixed && (Flags & Flag.Fixed) != default)
-                size = _Fixed;
 
             if (previous.HasValue)
                 delta = size.Value - previous.Value;
@@ -860,43 +874,30 @@ namespace Squared.PRGUI {
                 delta = size.Value;
         }
 
-        public void Constrain (ref float size, bool applyFixed, out float delta) {
-            float? temp = size;
-            Constrain(ref temp, applyFixed, out delta);
-            size = temp.Value;
-        }
-
-        public void Constrain (ref float? size, bool applyFixed) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly void Constrain (ref float? size, bool applyFixed) {
             Constrain(ref size, applyFixed, out _);
         }
 
-        public void Constrain (ref float size, bool applyFixed) {
-            Constrain(ref size, applyFixed, out _);
-        }
-
-        public float? Constrain (float? size, bool applyFixed, out float delta) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly float? Constrain (float? size, bool applyFixed, out float delta) {
             Constrain(ref size, applyFixed, out delta);
             return size;
         }
 
-        public float Constrain (float size, bool applyFixed, out float delta) {
-            float? temp = size;
-            Constrain(ref temp, applyFixed, out delta);
-            return temp.Value;
-        }
-
-        public float? Constrain (float? size, bool applyFixed) {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly float? Constrain (float? size, bool applyFixed) {
             Constrain(ref size, applyFixed);
             return size;
         }
 
-        public float Constrain (float size, bool applyFixed) {
-            float? temp = size;
-            Constrain(ref temp, applyFixed);
-            return temp.Value;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public readonly float Constrain (float size, bool applyFixed) {
+            Constrain(ref size, applyFixed);
+            return size;
         }
 
-        public bool HasValue {
+        public readonly bool HasValue {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => (Flags != default);
         }
@@ -906,7 +907,7 @@ namespace Squared.PRGUI {
             return new ControlDimension { Fixed = fixedSize };
         }
 
-        public override string ToString () {
+        public readonly override string ToString () {
             if (!HasValue)
                 return "<unconstrained>";
 
@@ -922,19 +923,33 @@ namespace Squared.PRGUI {
         }
 
         // It would be ideal to return 'ref readonly' but then accessing properties of ControlDimension generates defensive copies.
-        public static ref ControlDimension ConvertPercentage (ref ControlDimension self, float total, ref ControlDimension scratchStorage) {
-            if (!self.HasPercentage)
+        public static ref readonly ControlDimension ConvertPercentage (ref readonly ControlDimension self, float total, ref ControlDimension scratchStorage) {
+            var flags = self.Flags;
+            if ((flags & Flag.FPercentage) == default)
                 return ref self;
 
-            scratchStorage = self;
             var value = total * self._Fixed / 100;
-            if (self.PercentageIsMaximum) {
-                if (self.HasMaximum)
-                    scratchStorage._Maximum = Math.Min(self._Maximum, value);
-                else
-                    scratchStorage.Maximum = value;
+            if (flags == Flag.FPercentage) {
+                scratchStorage = new ControlDimension {
+                    Flags = Flag.Maximum,
+                    _Maximum = value,
+                };
+            } else if (flags == (Flag.FPercentage | Flag.PercentageIsFixed)) {
+                scratchStorage = new ControlDimension {
+                    Flags = Flag.Fixed,
+                    _Fixed = value,
+                };
             } else {
-                scratchStorage.Fixed = self.Constrain(value, false);
+                scratchStorage = self;
+                if ((flags & Flag.PercentageIsFixed) == default) {
+                    if (self.HasMaximum)
+                        scratchStorage._Maximum = Math.Min(self._Maximum, value);
+                    else
+                        scratchStorage.Maximum = value;
+                } else {
+                    self.Constrain(ref value, false);
+                    scratchStorage.Fixed = value;
+                }
             }
             return ref scratchStorage;
         }

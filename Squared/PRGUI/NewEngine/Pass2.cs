@@ -45,6 +45,8 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
+        ControlDimension ScratchDimension1, ScratchDimension2;
+
         private unsafe bool Pass2_Grid (
             ref BoxRecord control, ref BoxLayoutResult result, int depth
         ) {
@@ -67,15 +69,12 @@ namespace Squared.PRGUI.NewEngine {
 
             columnIndex = 0;
 
-            // FIXME: SkipInit
-            ControlDimension scratch1 = default, scratch2 = default;
-
             foreach (var ckey in Children(ref control)) {
                 ref var child = ref this[ckey];
                 ref var childResult = ref Result(ckey);
 
-                ref var childWidth = ref ControlDimension.ConvertPercentage(ref child.Width, cw, ref scratch1);
-                ref var childHeight = ref ControlDimension.ConvertPercentage(ref child.Height, ch, ref scratch2);
+                ref readonly var childWidth = ref ControlDimension.ConvertPercentage(ref child.Width, cw, ref ScratchDimension1);
+                ref readonly var childHeight = ref ControlDimension.ConvertPercentage(ref child.Height, ch, ref ScratchDimension2);
 
                 var margins = child.Margins;
                 ref readonly var childConfig = ref child.Config;
@@ -230,9 +229,6 @@ namespace Squared.PRGUI.NewEngine {
                 }
             }
 
-            // FIXME: SkipInit
-            ControlDimension scratch1 = default, scratch2 = default;
-
             foreach (var runIndex in Runs(ref result)) {
                 ref var run = ref Run(runIndex);
                 var expandThisRun = (lastExpandableRun == runIndex) || (run.NextRunIndex < 0) || (runIndex == result.FloatingRunIndex);
@@ -293,8 +289,8 @@ namespace Squared.PRGUI.NewEngine {
 
                         ref var childResult = ref Result(child.Key);
 
-                        ref var childWidth = ref ControlDimension.ConvertPercentage(ref child.Width, cw, ref scratch1);
-                        ref var childHeight = ref ControlDimension.ConvertPercentage(ref child.Height, ch, ref scratch2);
+                        ref readonly var childWidth = ref ControlDimension.ConvertPercentage(ref child.Width, cw, ref ScratchDimension1);
+                        ref readonly var childHeight = ref ControlDimension.ConvertPercentage(ref child.Height, ch, ref ScratchDimension2);
 #if DEBUG
                         if (childResult.ParentRunIndex != runIndex)
                             throw new Exception();
