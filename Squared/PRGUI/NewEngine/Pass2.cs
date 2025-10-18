@@ -276,15 +276,11 @@ namespace Squared.PRGUI.NewEngine {
                         break;
 
                     float p = 0;
-                    ref var child = ref FirstItemInRun(ref run);
-                    var stopAt = run.Last.Key;
-                    while (!child.IsInvalid) {
+                    foreach (ref var child in Children(ref run)) {
                         // HACK: The floating run and non-floating run potentially walk us through the same controls,
                         //  so skip anything we shouldn't be processing in this run. Yuck.
-                        if (child.Config.IsStackedOrFloating != run.IsFloating) {
-                            child = ref NextSibling(ref child, stopAt);
+                        if (child.Config.IsStackedOrFloating != run.IsFloating)
                             continue;
-                        }
 
                         ref var childResult = ref Result(child.Key);
 
@@ -377,8 +373,6 @@ namespace Squared.PRGUI.NewEngine {
                             else
                                 p += childOuterW;
                         }
-
-                        child = ref NextSibling(ref child, stopAt);
                     }
 
                     countX = newCountX;

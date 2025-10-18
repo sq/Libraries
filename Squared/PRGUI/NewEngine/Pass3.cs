@@ -98,15 +98,12 @@ namespace Squared.PRGUI.NewEngine {
                         else
                             x = space * xAlign;
 
-                        ref var child = ref FirstItemInRun(ref run);
-                        var stopAt = run.Last.Key;
-                        while (!child.IsInvalid) {
+                        foreach (ref var child in Children(ref run)) {
                             Pass3_Arrange_OneChild(
                                 ref control, ref result, depth, config, 
                                 ref locals, ref x, ref y, baseline, 
                                 xAlign, yAlign, ref child
                             );
-                            child = ref NextSibling(ref child, stopAt);
                         }
 
                         // HACK: The floating run's contents should not change the position of other controls

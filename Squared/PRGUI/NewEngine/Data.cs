@@ -374,9 +374,6 @@ namespace Squared.PRGUI.NewEngine {
     /// </summary>
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct BoxRecord {
-        // Used by methods like FirstChild and NextSibling
-        internal static BoxRecord Invalid;
-
         // Managed by the layout engine
         // TODO: Use a custom dense backing store and no setters
         [Unserialized]

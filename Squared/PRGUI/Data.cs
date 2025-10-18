@@ -22,8 +22,11 @@ namespace Squared.PRGUI.Layout {
     public readonly struct ControlKey
 #endif
         {
-        public static readonly ControlKey Invalid = new ControlKey(-1);
-        internal static readonly ControlKey Corrupt = new ControlKey(-2);
+        public const int InvalidId = -1,
+            CorruptId = -2;
+
+        public static ControlKey Invalid => new ControlKey(InvalidId);
+        internal static ControlKey Corrupt => new ControlKey(CorruptId);
 
 #if DEBUG
         internal int ID;

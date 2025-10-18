@@ -159,7 +159,7 @@ namespace Squared.PRGUI.NewEngine {
         private ref BoxRecord FirstItemInRun (ref LayoutRun run) {
             var key = run.First;
             if (key.IsInvalid)
-                return ref BoxRecord.Invalid;
+                return ref InvalidValues.Record;
             else
                 return ref this[key.Key];
         }
@@ -168,7 +168,7 @@ namespace Squared.PRGUI.NewEngine {
         private ref BoxRecord FirstChild (ref BoxRecord parent) {
             var key = parent.FirstChild;
             if (key.IsInvalid)
-                return ref BoxRecord.Invalid;
+                return ref InvalidValues.Record;
             else
                 return ref this[key];
         }
@@ -177,7 +177,7 @@ namespace Squared.PRGUI.NewEngine {
         private ref BoxRecord NextSibling (ref BoxRecord child) {
             var key = child.NextSibling;
             if (key.IsInvalid)
-                return ref BoxRecord.Invalid;
+                return ref InvalidValues.Record;
             else
                 return ref this[key];
         }
@@ -185,29 +185,34 @@ namespace Squared.PRGUI.NewEngine {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private ref BoxRecord NextSibling (ref BoxRecord child, ControlKey stopAt) {
             if (child.Key == stopAt)
-                return ref BoxRecord.Invalid;
+                return ref InvalidValues.Record;
 
             var key = child.NextSibling;
             if (key.IsInvalid)
-                return ref BoxRecord.Invalid;
+                return ref InvalidValues.Record;
             else
                 return ref this[key];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ChildrenEnumerable Children (ref BoxRecord parent, bool reverse = false) {
+        internal SiblingsEnumerable Children (ref LayoutRun run) {
+            return new SiblingsEnumerable(this, run.First.Key, run.Last.Key);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal ChildrenEnumerable Children (ref BoxRecord parent, bool reverse = false) {
             Assert(!parent.IsInvalid);
             return new ChildrenEnumerable(this, ref parent, reverse);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ChildrenEnumerable Children (ControlKey parent, bool reverse = false) {
+        internal ChildrenEnumerable Children (ControlKey parent, bool reverse = false) {
             Assert(!parent.IsInvalid);
             return new ChildrenEnumerable(this, parent, reverse);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public SiblingsEnumerable Enumerate (ControlKey first, ControlKey? last = null) {
+        internal SiblingsEnumerable Enumerate (ControlKey first, ControlKey? last = null) {
             Assert(!first.IsInvalid);
             return new SiblingsEnumerable(this, first, last);
         }

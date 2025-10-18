@@ -12,59 +12,46 @@ using Squared.PRGUI.Layout;
 namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
         // TODO: Combine all of these into single hybrid enumerable/enumerator types to reduce the overhead of constructing them
-        public struct SiblingEnumerator : IEnumerator<ControlKey> {
-            public readonly LayoutEngine Engine;
+        public struct SiblingEnumerator {
+            private readonly SegmentedArray<BoxRecord> Boxes;
             public readonly ControlKey FirstItem;
-            public readonly ControlKey? LastItem;
-            private bool Started, Reverse;
+            public readonly ControlKey LastItem;
+            private readonly bool Reverse;
+            private ControlKey _Current;
 
             public SiblingEnumerator (LayoutEngine engine, ControlKey firstItem, ControlKey? lastItem, bool reverse = false) {
-                Engine = engine;
+                Boxes = engine.Records;
                 FirstItem = firstItem;
-                LastItem = lastItem;
-                Started = false;
-                _Current = ControlKey.Invalid;
+                LastItem = lastItem ?? ControlKey.Invalid;
                 Reverse = reverse;
+                _Current = ControlKey.Corrupt;
             }
 
-            private ControlKey _Current;
-            public ControlKey Current {
+            public readonly ref BoxRecord Current {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => _Current;
-            }
-            object IEnumerator.Current => _Current;
-
-            public void Dispose () {
-                _Current = ControlKey.Invalid;
+                get => ref (_Current.IsInvalid 
+                    ? ref InvalidValues.Record
+                    : ref Boxes.UnsafeItem(_Current.ID));
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext () {
-                var cur = _Current;
-                if (cur.ID < 0)
-                    return MoveNext_Slow();
-
-                var nextItem = Engine.UnsafeNextSibling(cur, Reverse);
-                if ((cur == LastItem) || (nextItem.ID < 0)) {
+                var current = _Current;
+                if (current.ID == ControlKey.CorruptId) {
+                    _Current = FirstItem;
+                    return !_Current.IsInvalid;
+                } else if (current == LastItem) {
                     _Current = ControlKey.Invalid;
                     return false;
                 }
 
+                ref var currentRecord = ref Boxes.UnsafeItem(current.ID);
+                var nextItem = Reverse
+                    ? currentRecord.PreviousSibling
+                    : currentRecord.NextSibling;
+
                 _Current = nextItem;
-                return nextItem.ID >= 0;
-            }
-
-            private bool MoveNext_Slow () {
-                if (Started)
-                    return false;
-
-                Started = true;
-                _Current = FirstItem;
-                return _Current.ID >= 0;
-            }
-
-            void IEnumerator.Reset () {
-                _Current = ControlKey.Invalid;
+                return !nextItem.IsInvalid;
             }
         }
 
@@ -79,7 +66,7 @@ namespace Squared.PRGUI.NewEngine {
             return RunBuffer.UnsafeItem(runIndex).NextRunIndex;
         }
 
-        public readonly struct SiblingsEnumerable : IEnumerable<ControlKey> {
+        internal readonly struct SiblingsEnumerable {
             public readonly LayoutEngine Engine;
             public readonly ControlKey FirstItem;
             public readonly ControlKey? LastItem;
@@ -95,17 +82,9 @@ namespace Squared.PRGUI.NewEngine {
             public SiblingEnumerator GetEnumerator () {
                 return new SiblingEnumerator(Engine, FirstItem, LastItem);
             }
-
-            IEnumerator<ControlKey> IEnumerable<ControlKey>.GetEnumerator () {
-                return GetEnumerator();
-            }
-
-            IEnumerator IEnumerable.GetEnumerator () {
-                return GetEnumerator();
-            }
         }
 
-        public readonly struct ChildrenEnumerable : IEnumerable<ControlKey> {
+        internal readonly struct ChildrenEnumerable {
             public readonly LayoutEngine Engine;
             public readonly bool Reverse;
             public readonly ControlKey FirstChild, LastChild;
@@ -129,14 +108,6 @@ namespace Squared.PRGUI.NewEngine {
                     Engine, Reverse ? LastChild : FirstChild, 
                     Reverse ? FirstChild : LastChild, Reverse
                 );
-            }
-
-            IEnumerator<ControlKey> IEnumerable<ControlKey>.GetEnumerator () {
-                return GetEnumerator();
-            }
-
-            IEnumerator IEnumerable.GetEnumerator () {
-                return GetEnumerator();
             }
         }
 
