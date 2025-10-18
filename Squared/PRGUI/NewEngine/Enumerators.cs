@@ -140,17 +140,14 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
-        public unsafe struct RunEnumerator : IEnumerator<int> {
-            public readonly LayoutEngine Engine;
-
+        internal unsafe struct RunEnumerator {
+            private readonly SegmentedArray<LayoutRun> _RunBuffer;
             private bool _Started;
             private int _Current;
-            private int Version;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public RunEnumerator (LayoutEngine engine, int floatingRunIndex, int firstRunIndex) {
-                Engine = engine;
-                Version = engine.Version;                
+                _RunBuffer = engine.RunBuffer;
                 // HACK: Ensure that we start with the floating run, and if we do, ensure
                 //  that its next run is the first non-floating run. This simplifies MoveNext
                 var current = floatingRunIndex;
@@ -160,33 +157,20 @@ namespace Squared.PRGUI.NewEngine {
                 _Started = false;
             }
 
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            [Conditional("DEBUG")]
-            private void CheckVersion () {
-                if (Version == Engine.Version)
-                    return;
-
-                Engine.AssertionFailed("Context was modified");
-            }
-
-            public int Current {
+            public ref LayoutRun Current {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                get => _Current;
+                get => ref _RunBuffer.UnsafeItem(_Current);
             }
-            object IEnumerator.Current => _Current;
 
             public void Dispose () {
                 _Started = true;
                 _Current = -1;
-                Version = -1;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public bool MoveNext () {
-                CheckVersion();
-
                 if (_Started)
-                    _Current = Engine.UnsafeNextRunIndex(_Current);
+                    _Current = _RunBuffer.UnsafeItem(_Current).NextRunIndex;
                 else
                     _Started = true;
 
@@ -199,7 +183,7 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
-        public readonly struct RunEnumerable : IEnumerable<int> {
+        internal readonly struct RunEnumerable {
             public readonly LayoutEngine Engine;
             public readonly int FloatingRunIndex, FirstRunIndex;
 
@@ -213,14 +197,6 @@ namespace Squared.PRGUI.NewEngine {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public RunEnumerator GetEnumerator () {
                 return new RunEnumerator(Engine, FloatingRunIndex, FirstRunIndex);
-            }
-
-            IEnumerator<int> IEnumerable<int>.GetEnumerator () {
-                return GetEnumerator();
-            }
-
-            IEnumerator IEnumerable.GetEnumerator () {
-                return GetEnumerator();
             }
         }
 

@@ -10,7 +10,6 @@ namespace Squared.PRGUI.NewEngine {
     public partial class LayoutEngine {
         private struct Pass3Column {
             public LayoutRun Run;
-            public int RunIndex;
             public float X, Y;
         }
 
@@ -47,11 +46,11 @@ namespace Squared.PRGUI.NewEngine {
                     var columns = stackalloc Pass3Column[config.GridColumnCount];
                     float columnWidth = w / config.GridColumnCount;
                     int columnIndex = 0;
-                    foreach (var run in Runs(ref result)) {
+                    foreach (ref var run in Runs(ref result)) {
                         columns[columnIndex] = new Pass3Column {
-                            RunIndex = run, X = columnWidth * columnIndex,
+                            X = columnWidth * columnIndex,
                             // Make a copy, it's fine, it won't change
-                            Run = Run(run)
+                            Run = run
                         };
                         columnIndex++;
                     }
@@ -77,8 +76,7 @@ namespace Squared.PRGUI.NewEngine {
                         child = ref NextSibling(ref child);
                     }
                 } else {
-                    foreach (var runIndex in Runs(ref result)) {
-                        ref var run = ref Run(runIndex);
+                    foreach (ref var run in Runs(ref result)) {
                         bool isLastRun = run.NextRunIndex < 0;
                         float rw = isVertical ? run.MaxOuterWidth : run.TotalWidth,
                             rh = isVertical ? run.TotalHeight : run.MaxOuterHeight;
@@ -112,7 +110,7 @@ namespace Squared.PRGUI.NewEngine {
                         }
 
                         // HACK: The floating run's contents should not change the position of other controls
-                        if (runIndex == result.FloatingRunIndex)
+                        if (run.IsFloating)
                             ;
                         else if (isVertical) {
                             x += run.MaxOuterWidth;

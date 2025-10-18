@@ -61,10 +61,10 @@ namespace Squared.PRGUI.NewEngine {
 
             int columnIndex = 0;
             int* columns = stackalloc int[config.GridColumnCount];
-            foreach (var run in Runs(ref result)) {
+            foreach (ref var run in Runs(ref result)) {
                 if (columnIndex >= config.GridColumnCount)
                     throw new Exception("Too many columns");
-                columns[columnIndex++] = run;
+                columns[columnIndex++] = run.Index;
             }
 
             columnIndex = 0;
@@ -218,20 +218,19 @@ namespace Squared.PRGUI.NewEngine {
             // This allows having things like status bars at the bottom of a box without them eating all the expansion space
             var lastExpandableRun = -1;
             var spaceAfterLastExpandableRun = 0f;
-            foreach (var runIndex in Runs(ref result)) {
-                ref var run = ref Run(runIndex);
+            foreach (ref var run in Runs(ref result)) {
                 var expand = isVertical ? run.ExpandCountX > 0 : run.ExpandCountY > 0;
                 if (expand) {
-                    lastExpandableRun = runIndex;
+                    lastExpandableRun = run.Index;
                     spaceAfterLastExpandableRun = 0;
                 } else {
                     spaceAfterLastExpandableRun += isVertical ? run.MaxOuterWidth : run.MaxOuterHeight;
                 }
             }
 
-            foreach (var runIndex in Runs(ref result)) {
-                ref var run = ref Run(runIndex);
-                var expandThisRun = (lastExpandableRun == runIndex) || (run.NextRunIndex < 0) || (runIndex == result.FloatingRunIndex);
+            foreach (ref var run in Runs(ref result)) {
+                bool isFloatingRun = run.IsFloating,
+                    expandThisRun = (lastExpandableRun == run.Index) || (run.NextRunIndex < 0) || isFloatingRun;
 
                 // We track our own count here so that when expansion hits a constraint, we
                 //  can reduce the count to evenly distribute the leftovers to non-constrained controls
@@ -246,7 +245,7 @@ namespace Squared.PRGUI.NewEngine {
                     // The last run in a box might not contain any expandable controls, in which case the pass up above determined
                     //  that an earlier run should be expanded instead. We want to ensure that when we expand a run other than
                     //  the last one, we leave enough space for the non-expandable runs that follow it, like a status bar.
-                    unexpandableBuffer = (runIndex == result.FloatingRunIndex) ? 0 : spaceAfterLastExpandableRun,
+                    unexpandableBuffer = isFloatingRun ? 0 : spaceAfterLastExpandableRun,
                     // HACK: For the last run in a box we want to expand the run to fill the entire available space
                     //  otherwise listbox items will have a width of 0 :(
                     effectiveRunMaxWidth = expandThisRun && isVertical ? Math.Max(cw - unexpandableBuffer, runMaxOuterWidth) : runMaxOuterWidth,
@@ -406,11 +405,9 @@ namespace Squared.PRGUI.NewEngine {
 
             // HACK: We do another pass to recalculate our size if any of our children's sizes 
             //  changed during the wrap/expand pass, since that probably also changed our size
-            foreach (var runIndex in Runs(ref result)) {
-                ref var run = ref Run(runIndex);
-
+            foreach (ref var run in Runs(ref result)) {
                 // FIXME: Collapse margins
-                if (runIndex == result.FloatingRunIndex) {
+                if (run.IsFloating) {
                     cw = Math.Max(cw, run.MaxOuterWidth);
                     ch = Math.Max(ch, run.MaxOuterHeight);
                 } else if (isVertical) {
