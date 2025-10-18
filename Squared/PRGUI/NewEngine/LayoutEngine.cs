@@ -201,8 +201,6 @@ namespace Squared.PRGUI.NewEngine {
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal SiblingEnumerator Children (ref BoxRecord parent, bool reverse = false) {
-            Assert(!parent.IsInvalid);
-
             return new SiblingEnumerator(
                 this, 
                 reverse ? parent.LastChild : parent.FirstChild,

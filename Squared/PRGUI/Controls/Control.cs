@@ -29,6 +29,14 @@ namespace Squared.PRGUI {
     public abstract partial class Control {
         public const int FirstTopmostDisplayOrder = 0xFFFFFF;
 
+        public static Controls.NullControl None => Statics.None;
+
+        internal static class Statics {
+            public static readonly Controls.NullControl None = new Controls.NullControl();
+            // HACK
+            public static readonly ThreadLocal<List<Control>> TempTransformStack = new ThreadLocal<List<Control>>(() => new List<Control>(32));
+        }
+
         public sealed class Comparer : IEqualityComparer<Control>, IComparer<Control> {
             public static readonly Comparer Instance = new Comparer();
 
@@ -84,8 +92,6 @@ namespace Squared.PRGUI {
             public float? Duration;
             public long? Now;
         }
-
-        public static readonly Controls.NullControl None = new Controls.NullControl();
 
         public string DebugLabel = null;
         public int ControlIndex { get; private set; }
@@ -645,9 +651,6 @@ namespace Squared.PRGUI {
             return true;
         }
 
-        // HACK
-        static readonly ThreadLocal<List<Control>> TempTransformStack = new ThreadLocal<List<Control>>(() => new List<Control>(32));
-
         // Attempts to apply the full stack of transform matrices to our control's bounding box and produce
         //  a new bounding box that fully contains all four of our transformed corners.
         // The current implementation is broken but mildly broken, and this is really only used for tooltip
@@ -672,7 +675,7 @@ namespace Squared.PRGUI {
                     return;
 
                 // Otherwise, we need to build a full top-down control chain
-                stack = TempTransformStack.Value;
+                stack = Statics.TempTransformStack.Value;
                 stack.Clear();
                 while (current != null) {
                     stack.Add(current);

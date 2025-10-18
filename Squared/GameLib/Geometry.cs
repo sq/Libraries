@@ -33,6 +33,7 @@ namespace Squared.Game {
     [Serializable]
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct Bounds : ISerializable {
+        // FIXME: This forces a cctor which may pessimize code generation
         public static readonly Bounds Unit = FromPositionAndSize(Vector2.Zero, Vector2.One);
 
         public Vector2 TopLeft;

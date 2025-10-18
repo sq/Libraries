@@ -84,7 +84,7 @@ namespace Squared.PRGUI.NewEngine {
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct ControlConfiguration {
-        public static readonly ControlConfiguration Default = new ControlConfiguration {
+        public static ControlConfiguration Default => new ControlConfiguration {
             _ContainerFlags = ContainerFlag.DEFAULT,
             _BoxFlags = BoxFlag.DEFAULT,
         };

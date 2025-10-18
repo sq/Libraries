@@ -57,17 +57,6 @@ namespace Squared.PRGUI.NewEngine {
             }
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal ControlKey UnsafeNextSibling (ControlKey control, bool reverse) {
-            ref var rec = ref Records.UnsafeItem(control.ID);
-            return reverse ? rec.PreviousSibling : rec.NextSibling;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]        
-        private int UnsafeNextRunIndex (int runIndex) {
-            return RunBuffer.UnsafeItem(runIndex).NextRunIndex;
-        }
-
         internal struct RunEnumerator {
             private readonly SegmentedArray<LayoutRun> _RunBuffer;
             private bool _Started;
