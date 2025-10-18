@@ -68,33 +68,6 @@ namespace Squared.PRGUI.NewEngine {
             return RunBuffer.UnsafeItem(runIndex).NextRunIndex;
         }
 
-        internal readonly struct ChildrenEnumerable {
-            public readonly LayoutEngine Engine;
-            public readonly bool Reverse;
-            public readonly ControlKey FirstChild, LastChild;
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal ChildrenEnumerable (LayoutEngine engine, ControlKey parent, bool reverse)
-                : this (engine, ref engine[parent], reverse) {
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            internal ChildrenEnumerable (LayoutEngine engine, ref BoxRecord parent, bool reverse) {
-                Engine = engine;
-                FirstChild = parent.FirstChild;
-                LastChild = parent.LastChild;
-                Reverse = reverse;
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public SiblingEnumerator GetEnumerator () {
-                return new SiblingEnumerator(
-                    Engine, Reverse ? LastChild : FirstChild, 
-                    Reverse ? FirstChild : LastChild, Reverse
-                );
-            }
-        }
-
         internal struct RunEnumerator {
             private readonly SegmentedArray<LayoutRun> _RunBuffer;
             private bool _Started;
