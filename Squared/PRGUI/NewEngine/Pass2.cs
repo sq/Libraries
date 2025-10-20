@@ -283,7 +283,7 @@ namespace Squared.PRGUI.NewEngine {
                         ref readonly var childWidth = ref ControlDimension.ConvertPercentage(ref child.Width, cw, ref ScratchDimension1);
                         ref readonly var childHeight = ref ControlDimension.ConvertPercentage(ref child.Height, ch, ref ScratchDimension2);
 #if DEBUG
-                        if (childResult.ParentRunIndex != runIndex)
+                        if (childResult.ParentRunIndex != run.Index)
                             throw new Exception();
 #endif
 
