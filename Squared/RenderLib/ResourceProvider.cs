@@ -208,12 +208,12 @@ namespace Squared.Render.Resources {
                     Provider.SetFutureResult2(Future, default, ExceptionDispatchInfo.Capture(exc));
                     if (!StreamIsDisposed) {
                         StreamIsDisposed = true;
-                        Provider.StreamSource.DisposeStream(Stream);
+                        Provider.DisposeStream(Stream);
                     }
                 } finally {
                     if (!LoadInfo.Async && !StreamIsDisposed) {
                         StreamIsDisposed = true;
-                        Provider.StreamSource.DisposeStream(Stream);
+                        Provider.DisposeStream(Stream);
                     }
                 }
 
@@ -236,7 +236,7 @@ namespace Squared.Render.Resources {
                             Provider.NotifyLoadCompleted(LoadInfo, value);
                         if (!StreamIsDisposed) {
                             StreamIsDisposed = true;
-                            Provider.StreamSource.DisposeStream(Stream);
+                            Provider.DisposeStream(Stream);
                         }
                     }
                 }
@@ -289,7 +289,7 @@ namespace Squared.Render.Resources {
                     LoadInfo.AsyncOperationQueued = true;
                     Provider.CreateQueue.Enqueue(ref item);
                 } catch (Exception exc) {
-                    Provider.StreamSource.DisposeStream(stream);
+                    Provider.DisposeStream(stream);
                     Provider.SetFutureResult2(Future, default, ExceptionDispatchInfo.Capture(exc));
                 }
             }
@@ -344,6 +344,10 @@ namespace Squared.Render.Resources {
         public event ResourceLoadCompleteHandler OnLoad;
 
         internal long Now => TimeProvider.Ticks;
+
+        protected virtual void DisposeStream (Stream stream) {
+            StreamSource.DisposeStream(stream);
+        }
 
         protected void SetFutureResult<U> (Future<U> future, U result, Exception error) {
             if ((CompletionScheduler == null) || (Thread.CurrentThread == CompletionScheduler.MainThread))
