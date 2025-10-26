@@ -97,20 +97,23 @@ namespace Squared.PRGUI {
         }
 
         private void DefocusInvalidFocusTargets () {
+            if (InvalidFocusTargets.Count == 0)
+                return;
+
             // HACK: Not sure why this is necessary
             int iterations = 10;
             while (
                 (Focused != null) && 
                 InvalidFocusTargets.TryGetValue(Focused, out var tup)
             ) {
-                InvalidFocusTargets.Remove(Focused);
+                var current = Focused;
+                InvalidFocusTargets.Remove(current);
                 // HACK: The invalid focus target may have become valid since it was recorded as invalid
                 if (tup.invalidBecauseOf?.IsValidFocusTarget == true)
                     break;
 
                 var idealNewTarget = tup.newTarget;
 
-                var current = Focused;
                 var ok = (idealNewTarget != null) && TrySetFocus(idealNewTarget);
 
                 if (!ok) {
@@ -314,7 +317,7 @@ namespace Squared.PRGUI {
             var topLevelAncestor = FindTopLevelAncestor(value);
 
             // Detect attempts to focus a control that is no longer in the hierarchy
-            if (topLevelAncestor == null)
+            if ((value != null) && (topLevelAncestor == null))
                 value = null;
 
             if (!AllowNullFocus && (value == null)) {

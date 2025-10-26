@@ -531,7 +531,7 @@ namespace Squared.PRGUI {
                     // I suppose a focusable child could appear out of nowhere? But I don't think we'd want to
                     //  suddenly change focus if that happened. If we don't do this we waste a ton of CPU
                     //  doing pointless treewalks and allocating garbage for nothing.
-                    if (TopLevelFocused != Focused)
+                    if ((TopLevelFocused != Focused) && TopLevelFocused.IsValidFocusTarget)
                         Focused = TopLevelFocused;
                     else 
                         ;
