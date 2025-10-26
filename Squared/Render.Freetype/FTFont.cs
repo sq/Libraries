@@ -866,6 +866,7 @@ namespace Squared.Render.Text {
         private GammaRamp GammaRamp;
         private MipGenerator.WithGammaRamp MipGen;
         private HashSet<FontSize> Sizes = new HashSet<FontSize>(new ReferenceComparer<FontSize>());
+        private Stream _BaseStream;
 
         public Dictionary<uint, Color> DefaultGlyphColors = new Dictionary<uint, Color>(UintComparer.Instance);
 
@@ -912,11 +913,16 @@ namespace Squared.Render.Text {
             Initialize();
         }
 
-        public FreeTypeFont (RenderCoordinator rc, Stream stream, int faceIndex = 0) {
+        public unsafe FreeTypeFont (RenderCoordinator rc, Stream stream, int faceIndex = 0) {
             RenderCoordinator = rc;
-            var buffer = new byte[stream.Length];
-            stream.Read(buffer, 0, (int)stream.Length);
-            Face = new Face(new Library(), buffer, faceIndex);
+            if (stream is UnmanagedMemoryStream ums) {
+                _BaseStream = ums;
+                Face = new Face(new Library(), (IntPtr)ums.PositionPointer, (int)(ums.Length - ums.Position), faceIndex);
+            } else {
+                var buffer = new byte[stream.Length];
+                stream.Read(buffer, 0, (int)stream.Length);
+                Face = new Face(new Library(), buffer, faceIndex);
+            }
             ReadTables();
             Initialize();
         }
