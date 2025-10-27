@@ -109,7 +109,7 @@ namespace Squared.PRGUI {
                 var current = Focused;
                 InvalidFocusTargets.Remove(current);
                 // HACK: The invalid focus target may have become valid since it was recorded as invalid
-                if (tup.invalidBecauseOf?.IsValidFocusTarget == true)
+                if ((tup.invalidBecauseOf?.IsValidFocusTarget == true) && (FindTopLevelAncestor(tup.invalidBecauseOf) != null))
                     break;
 
                 var idealNewTarget = tup.newTarget;

@@ -377,6 +377,7 @@ namespace Squared.PRGUI.Controls {
                 OnAcceptClick(ei);
                 return ei.IsConsumed;
             } else if (args.Key == Keys.Escape) {
+                // FIXME: Shouldn't this come after the FireSyntheticClick?
                 if (!CloseOnEscape)
                     return false;
 

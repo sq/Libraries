@@ -274,6 +274,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         private bool OnKeyEvent (string name, KeyEventArgs args) {
+            if (!Enabled)
+                return false;
+
             switch (name) {
                 case UIEvents.KeyPress:
                     Context.OverrideKeyboardSelection(this, true);
@@ -299,6 +302,9 @@ namespace Squared.PRGUI.Controls {
         }
 
         private bool OnMouseEvent (string name, MouseEventArgs args) {
+            if (!Enabled)
+                return false;
+
             if (name == UIEvents.MouseDown) {
                 ShowMenu();
                 return true;

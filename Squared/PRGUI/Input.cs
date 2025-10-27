@@ -654,7 +654,8 @@ namespace Squared.PRGUI.Input {
 
                     GenerateKeyPressForActivation = true;
                     shouldPromote = true;
-                }
+                } else if (gs.Buttons != default)
+                    shouldPromote = true;
             }
 
             if (effectiveSnapTarget != null) {
