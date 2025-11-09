@@ -115,16 +115,25 @@ namespace Squared.Task {
     }
 
     struct SleepItem : IComparable<SleepItem> {
-        private static readonly long WarningLatency = 2 * Time.MillisecondInTicks;
+        private static readonly Action<object> CompleteFuture = _CompleteFuture;
 
         public long Until;
         public IFuture Future;
 
-        public bool Tick (long now) {
+        private static void _CompleteFuture (object o) {
+            if (o is not IFuture f)
+                throw new Exception();
+            f.Complete();
+        }
+
+        public bool Tick (TaskScheduler scheduler, long now) {
             long ticksLeft = Math.Max(Until - now, 0);
             if (ticksLeft == 0) {
                 try {
-                    Future.Complete();
+                    scheduler.QueueWorkItem(new WorkItemQueueEntry {
+                        Action = CompleteFuture,
+                        Arg1 = Future,
+                    });
                 } catch (FutureAlreadyHasResultException ex) {
                     if (ex.Future != Future)
                         throw;
@@ -585,7 +594,7 @@ namespace Squared.Task {
                 SleepItem currentSleep;
                 Monitor.Enter(pendingSleeps);
                 if (pendingSleeps.Peek(out currentSleep)) {
-                    if (currentSleep.Tick(now)) {
+                    if (currentSleep.Tick(this, now)) {
                         pendingSleeps.Dequeue();
                         Monitor.Exit(pendingSleeps);
                         continue;
