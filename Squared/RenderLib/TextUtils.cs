@@ -336,6 +336,10 @@ namespace Squared.Render.Text {
                 _Buffer = new ArraySegment<BitmapDrawCall>(new BitmapDrawCall[size]);
         }
 
+        public void ReleaseBuffer () {
+            _Buffer = default;
+        }
+
         /// <summary>
         /// Update the text stored in this layout.
         /// </summary>
