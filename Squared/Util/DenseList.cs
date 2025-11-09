@@ -67,9 +67,11 @@ namespace Squared.Util {
         internal readonly bool IsIndexOutOfBounds (int index) =>
             unchecked((uint)index >= _Count);
 
+#if !NOSPAN
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal readonly long ItemStrideInBytes () =>
             unchecked(Unsafe.ByteOffset(ref Unsafe.AsRef(in Item1), ref Unsafe.AsRef(in Item2)).ToInt64());
+#endif
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private readonly T InlineItemAtIndexOrDefault (int index) {
@@ -213,11 +215,19 @@ namespace Squared.Util {
             } else if (output.HasList) {
                 var outItems = output._Items;
                 for (int i = 0, c = Count; i < c; i++) {
-                    outItems.Add(Unsafe.AsRef(in Ext.ReadItem(in this, i)));
+#if !NOSPAN
+                    outItems.Add(ref Unsafe.AsRef(in Ext.ReadItem(in this, i)));
+#else
+                    output.Add(this[i]);
+#endif
                 }
             } else {
                 for (int i = 0, c = Count; i < c; i++) {
-                    output.Add(Unsafe.AsRef(in Ext.ReadItem(in this, i)));
+#if !NOSPAN
+                    output.Add(ref Unsafe.AsRef(in Ext.ReadItem(in this, i)));
+#else
+                    output.Add(this[i]);
+#endif
                 }
             }
         }
