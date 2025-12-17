@@ -96,22 +96,30 @@ namespace SharpFont.MultipleMasters
 		/// <summary>
 		/// Gets a table of axis descriptors. GX fonts contain slightly more data than MM.
 		/// </summary>
-		public VarAxis Axis
+		public VarAxis[] Axis
 		{
 			get
 			{
-				return new VarAxis(rec.axis);
+				var result = new VarAxis[rec.num_axis];
+				for (int i = 0; i < rec.num_axis; i++) {
+					result[i] = new VarAxis(rec.axis + (i * Marshal.SizeOf(typeof(VarAxisRec))));
+				}
+				return result;
 			}
 		}
 
 		/// <summary>
 		/// Gets a table of named styles. Only meaningful with GX.
 		/// </summary>
-		public VarNamedStyle NamedStyle
+		public VarNamedStyle[] NamedStyle
 		{
 			get
 			{
-				return new VarNamedStyle(rec.namedstyle);
+				var result = new VarNamedStyle[rec.num_namedstyles];
+				for (int i = 0; i < rec.num_namedstyles; i++) {
+					result[i] = new VarNamedStyle(rec.namedstyle + (i * Marshal.SizeOf(typeof(VarNamedStyleRec))));
+				}
+				return result;
 			}
 		}
 

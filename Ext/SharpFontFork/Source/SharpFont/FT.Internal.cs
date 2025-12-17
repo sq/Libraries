@@ -295,6 +295,9 @@ namespace SharpFont
 		internal static extern Error FT_Set_Var_Design_Coordinates(IntPtr face, uint num_coords, IntPtr coords);
 
 		[DllImport(FreetypeDll, CallingConvention = CallConvention)]
+		internal static extern Error FT_Get_Var_Design_Coordinates(IntPtr face, uint num_coords, IntPtr coords);
+
+		[DllImport(FreetypeDll, CallingConvention = CallConvention)]
 		internal static extern Error FT_Set_MM_Blend_Coordinates(IntPtr face, uint num_coords, IntPtr coords);
 
 		[DllImport(FreetypeDll, CallingConvention = CallConvention)]

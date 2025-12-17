@@ -77,6 +77,15 @@ namespace SharpFont.MultipleMasters
 			}
 		}
 
+		[CLSCompliant(false)]
+		public uint PsId
+		{
+			get
+			{
+				return rec.psid;
+			}
+		}
+
 		internal IntPtr Reference
 		{
 			get

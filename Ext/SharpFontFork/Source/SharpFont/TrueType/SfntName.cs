@@ -107,6 +107,14 @@ namespace SharpFont.TrueType
 			}
 		}
 
+		[CLSCompliant(false)]
+		public uint Length
+		{
+			get {
+				return rec.string_len;
+			}
+		}
+
 		/// <summary>
 		/// This property returns <see cref="StringPtr"/> interpreted as UTF-16.
 		/// </summary>

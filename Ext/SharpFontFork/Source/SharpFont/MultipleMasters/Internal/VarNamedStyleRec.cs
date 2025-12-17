@@ -32,5 +32,6 @@ namespace SharpFont.MultipleMasters.Internal
 	{
 		internal IntPtr coords;
 		internal uint strid;
+		internal uint psid;
 	}
 }

@@ -1613,6 +1613,17 @@ namespace SharpFont
 			}
 		}
 
+		public unsafe void GetVarDesignCoordinates(long[] coords) {
+			fixed (void* ptr = coords)
+			{
+				IntPtr coordsPtr = (IntPtr)ptr;
+				Error err = FT.FT_Get_Var_Design_Coordinates(Reference, (uint)coords.Length, coordsPtr);
+
+				if (err != Error.Ok)
+					throw new FreeTypeException(err);
+			}
+		}
+
 		/// <summary>
 		/// For Multiple Masters and GX var fonts, choose an interpolated font design through normalized blend
 		/// coordinates.

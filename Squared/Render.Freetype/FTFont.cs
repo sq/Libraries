@@ -69,6 +69,7 @@ namespace Squared.Render.Text {
                 SkipFirstAtlasThreshold = 82;
             public const int AtlasWidth = 1024, AtlasHeight = 1024;
 
+            internal long[] AxisValues = null;
             internal List<IDynamicAtlas> Atlases = new List<IDynamicAtlas>();
             internal FreeTypeFont Font;
             internal SrGlyph[] LowCacheByCodepoint = new SrGlyph[LowCacheSize];
@@ -117,6 +118,43 @@ namespace Squared.Render.Text {
                     LowCacheByCodepoint[i].GlyphIndex = uint.MaxValue;
             }
 
+            public void GetAxisValue (AxisDefinition axis, out int value) {
+                var values = AxisValues ?? Font.DefaultAxisValues;
+                value = 0;
+                if (values == null)
+                    return;
+                value = (int)values[axis.Index];
+            }
+
+            public void GetAxisValue (AxisDefinition axis, out float value) {
+                GetAxisValue(axis, out int temp);
+                value = (float)((temp - axis.Minimum) / (double)(axis.Maximum - axis.Minimum));
+            }
+
+            public void SetAxisValue (AxisDefinition axis, int value) {
+                if (AxisValues == null) {
+                    AxisValues = new long[Font.Axes.Count];
+                    Array.Copy(Font.DefaultAxisValues, AxisValues, Font.Axes.Count);
+                }
+
+                value = Arithmetic.Clamp(value, axis.Minimum, axis.Maximum);
+                if (AxisValues[axis.Index] == value)
+                    return;
+                AxisValues[axis.Index] = value;
+                Invalidate();
+            }
+
+            public void SetAxisValue (AxisDefinition axis, float value) {
+                var temp = Arithmetic.Lerp(axis.Minimum, axis.Maximum, value);
+                SetAxisValue(axis, (int)temp);
+            }
+
+            public void SetNamedStyle (NamedStyleDefinition style) {
+                if (AxisValues == null)
+                    AxisValues = new long[Font.Axes.Count];
+                Array.Copy(style.Values, AxisValues, Font.Axes.Count);
+                Invalidate();
+            }
 
             public float VerticalOffset;
 
@@ -506,6 +544,9 @@ namespace Squared.Render.Text {
                 var resolution = (uint)(BaseDPI * Font.DPIPercent / 100);
                 var size = Font.GetFTSize(_SizePoints, resolution);
 
+                if ((Font.DefaultAxisValues != null) && (Font.DefaultAxisValues.Length > 0))
+                    Font.Face.SetVarDesignCoordinates(AxisValues ?? Font.DefaultAxisValues);
+
                 LoadFlags flags = default;
                 if (!Font.EnableBitmaps)
                     flags |= LoadFlags.NoBitmap;
@@ -861,6 +902,89 @@ namespace Squared.Render.Text {
             }
         }
 
+        public record struct AxisDefinition (int Index, string Name, int Minimum, int Maximum, long Default) {
+            public override string ToString () => Name;
+        }
+        public record struct NamedStyleDefinition (int Index, string Name, long[] Values) {
+            public override string ToString () => Name;
+        }
+
+        public readonly Dictionary<string, AxisDefinition> Axes = new ();
+        public readonly Dictionary<string, NamedStyleDefinition> NamedStyles = new ();
+        public long[] DefaultAxisValues { get; private set; }
+
+        void InitializeVariableFont () {
+            if (!Face.HasMultipleMasters)
+                return;
+
+            var mm = Face.GetMMVar();
+            var axes = mm.Axis;
+            DefaultAxisValues = new long[axes.Length];
+            Face.GetVarDesignCoordinates(DefaultAxisValues);
+            for (int i = 0; i < axes.Length; i++) {
+                var axis = axes[i];
+                var ad = new AxisDefinition(i, axis.Name, axis.Minimum, axis.Maximum, DefaultAxisValues[i]);
+                Axes.Add(axis.Name, ad);
+            }
+
+            // Are you serious????
+            var nameCount = Face.GetSfntNameCount();
+            var nameTable = new Dictionary<uint, string>();
+            for (int i = 0; i < nameCount; i++) {
+                var name = Face.GetSfntName((uint)i);
+                var ptr = name.StringPtr;
+                var text = "?";
+                switch (name.PlatformId) {
+                    case SharpFont.TrueType.PlatformId.Microsoft: {
+                            switch (name.EncodingId) {
+                                case 1:
+                                    // WHY ON EARTH???????
+                                    text = DecodeNightmareUnicodeStringTableEncoding(name.StringPtr, name.Length);
+                                    break;
+                                default:
+                                    System.Diagnostics.Debug.WriteLine("WARNING: Unsupported encoding for sfnt name " + name.EncodingId);
+                                    break;
+                            }
+                            break;
+                    }
+                    default:
+                        System.Diagnostics.Debug.WriteLine("WARNING: Unsupported platformid for sfnt name " + name.PlatformId);
+                        break;
+                }
+                nameTable[name.NameId] = text;
+            }
+
+            var styles = mm.NamedStyle;
+            for (int i = 0; i < styles.Length; i++) {
+                var style = styles[i];
+                var styleName = nameTable[style.StrId];
+                var values = new long[axes.Length];
+                for (int j = 0; j < axes.Length; j++)
+                    values[j] = Marshal.ReadInt64(style.Coordinates, j * sizeof(long));
+                var sd = new NamedStyleDefinition(i, styleName, values);
+                NamedStyles.Add(sd.Name, sd);
+            }
+        }
+
+        private ushort SwapBytes (ushort value) =>
+            (ushort)((ushort)((value & 0xFF) << 8) | ((value >> 8) & 0xFF));
+
+        private string DecodeNightmareUnicodeStringTableEncoding (IntPtr ptr, uint length) {
+            var result = new StringBuilder();
+
+            int i = 0;
+            while (i < length) {
+                var ch = unchecked((ushort)Marshal.ReadInt16(ptr, i));
+                ch = SwapBytes(ch);
+                if (ch == 0)
+                    break;
+                result.Append(unchecked((char)ch));
+                i += 2;
+            }
+
+            return result.ToString();
+        }
+
         private bool _EnableKerning, _EnableLigatures, _EqualizeNumberWidths;
         private double _Gamma;
         private GammaRamp GammaRamp;
@@ -964,6 +1088,8 @@ namespace Squared.Render.Text {
 
             for (uint i = 0; i < _GlyphIdForCodepointLowCache.Length; i++)
                 _GlyphIdForCodepointLowCache[i] = Face.GetCharIndex(i);
+
+            InitializeVariableFont();
         }
 
         public IEnumerable<uint> SupportedCodepoints {
