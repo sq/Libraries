@@ -1,3 +1,6 @@
+#ifndef SRGB_FXH
+#define SRGB_FXH
+
 #pragma warning ( disable: 3571 )
 #define PI 3.14159265358979323846
 
@@ -177,3 +180,5 @@ float4 OkLChToLinearSRGB(float4 oklch) {
     ) * oklch.w;
 }
 // end oklab
+
+#endif // SRGB_FXH
