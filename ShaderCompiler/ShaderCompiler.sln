@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28010.2019
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36717.8 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ShaderCompiler", "ShaderCompiler.csproj", "{98ACE85D-3135-430E-B238-6D864BE36A4B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Squared.Util", "..\Squared\Util\Squared.Util.csproj", "{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{98ACE85D-3135-430E-B238-6D864BE36A4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{98ACE85D-3135-430E-B238-6D864BE36A4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{98ACE85D-3135-430E-B238-6D864BE36A4B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7F549CF-E0A6-491C-A78C-ECAB590BB2A7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

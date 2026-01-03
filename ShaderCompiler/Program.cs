@@ -185,7 +185,9 @@ namespace ShaderCompiler {
             bool shouldRebuild;
             // FIXME
             var fullFxcParams =
-                string.Format(" /T fx_2_0 {0} {1} ", localFxcParams, fxcPostParams);
+                localFxcParams.Contains("/T ")
+                    ? $" {localFxcParams} {fxcPostParams} "
+                    : $" /T fx_2_0 {localFxcParams} {fxcPostParams} ";
 
             string existingParams = null;
             shouldRebuild = switches.Contains("--rebuild");
