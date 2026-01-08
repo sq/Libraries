@@ -18,7 +18,7 @@ namespace Squared.PRGUI.Imperative {
     public delegate void ContainerContentsDelegate (ref ContainerBuilder builder);
     
     public struct ContainerBuilder {
-        public bool IsNewInstance { get; private set; }
+        public bool IsNewInstance { get; internal set; }
         public UIContext Context { get; internal set; }
         public IControlContainer Container { get; private set; }
         public ControlCollection Children { get; private set; }

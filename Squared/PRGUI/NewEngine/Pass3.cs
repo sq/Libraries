@@ -107,7 +107,7 @@ namespace Squared.PRGUI.NewEngine {
                         }
 
                         // HACK: The floating run's contents should not change the position of other controls
-                        if (run.IsFloating)
+                        if (run.IsStackedOrFloating)
                             ;
                         else if (isVertical) {
                             x += run.MaxOuterWidth;

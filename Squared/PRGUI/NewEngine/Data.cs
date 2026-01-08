@@ -564,7 +564,7 @@ namespace Squared.PRGUI.NewEngine {
         public ControlKeyDefaultInvalid First, Last;
         public int FlowCount, ExpandCountX, ExpandCountY, NextRunIndex;
         public float TotalWidth, TotalHeight, MaxOuterWidth, MaxOuterHeight;
-        public bool IsVertical, IsFloating;
+        public bool IsVertical, IsStackedOrFloating;
 
         public override string ToString () {
             if (First.IsInvalid || Last.IsInvalid)

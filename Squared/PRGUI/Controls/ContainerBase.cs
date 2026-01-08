@@ -253,6 +253,7 @@ namespace Squared.PRGUI.Controls {
             ) {
                 DynamicBuilder.PreviousRemovedControls.EnsureList();
                 DynamicBuilder.CurrentRemovedControls.EnsureList();
+                DynamicBuilder.IsNewInstance = false;
                 result = DynamicBuilder;
             } else {
                 result = DynamicBuilder = new ContainerBuilder(this, IsNewInstanceForDynamicContent);

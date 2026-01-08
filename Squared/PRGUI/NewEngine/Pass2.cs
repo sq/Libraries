@@ -215,6 +215,9 @@ namespace Squared.PRGUI.NewEngine {
             var lastExpandableRun = -1;
             var spaceAfterLastExpandableRun = 0f;
             foreach (ref var run in Runs(ref result)) {
+                if (run.IsStackedOrFloating)
+                    continue;
+
                 var expand = isVertical ? run.ExpandCountX > 0 : run.ExpandCountY > 0;
                 if (expand) {
                     lastExpandableRun = run.Index;
@@ -225,7 +228,7 @@ namespace Squared.PRGUI.NewEngine {
             }
 
             foreach (ref var run in Runs(ref result)) {
-                bool isFloatingRun = run.IsFloating,
+                bool isFloatingRun = run.IsStackedOrFloating,
                     expandThisRun = (lastExpandableRun == run.Index) || (run.NextRunIndex < 0) || isFloatingRun;
 
                 // We track our own count here so that when expansion hits a constraint, we
@@ -275,7 +278,7 @@ namespace Squared.PRGUI.NewEngine {
                     foreach (ref var child in Children(ref run)) {
                         // HACK: The floating run and non-floating run potentially walk us through the same controls,
                         //  so skip anything we shouldn't be processing in this run. Yuck.
-                        if (child.Config.IsStackedOrFloating != run.IsFloating)
+                        if (child.Config.IsStackedOrFloating != run.IsStackedOrFloating)
                             continue;
 
                         ref var childResult = ref Result(child.Key);
@@ -377,7 +380,8 @@ namespace Squared.PRGUI.NewEngine {
                     ySpace = newYSpace;
                 }
 
-                if (isVertical) {
+                if (run.IsStackedOrFloating) {
+                } else if (isVertical) {
                     cw -= run.MaxOuterWidth;
                 } else {
                     ch -= run.MaxOuterHeight;
@@ -397,7 +401,7 @@ namespace Squared.PRGUI.NewEngine {
             //  changed during the wrap/expand pass, since that probably also changed our size
             foreach (ref var run in Runs(ref result)) {
                 // FIXME: Collapse margins
-                if (run.IsFloating) {
+                if (run.IsStackedOrFloating) {
                     cw = Math.Max(cw, run.MaxOuterWidth);
                     ch = Math.Max(ch, run.MaxOuterHeight);
                 } else if (isVertical) {

@@ -24,12 +24,12 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         /// <param name="relativeToIndex">For floating runs: The first non-floating run. For normal runs: The run to insert this one after</param>
-        private ref LayoutRun InsertRun (out int index, int relativeToIndex, bool floating) {
+        private ref LayoutRun InsertRun (out int index, int relativeToIndex, bool stackedOrFloating) {
             ref var result = ref RunBuffer.New(out index);
-            result.IsFloating = floating;
+            result.IsStackedOrFloating = stackedOrFloating;
             result.Index = index;
             if (relativeToIndex >= 0) {
-                if (floating) {
+                if (stackedOrFloating) {
                     result.NextRunIndex = relativeToIndex;
                 } else {
                     ref var after = ref Run(relativeToIndex);
@@ -43,9 +43,9 @@ namespace Squared.PRGUI.NewEngine {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ref LayoutRun GetOrPushRun (ref int index, int relativeToIndex, bool floating) {
+        private ref LayoutRun GetOrPushRun (ref int index, int relativeToIndex, bool stackedOrFloating) {
             if (index < 0)
-                return ref InsertRun(out index, relativeToIndex, floating);
+                return ref InsertRun(out index, relativeToIndex, stackedOrFloating);
             else
                 return ref Run(index);
         }

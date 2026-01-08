@@ -41,7 +41,7 @@ namespace Squared.PRGUI.NewEngine {
             result.Rect.Width = control.Size(LayoutDimensions.X).EffectiveMinimum;
             result.Rect.Height = control.Size(LayoutDimensions.Y).EffectiveMinimum;
 
-            float padX = control.Padding.X, padY = control.Padding.Y, p = 0;
+            float padX = control.Padding.X, padY = control.Padding.Y;
             int currentRunIndex = -1, currentColumnIndex = 0;
 
             foreach (ref var child in Children(ref control)) {
@@ -76,8 +76,6 @@ namespace Squared.PRGUI.NewEngine {
                     );
 
                     if (!child.Config.IsFloating) {
-                        p += isVertical ? outerW : outerH;
-
                         // At a minimum we should be able to hold all our children if they were stacked on each other
                         if (expandX)
                             result.Rect.Width = Math.Max(
