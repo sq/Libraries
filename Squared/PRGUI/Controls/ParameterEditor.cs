@@ -244,6 +244,8 @@ namespace Squared.PRGUI.Controls {
                     return f(v);
                 else if (DefaultFormatter is Func<T, IFormatProvider, string> fp)
                     return fp(v, formatProvider);
+                else if (typeof(T).IsEnum)
+                    return v.ToString();
                 else
                     return string.Format(formatProvider, "{0:N}", v);
             };
