@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -21,6 +22,8 @@ using Squared.Util.Text;
 
 namespace Squared.PRGUI {
     public sealed partial class UIContext : IDisposable {
+        public readonly Thread OwnerThread;
+
         /// <summary>
         /// Configures the size of the rendering canvas
         /// </summary>
@@ -41,6 +44,12 @@ namespace Squared.PRGUI {
         /// The top-level controls managed by the layout engine. Each one gets a separate rendering layer
         /// </summary>
         public ControlCollection Controls { get; private set; }
+
+        [Conditional("DEBUG")]
+        internal void CheckCurrentThread () {
+            if (OwnerThread != Thread.CurrentThread)
+                throw new InvalidOperationException("Erroneous multi-threaded use of UIContext");
+        }
 
         internal void ClearKeyboardSelection () {
             if (_PreferredTooltipSource == _KeyboardSelection)
@@ -126,6 +135,7 @@ namespace Squared.PRGUI {
         ) {
             if (UseNewEngine)
                 Engine = new NewEngine.LayoutEngine();
+            OwnerThread = Thread.CurrentThread;
             EventBus = new EventBus();
             EventBus.AfterBroadcast += EventBus_AfterBroadcast;
             Controls = new ControlCollection(this);

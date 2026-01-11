@@ -54,6 +54,8 @@ namespace Squared.PRGUI {
         public event Func<string, Keys?, char?, bool> OnKeyEvent;
 
         public bool FireEvent<T> (string name, Control target, T args, bool suppressHandler = false, bool targetHandlesFirst = false, bool filtersOnly = false) {
+            CheckCurrentThread();
+
             // FIXME: Is this right?
             if (target == null)
                 target = Control.None;
@@ -88,6 +90,8 @@ namespace Squared.PRGUI {
         }
 
         public bool FireEvent (string name, Control target, bool suppressHandler = false, bool targetHandlesFirst = false, bool filtersOnly = false) {
+            CheckCurrentThread();
+
             // FIXME: Is this right?
             if (target == null)
                 target = Control.None;
