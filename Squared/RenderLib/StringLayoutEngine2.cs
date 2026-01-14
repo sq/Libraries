@@ -824,6 +824,8 @@ recalc:
                             TextureRegion = glyph.BoundsInTexture,
                             SortKey = SortKey,
                             UserData = CharacterUserData,
+                            LocalData1 = (short)LineIndex,
+                            LocalData2 = (byte)ColIndex,
                         };
 
                         if (glyph.Texture != MostRecentTexture) {
