@@ -63,7 +63,7 @@ namespace Squared.PRGUI.NewEngine {
                         ref column
                     );
                     // HACK: Clear margins of grid children because we don't fully implement them.
-                    child.Margins = default;
+                    // child.Margins = default;
                     currentColumnIndex = (currentColumnIndex + 1) % config.GridColumnCount;
 
                     result.Rect.Height = Math.Max(result.Rect.Height, run.TotalHeight + padY);

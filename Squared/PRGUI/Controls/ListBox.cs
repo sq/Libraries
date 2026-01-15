@@ -41,7 +41,10 @@ namespace Squared.PRGUI.Controls {
         IValueControl<T>, ISelectionBearer, IListBox, SpecialInterfaces.IHasCreateControlForValueProperty<T>,
         IPartiallyIntangibleControl, IFuzzyHitTestTarget, IHasDescription
     {
-        public ControlAppearance DefaultChildAppearance;
+        public ControlAppearance DefaultChildAppearance = new ControlAppearance {
+            // HACK: Necessary for grid mode layout to work correctly.
+            SuppressDecorationMargins = true,
+        };
 
         public ListBoxEventMode EventMode = ListBoxEventMode.Consume;
 
