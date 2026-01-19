@@ -677,7 +677,7 @@ namespace Squared.PRGUI {
                 result.MouseDownTimestamp = LastMouseDownTime;
                 result.MovedSinceMouseDown = travelDistance >= MinimumMouseMovementDistance;
                 result.PreviousButtons = LastMouseButtons;
-                result.Buttons = CurrentMouseButtons;
+                result.Buttons = forClick ? LastMouseButtons : CurrentMouseButtons;
                 result.SequentialClickCount = (target == PreviousClickTarget)
                     ? SequentialClickCount
                     : 0;

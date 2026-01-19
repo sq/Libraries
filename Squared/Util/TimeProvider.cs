@@ -56,6 +56,10 @@ namespace Squared.Util {
             return subsec + seconds;
         }
 
+        public static long NanosecondsFromTicks (long remainingTicks) {
+            return remainingTicks * 100;
+        }
+
         static Time () {
             DefaultTimeProvider = new DotNetTimeProvider();
         }
