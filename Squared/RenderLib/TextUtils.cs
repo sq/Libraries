@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
@@ -112,6 +113,8 @@ namespace Squared.Render.Text {
         private object _RichTextUserData;
 
         private Satellite _Satellite;
+
+        public ExceptionDispatchInfo ContentException { get; private set; }
 
         public int TextVersion => _TextVersion;
 
@@ -900,6 +903,7 @@ namespace Squared.Render.Text {
             _CachedStringLayout = default;
             _Satellite?.UsedTextures.Clear();
             _Satellite?.RichMarkers.Clear();
+            ContentException = null;
         }
 
         /// <summary>
@@ -1100,6 +1104,11 @@ namespace Squared.Render.Text {
                 }
             }
 
+            if (ContentException != null) {
+                result = default;
+                return false;
+            }
+
             // FIXME: Detect whether the measurement settings exactly match the cached layout,
             //  and if they do, return the cached layout
             if (!GetFlag(InternalFlags.HasCachedStringLayout) || measureOnly.HasValue) {
@@ -1213,6 +1222,10 @@ namespace Squared.Render.Text {
                         le2.Finish(default, out result);
                         return true;
                     }
+                } catch (Exception exc) {
+                    ContentException = ExceptionDispatchInfo.Capture(exc);
+
+                    throw;
                 } finally {
                     /*
                     if (!measureOnly.HasValue) {

@@ -594,6 +594,12 @@ namespace Squared.Render.Text {
     }
 
     public sealed class RichTextConfiguration : IEquatable<RichTextConfiguration> {
+        /// <summary>
+        /// Configures the maximum level of recursion when processing rich text commands.
+        /// </summary>
+        public static int MaxCommandDepth = 10;
+        private int CommandDepth = 0;
+
         public class GlyphSourceCollection : ImmutableAbstractStringLookup<GlyphSourceEntry> {
             public GlyphSourceCollection (bool ignoreCase = false)
                 : base (ignoreCase) {
@@ -1075,13 +1081,21 @@ namespace Squared.Render.Text {
         private bool TryProcessCommand (AbstractString value, ref RichTextLayoutState state, ref TLayoutEngine layoutEngine, out RichCommandResult commandResult) {
             commandResult = RichCommandResult.NotHandled;
 
-            var trackerResult = state.Tracker?.TryProcessCommand(value, ref state, ref layoutEngine);
-            if (trackerResult.HasValue && (trackerResult != RichCommandResult.NotHandled)) {
-                commandResult = trackerResult.Value;
-            } else if (CommandProcessor != null) {
-                commandResult = CommandProcessor(value, ref state, ref layoutEngine);
-            } else {
-                ;
+            CommandDepth++;
+            try {
+                if (CommandDepth > MaxCommandDepth)
+                    throw new Exception($"Command depth exceeded while processing command '{value}'.");
+
+                var trackerResult = state.Tracker?.TryProcessCommand(value, ref state, ref layoutEngine);
+                if (trackerResult.HasValue && (trackerResult != RichCommandResult.NotHandled)) {
+                    commandResult = trackerResult.Value;
+                } else if (CommandProcessor != null) {
+                    commandResult = CommandProcessor(value, ref state, ref layoutEngine);
+                } else {
+                    ;
+                }
+            } finally {
+                CommandDepth--;
             }
 
             return commandResult != RichCommandResult.NotHandled;
