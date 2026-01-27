@@ -375,6 +375,9 @@ namespace Squared.PRGUI {
                 return;
             }
 
+            // HACK: Clear z axis after transform to make rotations around x/y work without a z buffer/perspective xform
+            xform *= Matrix.CreateScale(1, 1, 0);
+
             var scaledOrigin = sourceRect.Size * -unscaledOrigin;
             var finalPosition = sourceRect.Position + (sourceRect.Size * unscaledOrigin);
             Matrix.CreateTranslation(scaledOrigin.X, scaledOrigin.Y, 0, out Matrix centering);
