@@ -406,7 +406,7 @@ namespace Squared.PRGUI.Input {
         long PreviousUpdateTime;
         UIContext Context;
         Control SnapToControl;
-        bool GenerateKeyPressForActivation = false;
+        bool GenerateKeyPressForActivation = true;
 
         Keys LastKeyEvent;
         double LastKeyEventFirstTime, LastKeyEventTime, LastDpadEventFirstTime, LastDpadEventTime;
