@@ -508,7 +508,8 @@ namespace Squared.PRGUI.Controls {
             var temp = state;
             if (_OverrideHitTestResults) {
                 temp.Options.AcceptsMouseInput = true;
-                temp.Options.AcceptsFocus = true;
+                // FIXME: Why was this here? It's wrong
+                // temp.Options.AcceptsFocus = true;
                 temp.Options.RejectIntangible = true;
             }
 
