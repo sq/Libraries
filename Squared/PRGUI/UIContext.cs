@@ -517,18 +517,22 @@ namespace Squared.PRGUI {
                     (activeModal == null) ||
                     // Attempting to set focus to something outside of a modal can cause it to close
                     Control.IsEqualOrAncestor(queuedFocus.value, (Control)activeModal)
+                    // FIXME: But we don't need to restrict things if the active modal isn't housing the focus, do we?
+                    // !Control.IsEqualOrAncestor(Focused, (Control)activeModal)
                 ) {
                     var oldFocus = Focused;
-                    var queuedOk = TrySetFocus(queuedFocus.value, queuedFocus.force, queuedFocus.isUserInitiated, queuedFocus.suppressAnimations, queuedFocus.overrideKeyboardSelection);
+                    var queuedOk = TrySetFocus(
+                        queuedFocus.value, queuedFocus.force, queuedFocus.isUserInitiated, 
+                        queuedFocus.suppressAnimations, queuedFocus.overrideKeyboardSelection
+                    );
                     queuedFocusResult = Focused;
+
                     // TrySetFocus may have failed but changed the current focus. Treat that as equivalent and clear the queued focus.
                     if (queuedOk || (queuedFocusResult != oldFocus)) {
                         QueuedFocus = default;
                         queuedFocusMayNeedRestoration = true;
                     }
-                } else
-                    // FIXME: Stop focus from getting stuck queued
-                    QueuedFocus = default;
+                }
             }
 
             bool purgeTopLevelFocus = false;
