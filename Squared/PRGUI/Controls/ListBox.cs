@@ -608,7 +608,7 @@ namespace Squared.PRGUI.Controls {
                 ) {
                     // Console.WriteLine($"Selection valid for item {newItem}");
                     var isClick = (name == UIEvents.Click);
-                    if (isClick && (!EnableSelect || (control == Manager.SelectedControl))) {
+                    if (isClick && (!EnableSelect || (control == Manager.SelectedControl)) && !DefaultToggleOnClick) {
                         return Context.FireEvent(name, control, args);
                     }
 
