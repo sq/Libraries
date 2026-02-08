@@ -246,6 +246,9 @@ namespace Squared.PRGUI {
             myRect.SnapAndInset(out Vector2 myTl, out Vector2 myBr);
             const float bias = 4f;
 
+            if (settings.Traits.Contains("always-rounded"))
+                return;
+
             if (
                 (myTl.X > anchorTl.X - bias) &&
                 (myTl.Y > anchorTl.Y - bias)
