@@ -132,6 +132,7 @@ namespace Squared.PRGUI.Controls {
         public Vector4 RasterizerUserData;
         public Material Material;
         public BlendState BlendState;
+        public Rectangle? ClipRectangle;
         /// <summary>
         /// Creates padding around the image being drawn for shadows and other shader effects
         /// </summary>
@@ -402,8 +403,12 @@ namespace Squared.PRGUI.Controls {
                 if (isPostPremultiplied)
                     pColor = pColor.Unpremultiply();
 
-                var rect = new Rectangle(-DrawExpansion, -DrawExpansion, instance.Width + (DrawExpansion * 2), instance.Height + (DrawExpansion * 2));
+                var rect = ClipRectangle ?? new Rectangle(0, 0, instance.Width, instance.Height);
                 if (DrawExpansion != 0) {
+                    rect.X -= DrawExpansion;
+                    rect.Y -= DrawExpansion;
+                    rect.Width += (DrawExpansion * 2);
+                    rect.Height += (DrawExpansion * 2);
                     Vector2 expansionAlignment = (DrawExpansion * scale) * (new Vector2(0.5f) - Alignment) * 2f;
                     // FIXME: This might be backwards
                     position -= expansionAlignment;
