@@ -759,8 +759,13 @@ namespace Squared.PRGUI.Controls {
                 var autoSizeYCentering = (AutoSizeComputedContentHeight - scaledSize.Y) * VerticalAlignment;
                 textOffset.Y += autoSizeYCentering;
             } else {
-                // Vertically center the text as configured
-                textOffset.Y += (settings.ContentBox.Height - scaledSize.Y) * VerticalAlignment;
+                if (VerticalAlignment < 0)
+                    textOffset.Y = scaledSize.Y * VerticalAlignment;
+                else if (VerticalAlignment > 1)
+                    textOffset.Y = settings.ContentBox.Height + (scaledSize.Y * (VerticalAlignment - 1));
+                else
+                    // Vertically center the text as configured
+                    textOffset.Y += (settings.ContentBox.Height - scaledSize.Y) * VerticalAlignment;
             }
 
             var cpx = computedPadding.X;
