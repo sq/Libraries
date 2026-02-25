@@ -93,6 +93,7 @@ namespace Squared.Render.Text {
         private float _XOffsetOfFirstLine;
         private float _XOffsetOfNewLine;
         private float? _LineBreakAtX;
+        private float _WrapMargin;
         private float? _StopAtY;
         private float _WrapIndentation;
         private float _ExtraLineBreakSpacing;
@@ -580,6 +581,20 @@ namespace Squared.Render.Text {
         }
 
         /// <summary>
+        /// Creates a gentle wrapping margin on the right side of the layout, where characters after
+        ///  the start of a word can extend into the margin, but new words will not start within the
+        ///  margin. This is similar to css text-wrap: pretty.
+        /// </summary>
+        public float WrapMargin {
+            get {
+                return _WrapMargin;
+            }
+            set {
+                InvalidatingValueAssignment(ref _WrapMargin, value);
+            }
+        }
+
+        /// <summary>
         /// When using alignment modes this sets the desired width for the laid out string, and if
         ///  the string is less wide than the desired value it will be expanded. If the string is
         ///  wider, it will not be compressed - use LineBreakAtX for that.
@@ -987,6 +1002,7 @@ namespace Squared.Render.Text {
                 ExtraBreakSpacing = _ExtraLineBreakSpacing,
                 MaximumWidth = (measureOnly.HasValue ? measureOnly.Value.LineBreakAtX : _LineBreakAtX) ?? float.MaxValue,
                 MaximumHeight = _StopAtY ?? float.MaxValue,
+                WrapMargin = _WrapMargin,
                 CharacterWrap = CharacterWrap,
                 WordWrap = WordWrap,
                 HideOverflow = HideOverflow,

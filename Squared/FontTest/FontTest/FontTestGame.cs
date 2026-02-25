@@ -43,7 +43,7 @@ namespace FontTest {
         PressableKey ShowOutlines = new PressableKey(Keys.O);
         PressableKey Hinting = new PressableKey(Keys.H);
         PressableKey Which = new PressableKey(Keys.Space);
-        PressableKey MeasureOnly = new PressableKey(Keys.M);
+        PressableKey Margin = new PressableKey(Keys.M);
         PressableKey Indent = new PressableKey(Keys.I);
         PressableKey Monochrome = new PressableKey(Keys.R);
         PressableKey Expand = new PressableKey(Keys.E);
@@ -88,8 +88,8 @@ namespace FontTest {
                     }
                 }
             };
-            MeasureOnly.Pressed += (s, e) => {
-                Text.MeasureOnly = !Text.MeasureOnly;
+            Margin.Pressed += (s, e) => {
+                Text.WrapMargin = (Text.WrapMargin + 8) % 128;
                 Text.Invalidate();
             };
             Monochrome.Pressed += (s, e) => {
@@ -289,7 +289,7 @@ namespace FontTest {
             ShowOutlines.Update(ref ks);
             Hinting.Update(ref ks);
             Which.Update(ref ks);
-            MeasureOnly.Update(ref ks);
+            Margin.Update(ref ks);
             Indent.Update(ref ks);
             Monochrome.Update(ref ks);
             Expand.Update(ref ks);
@@ -379,7 +379,7 @@ namespace FontTest {
                 }
             }
 
-            var state = $"a:{Text.Alignment} cw:{Text.CharacterWrap} ww:{Text.WordWrap} ex:{Expand.Value} hint:{Hinting.Value} kern:{Kerning.Value} lig:{Ligatures.Value}";
+            var state = $"a:{Text.Alignment} cw:{Text.CharacterWrap} ww:{Text.WordWrap} ex:{Expand.Value} hint:{Hinting.Value} kern:{Kerning.Value} lig:{Ligatures.Value} margin:{Text.WrapMargin}px";
             var stateLayout = Text.GlyphSource.LayoutString(state);
             ir.DrawMultiple(stateLayout, new Vector2(0, 1024 - stateLayout.UnconstrainedSize.Y));
         }

@@ -270,7 +270,7 @@ namespace Squared.Render.TextLayout2 {
 
         public float InitialIndentation, BreakIndentation, WrapIndentation;
         public float AdditionalLineSpacing, ExtraBreakSpacing;
-        public float MaximumWidth, DesiredWidth;
+        public float MaximumWidth, DesiredWidth, WrapMargin;
         public float MaximumHeight;
         public float MaxExpansionPerSpace;
         public float MinRubyScale;
@@ -742,8 +742,10 @@ recalc:
                     x1 = xBasis + FragmentOffset.X,
                     x2 = x1 + glyphSpacing + worstW,
                     y2 = Y + h;
-                bool overflowX = (x2 > MaximumWidth),
-                    overflowY = (y2 > MaximumHeight);
+                bool overflowX = x2 > MaximumWidth,
+                    nearOverflowX = x2 > (MaximumWidth - WrapMargin),
+                    overflowY = y2 > MaximumHeight,
+                    shouldWrapX = overflowX || (nearOverflowX && (CurrentFragment.DrawCallCount == 0));
 
                 if (isCombiningCharacter)
                     ProcessCombiningCharacter(codepoint, ref glyph);
@@ -756,7 +758,7 @@ recalc:
                         PerformLineBreak(CurrentDefaultLineSpacing, singleFragment.HasValue);
                         goto recalc;
                     } else if (
-                        overflowX &&
+                        shouldWrapX &&
                         // HACK: Don't perform automatic word/character wrap for combining characters.
                         // We should normally wrap them along with the glyph they're attached to instead.
                         !isCombiningCharacter &&
