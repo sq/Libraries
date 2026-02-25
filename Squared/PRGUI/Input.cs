@@ -360,7 +360,9 @@ namespace Squared.PRGUI.Input {
                     LeftArrow = new[] { Buttons.DPadLeft },
                     RightArrow = new[] { Buttons.DPadRight },
                     DownArrow = new[] { Buttons.DPadDown },
-                    Alt = new[] { Buttons.RightStick }
+                    Alt = new[] { Buttons.LeftStick },
+                    LeftClick = new Buttons[0],
+                    RightClick = new Buttons[0],
                 };
             }
 
@@ -368,7 +370,8 @@ namespace Squared.PRGUI.Input {
                 WindowFocusBack, WindowFocusForward,
                 Alt, Control, Shift,
                 Activate, Spacebar, Enter, Escape, Menu,
-                UpArrow, LeftArrow, RightArrow, DownArrow;
+                UpArrow, LeftArrow, RightArrow, DownArrow,
+                LeftClick, RightClick;
 
             public List<(Keys key, Buttons[] buttons, KeyboardModifiers? modifiers)> CustomBindings = new ();
         }
@@ -610,6 +613,8 @@ namespace Squared.PRGUI.Input {
                 var shift = mods;
                 shift.LeftShift = true;
 
+                UpdateMouseStateForButton(ref current, Bindings.LeftClick, Bindings.RightClick);
+
                 DispatchKeyEventsForButton(ref current, Keys.LeftAlt, mods, Bindings.Alt);
                 DispatchKeyEventsForButton(ref current, Keys.LeftShift, mods, Bindings.Shift);
                 DispatchKeyEventsForButton(ref current, Keys.LeftControl, mods, Bindings.Control);
@@ -801,6 +806,13 @@ namespace Squared.PRGUI.Input {
                 ok |= Context.HandleKeyEvent(UIEvents.KeyPress, key, null, modifiers, true);
 
             return ok;
+        }
+
+        private void UpdateMouseStateForButton (ref InputState current, Buttons[] leftClick, Buttons[] rightClick) {
+            if (IsHeld(ref CurrentState, leftClick))
+                current.Buttons |= MouseButtons.Left;
+            if (IsHeld(ref CurrentState, rightClick))
+                current.Buttons |= MouseButtons.Right;
         }
 
         public void SetTextInputState (bool enabled) {

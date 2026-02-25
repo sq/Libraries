@@ -596,7 +596,7 @@ namespace PRGUI.Demo {
             };
             var columnCount = new Dropdown<int> {
                 Label = "Columns: {0}",
-                Items = { 1, 2, 3, 4 },
+                Items = { 1, 2, 3, 4, 5 },
                 SelectedItem = 1
             };
             var listBox = new ListBox<string> {
@@ -1303,6 +1303,9 @@ namespace PRGUI.Demo {
                 existingControl = st = new StaticText {
                     AutoSizeIsMaximum = false,
                     AutoSizeWidth = false,
+                    Appearance = {
+                        SuppressDecorationMargins = true,
+                    },
                 };
 
             st.SetText(value, true);
