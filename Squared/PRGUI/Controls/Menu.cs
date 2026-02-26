@@ -602,12 +602,12 @@ namespace Squared.PRGUI.Controls {
 
             switch (args.Key) {
                 case Keys.Escape:
-                    if (CloseOnEscapePress)
+                    if (!args.Modifiers.Any && CloseOnEscapePress)
                         Close(ModalCloseReason.UserCancelled);
                     return true;
                 case Keys.Space:
                 case Keys.Enter:
-                    if (SelectedItem != null)
+                    if (!args.Modifiers.Any && (SelectedItem != null))
                         return ChooseItem(SelectedItem);
                     return true;
                 case Keys.Home:

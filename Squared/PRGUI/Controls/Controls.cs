@@ -248,6 +248,10 @@ namespace Squared.PRGUI.Controls {
             get => base.ScaleToFit;
             set => base.ScaleToFit = value;
         }
+        new public bool AcceptsFocus {
+            get => base.AcceptsFocus;
+            set => base.AcceptsFocus = value;
+        }
         new public void Invalidate () => base.Invalidate();
 
         public bool SetText (AbstractString value, bool onlyIfTextChanged = false) => base.SetText(value, onlyIfTextChanged);

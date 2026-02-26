@@ -368,6 +368,9 @@ namespace Squared.PRGUI.Controls {
             // HACK
             var ei = new EventInfo<object>(null, this, default(EventCategoryToken), null, null, args);
             if (args.Key == Keys.Enter) {
+                if (args.Modifiers.Any)
+                    return false;
+
                 if ((AcceptControl != null) && Context.FireSyntheticClick(AcceptControl))
                     return true;
 
@@ -377,6 +380,9 @@ namespace Squared.PRGUI.Controls {
                 OnAcceptClick(ei);
                 return ei.IsConsumed;
             } else if (args.Key == Keys.Escape) {
+                if (args.Modifiers.Any)
+                    return false;
+
                 // FIXME: Shouldn't this come after the FireSyntheticClick?
                 if (!CloseOnEscape)
                     return false;
