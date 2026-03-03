@@ -865,12 +865,6 @@ namespace Squared.Render.Text {
                     } else if (insertionMode && (Images != null) && Images.TryGetValue(bracketed, out image)) {
                         if (!DisableImages)
                             AppendImage(ref layoutEngine, image);
-                        else
-                            parseErrors.Add(new RichParseError {
-                                Offset = bracketed.Offset,
-                                Message = "Images are disabled",
-                                Text = bracketed.Value
-                            });
 
                         ai = new AsyncRichImage(ref image);
                         state.Tracker?.ReferencedImage(this, ref ai);
@@ -883,11 +877,6 @@ namespace Squared.Render.Text {
                             state.Tracker?.ReferencedImage(this, ref ai);
                         } else if (DisableImages) {
                             state.Tracker?.ReferencedImage(this, ref ai);
-                            parseErrors.Add(new RichParseError {
-                                Offset = bracketed.Offset,
-                                Message = "Images are disabled",
-                                Text = bracketed.Value
-                            });
                         } else if (ai.TryGetValue(out RichImage ri)) {
                             AppendImage(ref layoutEngine, ri);
                             state.Tracker?.ReferencedImage(this, ref ai);

@@ -18,6 +18,7 @@ namespace Squared.PRGUI.Controls {
         int Count { get; }
         int SelectedIndex { get; set; }
         object SelectedItem { get; set; }
+        Control SelectedControl { get; }
         bool Virtual { get; set; }
     }
 
@@ -50,6 +51,7 @@ namespace Squared.PRGUI.Controls {
 
         public bool DisableItemHitTests = true;
         public bool DefaultToggleOnClick = false;
+        public bool EnableSelectionDecorator = true;
 
         public bool SelectOnMouseDown = false;
 
@@ -107,6 +109,8 @@ namespace Squared.PRGUI.Controls {
                 SetSelectedItem(value, false);
             }
         }
+
+        public Control SelectedControl => Manager.SelectedControl;
 
         bool ISelectionBearer.HasSelection => Manager.SelectedIndex >= 0;
         // FIXME: We should expand the width here
@@ -800,7 +804,7 @@ namespace Squared.PRGUI.Controls {
 
         protected override void OnRasterizeChildren (ref UIOperationContext context, ref RasterizePassSet passSet, DecorationSettings settings) {
             var selectionDecorator = context.DecorationProvider.ListSelection;
-            if (selectionDecorator != null) {
+            if (EnableSelectionDecorator && (selectionDecorator != null)) {
                 RectF selectionBox;
                 foreach (var index in Manager._SelectedIndices) {
                     if (index >= Items.Count)
