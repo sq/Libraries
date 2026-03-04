@@ -113,7 +113,10 @@ namespace Squared.PRGUI {
             }
 
             if (result.UsedRectangles.Count == 0) {
-                using (var group = BatchGroup.ForRenderTarget(prepass, 0, result.Instance, name: "Scratch Prepass")) {
+                var vt = ViewTransform.CreateOrthographic((int)CanvasSize.X, (int)CanvasSize.Y);
+                using (var group = BatchGroup.ForRenderTarget(
+                    prepass, 0, result.Instance, name: "Scratch Prepass", viewTransform: vt, materialSet: Materials
+                )) {
                     result.Renderer = new ImperativeRenderer(group, Materials);
                     result.Renderer.DepthStencilState = DepthStencilState.None;
                     result.Renderer.BlendState = BlendState.AlphaBlend;
