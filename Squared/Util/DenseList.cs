@@ -201,6 +201,11 @@ namespace Squared.Util {
             }
         }
 
+        [Obsolete("You want CopyTo(ref DenseList output)")]
+        public readonly void CopyTo (DenseList<T> invalid) {
+            throw new InvalidOperationException("Use CopyTo(ref output)");
+        }
+
         public readonly void CopyTo (ref DenseList<T> output) {
             var items = _Items;
             if (items != null) {
