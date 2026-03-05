@@ -683,21 +683,28 @@ namespace Squared.PRGUI.Imperative {
             return this;
         }
 
-        public ControlBuilder<TControl> SetIncrement<TValue> (TValue value)
-            where TValue : struct, IComparable<TValue>
-        {
-            if (Control is ParameterEditor<TValue> cast1) {
+        public ControlBuilder<TControl> SetIncrement (int value) {
+            if (Control is ParameterEditor<int> cast1) {
                 cast1.Increment = value;
             } else if (Control is Slider cast2) {
-                cast2.KeyboardSpeed = Convert.ToSingle(value);
+                cast2.KeyboardSpeed = value;
             }
             return this;
         }
 
-        public ControlBuilder<TControl> SetRange<TValue> (TValue? min = null, TValue? max = null, bool? clamp = null)
-            where TValue : struct, IComparable<TValue>
-        {
-            if (Control is ParameterEditor<TValue> cast1) {
+        public ControlBuilder<TControl> SetIncrement (float value) {
+            if (Control is ParameterEditor<float> cast1) {
+                cast1.Increment = value;
+            } else if (Control is ParameterEditor<double> cast3) {
+                cast3.Increment = value;
+            } else if (Control is Slider cast2) {
+                cast2.KeyboardSpeed = value;
+            }
+            return this;
+        }
+
+        public ControlBuilder<TControl> SetRange (int? min = null, int? max = null, bool? clamp = null) {
+            if (Control is ParameterEditor<int> cast1) {
                 cast1.Minimum = min;
                 cast1.Maximum = max;
                 if (clamp.HasValue)
@@ -706,10 +713,49 @@ namespace Squared.PRGUI.Imperative {
 
             if (Control is Slider cast2) {
                 if (min.HasValue)
-                    cast2.Minimum = Convert.ToSingle(min.Value);
+                    cast2.Minimum = min.Value;
                 if (max.HasValue)
-                    cast2.Maximum = Convert.ToSingle(max.Value);
+                    cast2.Maximum = max.Value;
             }
+
+            return this;
+        }
+
+        public ControlBuilder<TControl> SetRange (float? min = null, float? max = null, bool? clamp = null) {
+            if (Control is ParameterEditor<float> cast1) {
+                cast1.Minimum = min;
+                cast1.Maximum = max;
+                if (clamp.HasValue)
+                    cast1.ClampToRange = clamp.Value;
+            }
+
+            if (Control is ParameterEditor<double> cast3) {
+                cast3.Minimum = min;
+                cast3.Maximum = max;
+                if (clamp.HasValue)
+                    cast3.ClampToRange = clamp.Value;
+            }
+
+            if (Control is Slider cast2) {
+                if (min.HasValue)
+                    cast2.Minimum = min.Value;
+                if (max.HasValue)
+                    cast2.Maximum = max.Value;
+            }
+
+            return this;
+        }
+
+        public ControlBuilder<TControl> SetRange (double? min = null, double? max = null, bool? clamp = null) {
+            if (Control is ParameterEditor<double> cast1) {
+                cast1.Minimum = min;
+                cast1.Maximum = max;
+                if (clamp.HasValue)
+                    cast1.ClampToRange = clamp.Value;
+            }
+
+            if (Control is Slider cast2)
+                throw new ArgumentException("Sliders use floats");
 
             return this;
         }
