@@ -41,6 +41,24 @@ namespace Squared.PRGUI.Controls {
         private static readonly Dictionary<Type, (bool, TryParseDelegate)> ParseDelegateCache = 
             new Dictionary<Type, (bool, TryParseDelegate)>();
 
+        static ParameterEditor () {
+            DummyCodeForNativeAot();
+        }
+
+        static void DummyCodeForNativeAot () {
+            new ParameterEditor<bool>();
+            new ParameterEditor<int>();
+            new ParameterEditor<long>();
+            new ParameterEditor<float>();
+            new ParameterEditor<double>();
+            new ParameterEditor<Vector2>();
+            new ParameterEditor<Vector3>();
+            new ParameterEditor<Vector4>();
+            new ParameterEditor<Quaternion>();
+            new ParameterEditor<Color>();
+            new ParameterEditor<pSRGBColor>();
+        }
+
         public static TryParseDelegate GetParseDelegate (Type type, bool includeFallback) {
             lock (ParseDelegateCache) {
                 if (ParseDelegateCache.TryGetValue(type, out var tup) && (tup.Item1 == includeFallback))

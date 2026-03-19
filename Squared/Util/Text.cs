@@ -944,8 +944,12 @@ namespace Squared.Util.Text {
         }
 
         public int IndexOfAny (char[] chars) {
-            if (String != null)
-                return String.IndexOfAny(chars, SubstringOffset, Length) - SubstringOffset;
+            if (String != null) {
+                if (chars.Length == 1)
+                    return String.IndexOf(chars[0], SubstringOffset, Length) - SubstringOffset;
+                else
+                    return String.IndexOfAny(chars, SubstringOffset, Length) - SubstringOffset;
+            }
 
             for (int i = 0, l = Length; i < l; i++) {
                 // FIXME: Optimize this

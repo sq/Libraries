@@ -116,10 +116,17 @@ namespace Squared.Render {
         internal bool HotReloadRequiresClone;
         internal MaterialStateSet StateSet = new MaterialStateSet();
 
-        public ref PipelineStateSet PipelineStates => ref StateSet.Pipeline;
+        public ref readonly PipelineStateSet PipelineStates => ref StateSet.Pipeline;
         public BlendState BlendState {
             get => PipelineStates.BlendState;
-            set => PipelineStates.BlendState = value;
+            set {
+                var pipeline = StateSet.Pipeline;
+
+                if (pipeline.BlendState == value)
+                    return;
+                pipeline.BlendState = value;
+                StateSet = new MaterialStateSet(pipeline, StateSet.Samplers);
+            }
         }
 
         private DenseList<Effect> DiscardedEffects;
@@ -292,6 +299,7 @@ namespace Squared.Render {
                 DisposeEffect = true,
                 GetEffectForReload = GetEffectForReload,
                 HotReloadRequiresClone = true,
+                StateSet = StateSet,
             };
             DefaultParameters.CopyTo(ref result.DefaultParameters);
             return result;
