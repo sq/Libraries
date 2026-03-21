@@ -15,12 +15,12 @@ using Squared.Util;
 
 namespace Squared.PRGUI.Decorations {
     public sealed class BackgroundImageSettings {
-        public AbstractTextureReference Texture;
+        public static readonly BackgroundImageSettings Default = new ();
+
         public Bounds TextureBounds;
         public RasterTextureSettings Settings;
 
-        public BackgroundImageSettings (AbstractTextureReference texture = default(AbstractTextureReference)) {
-            Texture = texture;
+        public BackgroundImageSettings () {
             Settings = new RasterTextureSettings {
                 SamplerState = SamplerState.LinearClamp,
                 Mode = RasterTextureCompositeMode.Over,
@@ -30,10 +30,6 @@ namespace Squared.PRGUI.Decorations {
                 Position = Vector2.One * 0.5f
             };
             TextureBounds = Bounds.Unit;
-        }
-
-        public static implicit operator BackgroundImageSettings (Texture2D texture) {
-            return new BackgroundImageSettings(texture);
         }
     }
 
@@ -48,7 +44,8 @@ namespace Squared.PRGUI.Decorations {
         public ControlStates State;
         public DenseList<string> Traits;
         public pSRGBColor? BackgroundColor, TextColor;
-        public BackgroundImageSettings BackgroundImage;
+        public AbstractTextureReference BackgroundImage;
+        public BackgroundImageSettings BackgroundImageSettings;
         public Vector4 UserData;
         public int UniqueId;
         public bool IsCompositing;
@@ -62,15 +59,15 @@ namespace Squared.PRGUI.Decorations {
         }
 
         public Texture2D GetTexture () {
-            return BackgroundImage?.Texture.Instance;
+            return BackgroundImage.Instance;
         }
 
         public Bounds GetTextureRegion () {
-            return BackgroundImage?.TextureBounds ?? Bounds.Unit;
+            return BackgroundImageSettings?.TextureBounds ?? Bounds.Unit;
         }
 
         public RasterTextureSettings GetTextureSettings () {
-            return BackgroundImage?.Settings ?? default(RasterTextureSettings);
+            return BackgroundImageSettings?.Settings ?? default(RasterTextureSettings);
         }
 
         public bool HasStateFlag (ControlStates flag) => State.IsFlagged(flag);

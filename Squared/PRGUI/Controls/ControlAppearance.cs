@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Squared.PRGUI.Decorations;
 using Squared.Render;
 using Squared.Render.Text;
@@ -216,7 +217,9 @@ namespace Squared.PRGUI {
 
         public ColorVariable BackgroundColor;
         public ColorVariable TextColor;
-        public BackgroundImageSettings BackgroundImage;
+
+        public BackgroundImageSettings BackgroundImageSettings;
+        public AbstractTextureReference BackgroundImage;
 
         internal AppearanceFlags Flags;
 

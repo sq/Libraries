@@ -71,6 +71,7 @@ namespace Squared.PRGUI {
                 BackgroundColor = GetBackgroundColor(Context.NowL),
                 TextColor = GetTextColor(Context.NowL),
                 BackgroundImage = Appearance.BackgroundImage,
+                BackgroundImageSettings = Appearance.BackgroundImageSettings ?? BackgroundImageSettings.Default,
                 IsCompositing = compositing,
                 UniqueId = ControlIndex
             };

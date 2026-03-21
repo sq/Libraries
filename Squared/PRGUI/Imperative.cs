@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Squared.PRGUI.Controls;
 using Squared.PRGUI.Controls.SpecialInterfaces;
 using Squared.PRGUI.Decorations;
@@ -566,8 +567,14 @@ namespace Squared.PRGUI.Imperative {
             Control.Appearance.BackgroundColor = value;
             return this;
         }
-        public ControlBuilder<TControl> SetBackgroundImage (BackgroundImageSettings value) {
-            Control.Appearance.BackgroundImage = value;
+        public ControlBuilder<TControl> SetBackgroundImage (AbstractTextureReference texture) {
+            Control.Appearance.BackgroundImage = texture;
+            Control.Appearance.BackgroundImageSettings = null;
+            return this;
+        }
+        public ControlBuilder<TControl> SetBackgroundImage (AbstractTextureReference texture, BackgroundImageSettings settings) {
+            Control.Appearance.BackgroundImage = texture;
+            Control.Appearance.BackgroundImageSettings = settings;
             return this;
         }
         public ControlBuilder<TControl> SetTextColor (ColorVariable value) {
