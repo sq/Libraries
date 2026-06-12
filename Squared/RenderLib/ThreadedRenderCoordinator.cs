@@ -88,9 +88,6 @@ namespace Squared.Render {
 
         public readonly NativeAllocator AtlasAllocator = new NativeAllocator { Name = "Squared.Render.AtlasAllocator" };
 
-        // Held during paint
-        private readonly object DrawLock = new object();
-
         private bool _Running = true;
         private bool _ActualEnableThreading = true;
         private bool _EnableThreadedPrepare = true;
@@ -473,11 +470,8 @@ namespace Squared.Render {
             TimeOfLastResetOrDeviceChange = Time.Ticks;
             FirstFrameSinceReset = true;
 
-            if (!IsResetting) {
+            if (!IsResetting)
                 IsResetting = true;
-
-                Monitor.Enter(DrawLock);
-            }
 
             UniformBinding.HandleDeviceReset();
         }
@@ -489,8 +483,6 @@ namespace Squared.Render {
             }
 
             if (IsResetting) {
-                Monitor.Exit(DrawLock);
-
                 IsResetting = false;
                 FirstFrameSinceReset = true;
             }
