@@ -511,23 +511,6 @@ namespace Squared.Render {
             return _FrameBeingPrepared;
         }
 
-        private void PendingDrawSetupHandler (DeviceManager dm, object _pd) {
-            var pd = (PendingDraw)_pd;
-
-            if (!AutoRenderTarget.IsRenderTargetValid(pd.RenderTarget))
-                throw new ObjectDisposedException("Render target for pending draw was disposed between prepare and issue");
-
-            var vt = pd.ViewTransform ??
-                ViewTransform.CreateOrthographic(pd.RenderTarget.Width, pd.RenderTarget.Height);
-            pd.Materials.PushViewTransform(ref vt);
-            dm.Device.Clear(Color.Transparent);
-        }
-
-        private void PendingDrawTeardownHandler (DeviceManager dm, object _pd) {
-            var pd = (PendingDraw)_pd;
-            pd.Materials.PopViewTransform();
-        }
-
         private void RunPendingDraws () {
             lock (PendingDrawQueue)
                 if (PendingDrawQueue.Count == 0)
