@@ -73,60 +73,6 @@ namespace Squared.Render.Evil {
         public U texture;
     }
 
-    public class SysTexture2D : Texture2D {
-        protected static unsafe IntPtr CreateHandle (GraphicsDevice device, IntPtr texture, SDL.SDL_GPUTextureCreateInfo createInfo) {
-            var hDevice = DeviceUtils.GetFNA3DDevice(device);
-            var st = new FNA3D_SysTextureEXT {
-                version = 0,
-                rendererType = FNA3D_SysRendererTypeEXT.SDL_GPU,
-                texture = {
-                    sdl = {
-                        texture = texture,
-                        createInfo = (IntPtr)(&createInfo),
-                    },
-                },
-            };
-            return DeviceUtils.FNA3D_CreateSysTextureEXT(hDevice, ref st);
-        }
-
-        public static SurfaceFormat GetMatchingSizeFormat (SDL.SDL_GPUTextureFormat format) {
-            var sizeInPixels = SDL.SDL_GPUTextureFormatTexelBlockSize(format);
-            // FIXME: Compressed formats
-            return sizeInPixels switch {
-                16 => SurfaceFormat.Vector4,
-                8 => SurfaceFormat.Rgba64,
-                4 => SurfaceFormat.Color,
-                2 => SurfaceFormat.HalfSingle,
-                1 => SurfaceFormat.Alpha8,
-                _ => throw new ArgumentOutOfRangeException(nameof(format)),
-            };
-        }
-
-        public unsafe SysTexture2D (GraphicsDevice device, IntPtr texture, SDL.SDL_GPUTextureCreateInfo createInfo) 
-            : base (
-                  device, 
-                  (int)createInfo.width, (int)createInfo.height, (int)createInfo.num_levels, 
-                  GetMatchingSizeFormat(createInfo.format), CreateHandle(device, texture, createInfo)
-            )
-        {
-        }
-
-        public unsafe SysTexture2D (GraphicsDevice device, SDL.SDL_GPUTextureCreateInfo createInfo)
-            : this (
-                  device, CreateTextureFromInfo(device, ref createInfo), createInfo
-            )
-        {
-        }
-
-        private static IntPtr CreateTextureFromInfo (GraphicsDevice device, ref SDL.SDL_GPUTextureCreateInfo createInfo) {
-            var sd = DeviceUtils.GetSDLDevice(device).device;
-            var result = SDL.SDL_CreateGPUTexture(sd, ref createInfo);
-            if (result == IntPtr.Zero)
-                throw new Exception("Failed to create SDL_GPU texture: " + SDL.SDL_GetError());
-            return result;
-        }
-    }
-
     public static class EffectUtils {
         public static Effect EffectFromFxcOutput (GraphicsDevice device, Stream stream, string name = null) {
             if (device == null)
