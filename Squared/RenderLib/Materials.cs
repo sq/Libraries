@@ -158,7 +158,8 @@ namespace Squared.Render {
         public Material (
             Effect effect, string techniqueName = null, 
             Action<DeviceManager>[] beginHandlers = null,
-            Action<DeviceManager>[] endHandlers = null
+            Action<DeviceManager>[] endHandlers = null,
+            bool ownsEffect = false
         ) : this() {
             TechniqueName = techniqueName ?? effect?.CurrentTechnique?.Name;
             OwnedEffect = effect;
@@ -168,6 +169,7 @@ namespace Squared.Render {
 
             BeginHandlers = beginHandlers;
             EndHandlers   = endHandlers;
+            DisposeEffect = ownsEffect;
 
             InitializeForEffect(Effect);
         }
@@ -292,11 +294,11 @@ namespace Squared.Render {
 
             var result = new Material(
                 newEffect, null,
-                BeginHandlers, EndHandlers
+                BeginHandlers, EndHandlers,
+                ownsEffect: true
             ) {
                 TechniqueName = TechniqueName,
                 HintPipeline = HintPipeline,
-                DisposeEffect = true,
                 GetEffectForReload = GetEffectForReload,
                 HotReloadRequiresClone = true,
                 StateSet = StateSet,
