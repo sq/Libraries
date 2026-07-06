@@ -75,9 +75,6 @@ namespace Squared.Render {
 
         private T                       _Value;
 
-        private delegate void CompatibilitySetter (in T value);
-        private CompatibilitySetter CurrentCompatibilityBinding;
-
         public  bool   IsDirty    { get; private set; }
         public  bool   IsDisposed { get; private set; }
         public  Effect Effect     { get; private set; }
@@ -147,70 +144,8 @@ namespace Squared.Render {
             pMatrix[11] = temp;
         }
 
-        // We use LCG to create a single throwaway delegate that is responsible for filling
-        //  all the relevant effect parameters with the value(s) of each field of the struct.
-        private void CreateCompatibilityBinding (out CompatibilitySetter result) {
-            var t = typeof(T);
-            var tp = typeof(EffectParameter);
-
-            var uniformParameter = Effect.Parameters[Name];
-            if (uniformParameter == null)
-                throw new UniformBindingException("Shader has no uniform named '" + Name + "'");
-            if (uniformParameter.ParameterClass != EffectParameterClass.Struct)
-                throw new UniformBindingException("Shader uniform is not a struct");
-
-            var pValue = Expression.Parameter(t.MakeByRefType(), "value");
-            var body = new List<Expression>();
-
-            foreach (var p in uniformParameter.StructureMembers) {
-                var field = t.GetField(p.Name, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                if (field == null) {
-                    if (UniformBinding.IgnoreMissingUniforms)
-                        continue;
-                    else
-                        throw new UniformBindingException(string.Format("No field named '{0}' found when binding type {1}", p.Name, t.Name));
-                }
-
-                var setMethod = tp.GetMethod("SetValue", new[] { field.FieldType });
-                if (setMethod == null)
-                    throw new UniformBindingException(string.Format("No setter for effect parameter type {0}", field.FieldType.Name));
-
-                var vParameter = Expression.Constant(p, tp);
-
-                var fieldValue = Expression.Field(pValue, field);
-                body.Add(Expression.Call(vParameter, setMethod, fieldValue));
-            }
-
-            var bodyBlock = Expression.Block(body);
-
-            var expr = Expression.Lambda<CompatibilitySetter>(bodyBlock, pValue);
-            result = expr.Compile();
-        }
-
-        private void GetCurrentCompatibilityBinding (out CompatibilitySetter compatibilityBinding) {
-            lock (Lock) {
-                if (CurrentCompatibilityBinding == null) {
-                    IsDirty = true;
-                    CreateCompatibilityBinding(out CurrentCompatibilityBinding);
-                }
-
-                compatibilityBinding = CurrentCompatibilityBinding;
-            }
-        }
-
-        private void CompatibilityFlush () {
-            CompatibilitySetter setter;
-            GetCurrentCompatibilityBinding(out setter);
-            setter(in _Value);
-        }
-
         public void Flush () {
-            if (UniformBinding.ForceCompatibilityMode) {
-                CompatibilityFlush();
-            } else {
-                NativeFlush();
-            }
-
+            NativeFlush();
             IsDirty = false;
         }
 
@@ -226,7 +161,6 @@ namespace Squared.Render {
         }
 
         private void ReleaseBindings () {
-            // TODO: Should we invalidate the compatibility binding here? I don't think that needs to happen
         }
 
         public void Dispose () {
@@ -244,7 +178,6 @@ namespace Squared.Render {
         // Making a dictionary larger increases performance
         private const int BindingDictionaryCapacity = 1024;
 
-        public static bool ForceCompatibilityMode = false;
         public static bool IgnoreMissingUniforms = true;
 
         private static readonly Dictionary<Effect, List<IUniformBinding>> BindingsByEffect =
