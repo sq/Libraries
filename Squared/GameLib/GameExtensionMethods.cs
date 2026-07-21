@@ -151,7 +151,7 @@ namespace Squared.Game {
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool AssertFinite (this in Vector4 v) {
+        public static bool IsFinite (this in Vector4 v) {
             return Arithmetic.IsFinite(v.X) &&
                 Arithmetic.IsFinite(v.Y) &&
                 Arithmetic.IsFinite(v.Z) &&
