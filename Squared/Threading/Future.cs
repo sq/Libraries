@@ -64,6 +64,7 @@ namespace Squared.Threading {
     }
 
     internal static class FutureHelpers {
+        // REVIEW: Pretty sure I would like to rewrite this RunInThreadThunk subsystem but not 100% sure how
         public static readonly WaitCallback RunInThreadHelper;
 
         static FutureHelpers () {
@@ -75,6 +76,7 @@ namespace Squared.Threading {
             try {
                 thunk.Invoke();
             } catch (System.Reflection.TargetInvocationException ex) {
+                // REVIEW: Which cases is this catch block for?
                 thunk.Fail(ex.InnerException);
             } catch (Exception ex) {
                 thunk.Fail(ex);
@@ -154,14 +156,14 @@ namespace Squared.Threading {
         void RegisterHandlers (OnFutureResolved completeHandler, OnFutureResolved disposeHandler);
         void RegisterHandlers (OnFutureResolvedWithData completeHandler, OnFutureResolvedWithData disposeHandler, object userData);
         void RegisterOnResolved (Action handler);
+        void RegisterOnResolved (OnFutureResolved handler);
         void RegisterOnResolved (OnFutureResolvedWithData handler, object userData);
         void RegisterOnComplete (Action handler);
+        void RegisterOnComplete (OnFutureResolved handler);
         void RegisterOnComplete (OnFutureResolvedWithData handler, object userData);
         void RegisterOnDispose (Action handler);
-        void RegisterOnDispose (OnFutureResolvedWithData handler, object userData);
-        void RegisterOnResolved (OnFutureResolved handler);
-        void RegisterOnComplete (OnFutureResolved handler);
         void RegisterOnDispose (OnFutureResolved handler);
+        void RegisterOnDispose (OnFutureResolvedWithData handler, object userData);
         void RegisterOnErrorCheck (Action handler);
         bool CopyFrom (IFuture source);
     }
@@ -190,6 +192,8 @@ namespace Squared.Threading {
 
     public static class Future {
         public enum State : int {
+            // REVIEW: I guess Unknown and Disposing are removed because
+            // you did not want these states to be part of the public API?
             Empty = 0,
             // Unknown = 1,
             CompletedWithValue = 2,
@@ -254,6 +258,10 @@ namespace Squared.Threading {
             public WaitForFirstThunk (IEnumerable<IFuture> futures) {
                 OnFutureResolved handler = null;
 
+                // REVIEW: On a theoretical level, I am worried that, if the enumerable is
+                // empty and not detected by the condition below, or if all futures are null
+                // then Composite never completes.
+                // On a practical level, I suspect that it has not happened often. ;)
                 if (
                     ((futures as System.Collections.IList)?.Count == 0) ||
                     ((futures as Array)?.Length == 0)
@@ -661,6 +669,10 @@ namespace Squared.Threading {
             }
 
             // FIXME: Set state to indeterminate once instead of twice
+            // REVIEW: I think that it would be possible to set state to indeterminate only once
+            // by splitting RegisterHandler_Impl in two:
+            //  * a Disposable struct that would call TrySetIndeterminate on instantiation, and ClearIndeterminate on Dispose
+            //  * a function that does the work of registering or running the handler
             if (!RegisterHandler_Impl(onComplete, HandlerType.Completed))
                 RegisterHandler_Impl(onDispose, HandlerType.Disposed);
         }
